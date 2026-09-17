@@ -66,7 +66,7 @@ export async function createSession(
     // Kein Zugriff aus JavaScript — ein gefundener XSS-Weg kann die
     // Sitzung damit nicht auslesen und weiterreichen.
     sameSite: "lax",
-    secure: env.isProduction,
+    secure: env.isSecureUrl,
     path: "/",
     expires: expiresAt,
   });

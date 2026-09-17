@@ -32,40 +32,67 @@ Bestätigung mit Absagelink raus. Absagen funktioniert ohne Konto.
 
 ## Erste Inbetriebnahme
 
-Vorausgesetzt: ein Server mit Docker und Docker Compose, eine Domain, die
-darauf zeigt, und ein Reverse Proxy mit TLS davor.
+Vorausgesetzt: ein Server mit Docker und Docker Compose. Domain, Reverse
+Proxy und Mailversand kommen **nicht** hier — die brauchst du erst, wenn die
+Seite öffentlich gehen soll. Zum ersten Aufsetzen und Testen genügt das:
 
 ```bash
 git clone <dieses Repository> driveonpoint
 cd driveonpoint
 
 cp .env.example .env
-# Drei Geheimnisse erzeugen und in die .env eintragen:
+# Vier Geheimnisse erzeugen und in die .env eintragen:
+openssl rand -base64 48   # POSTGRES_PASSWORD
 openssl rand -base64 48   # SESSION_SECRET
 openssl rand -base64 48   # CAPTCHA_SECRET
 openssl rand -base64 48   # CRON_SECRET
-# Dazu POSTGRES_PASSWORD, APP_URL, MAIL_DOMAIN und die SEED_ADMIN_* Zeilen.
+# Dazu SEED_ADMIN_EMAIL und SEED_ADMIN_PASSWORD (mindestens 12 Zeichen).
+# APP_URL, MAIL_DOMAIN und Google können vorerst leer bleiben — siehe unten.
 
 docker compose up -d --build
 docker compose logs -f app     # bis „Administrationskonto für … angelegt“ erscheint
 ```
 
-Mehr ist nicht nötig. Beim Start spielt die Anwendung die Migrationen ein,
-legt die drei Angebote an und erzeugt beim allerersten Mal das
-Administrationskonto aus `SEED_ADMIN_EMAIL` und `SEED_ADMIN_PASSWORD`.
+Das startet nur `db` und `app`, nicht den Mail-Container — der ist ein
+eigenes Compose-Profil und wird absichtlich übersprungen, solange keine
+Domain für den Versand eingerichtet ist (siehe
+[Mailversand](#mailversand)). Buchungen funktionieren auch ohne ihn, nur
+ohne Bestätigungsmail.
 
+Mehr ist zum Starten nicht nötig. Beim Hochfahren spielt die Anwendung die
+Migrationen ein, legt die Angebote an und erzeugt beim allerersten Mal das
+Administrationskonto aus `SEED_ADMIN_EMAIL` und `SEED_ADMIN_PASSWORD`.
 Danach beide `SEED_ADMIN_*`-Zeilen in der `.env` **leeren** und
-`docker compose up -d` erneut ausführen. Beim ersten Anmelden verlangt die
-Anwendung ohnehin ein eigenes Passwort.
+`docker compose up -d` erneut ausführen.
 
 > Die Migration liegt vorgeneriert unter `drizzle/`. Bei Schemaänderungen
 > `npm run db:generate` ausführen und die neue Datei mit einchecken — der
 > Start spielt sie dann von selbst ein.
 
+### Erster Blick, bevor eine Domain steht
+
+Der Container hört nur auf `127.0.0.1` des Servers, nicht nach aussen — das
+ist Absicht, siehe [Reverse Proxy](#reverse-proxy). Um vom eigenen Rechner
+aus kurz hineinzuschauen, tunnle den Port per SSH, statt ihn am Server zu
+öffnen:
+
+```bash
+ssh -L 3000:127.0.0.1:3000 dein-nutzer@dein-server
+```
+
+Danach ist die Seite unter `http://localhost:3000` auf dem eigenen Rechner
+erreichbar, Tunnel offen lassen. Mit `APP_URL=http://localhost:3000` (der
+Standardwert) meldet sich auch der Team-Bereich an: die Anwendung erkennt an
+der fehlenden `https://`-Adresse, dass noch kein TLS davorsteht, und
+verzichtet in diesem Fall auf das `Secure`-Attribut am Sitzungs-Cookie —
+sonst würde der Browser es über reines HTTP gar nicht erst annehmen. Sobald
+`APP_URL` auf eine `https://`-Adresse zeigt, greift der Schutz automatisch
+wieder.
+
 ### Reverse Proxy
 
-Die Anwendung hört nur auf `127.0.0.1:3000`. Davor gehört ein Proxy, der TLS
-beendet. Mit Caddy genügt:
+Sobald die Domain steht: Die Anwendung hört nur auf `127.0.0.1:3000`. Davor
+gehört ein Proxy, der TLS beendet. Mit Caddy genügt:
 
 ```
 driveonpoint.ch {
@@ -73,12 +100,19 @@ driveonpoint.ch {
 }
 ```
 
+Danach in der `.env`:
+
+```
+APP_URL=https://driveonpoint.ch
+```
+
+und `docker compose up -d` erneut ausführen — das Sitzungs-Cookie bekommt ab
+jetzt automatisch das `Secure`-Attribut, ohne dass sonst etwas geändert
+werden muss.
+
 Wichtig: `TRUST_PROXY_HOPS` muss der Anzahl Proxys entsprechen. Bei einem
 einzelnen Caddy oder nginx ist das `1`. Ein zu hoher Wert lässt sich mit einem
 gefälschten `X-Forwarded-For` ausnutzen, um Sperren zu umgehen.
-
-Das Sitzungs-Cookie wird mit `Secure` gesetzt. Über reines HTTP kommt daher
-keine Anmeldung zustande — das ist Absicht, kein Fehler.
 
 ### Täglicher Aufräumlauf
 
@@ -92,6 +126,22 @@ alte Zähler. Als Cron-Eintrag auf dem Server:
 ---
 
 ## Mailversand
+
+Freiwillig und standardmässig aus — ohne Domain lässt sich ohnehin keine Mail
+zustellen, und die Anwendung läuft bis dahin problemlos ohne. Bucht jemand
+einen Termin, wird er trotzdem angelegt; es geht nur keine Bestätigungsmail
+raus (im Serverprotokoll erscheint dazu eine Zeile, mehr passiert nicht).
+
+Sobald die Domain und ihre DNS-Einträge stehen:
+
+1. In der `.env` `MAIL_DOMAIN`, `MAIL_HOSTNAME`, `MAIL_FROM` und
+   `MAIL_REPLY_TO` eintragen.
+2. Mit dem Profil starten, statt mit dem gewöhnlichen Befehl:
+   ```bash
+   docker compose --profile mail up -d --build
+   ```
+   (Jeder künftige Neustart braucht ebenfalls `--profile mail`, sonst bleibt
+   der Mail-Container aus.)
 
 Mitgeliefert ist ein Postfix-Container, der ausschliesslich sendet und nur im
 internen Docker-Netz erreichbar ist. Damit die Mails nicht im Spam landen,
@@ -118,7 +168,7 @@ Zum Entwickeln fängt Mailpit alles ab, Weboberfläche auf
 `http://localhost:8025`:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile mail up
 ```
 
 ---

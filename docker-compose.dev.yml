@@ -1,4 +1,11 @@
-# Entwicklung: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Entwicklung:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile mail up
+#
+# Das --profile mail ist nötig, weil die Basisdatei den mail-Container
+# standardmässig überspringt (siehe deren Kommentar) — Compose vereinigt die
+# profiles-Liste über beide Dateien hinweg, eine leere Liste hier würde die
+# Bindung aus der Basisdatei also nicht aufheben.
+#
 # Ersetzt den echten Mailversand durch Mailpit (Web-UI auf http://localhost:8025).
 services:
   db:

@@ -22,12 +22,19 @@ services:
 
   # Nur ausgehender Versand (noreply@). Kein offener Relay: erreichbar
   # ausschliesslich im internen Docker-Netz, kein Port auf dem Host.
+  #
+  # Optional: läuft nur mit, wenn er per --profile mail angefordert wird
+  # (siehe "docker compose --profile mail up -d --build" weiter unten). Ohne
+  # eingerichtete Domain lässt sich ohnehin keine Mail zustellen — bis dahin
+  # startet die Anwendung auch ohne diesen Container; Buchungen werden dann
+  # nur ohne Bestätigungsmail angelegt, funktionieren aber sonst normal.
   mail:
+    profiles: ["mail"]
     image: boky/postfix:v4.4.0
     restart: unless-stopped
     environment:
-      ALLOWED_SENDER_DOMAINS: ${MAIL_DOMAIN:?MAIL_DOMAIN fehlt in .env}
-      HOSTNAME: ${MAIL_HOSTNAME:-mail.driveonpoint.ch}
+      ALLOWED_SENDER_DOMAINS: ${MAIL_DOMAIN:-example.invalid}
+      HOSTNAME: ${MAIL_HOSTNAME:-mail.example.invalid}
       DKIM_AUTOGENERATE: "true"
       TZ: Europe/Zurich
     volumes:
@@ -43,13 +50,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      mail:
-        condition: service_started
     environment:
       NODE_ENV: production
       TZ: Europe/Zurich
       DATABASE_URL: postgres://${POSTGRES_USER:-driveonpoint}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-driveonpoint}
-      APP_URL: ${APP_URL:?APP_URL fehlt in .env}
+      # Ohne Domain zunächst http://localhost:3000 — genügt zum ersten
+      # Testen. Sitzungs-Cookies laufen dann automatisch ohne Secure-Schutz
+      # (siehe src/lib/env.ts), damit sich der Team-Bereich testen lässt.
+      # Sobald Domain und Reverse Proxy mit TLS stehen, hier auf
+      # https://deine-domain.ch ändern und neu starten.
+      APP_URL: ${APP_URL:-http://localhost:3000}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET fehlt in .env}
       CAPTCHA_SECRET: ${CAPTCHA_SECRET:?CAPTCHA_SECRET fehlt in .env}
       CRON_SECRET: ${CRON_SECRET:?CRON_SECRET fehlt in .env}

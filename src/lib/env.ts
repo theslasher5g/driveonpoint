@@ -75,6 +75,20 @@ export const env = {
   get isProduction(): boolean {
     return process.env.NODE_ENV === "production";
   },
+  /**
+   * Ob Sitzungs-Cookies als `Secure` gesetzt werden.
+   *
+   * Bewusst an die tatsächliche Adresse gekoppelt statt an NODE_ENV: beim
+   * ersten Hochfahren, bevor Domain und Reverse Proxy mit TLS stehen, läuft
+   * die Anwendung noch über reines HTTP — ein `Secure`-Cookie würde der
+   * Browser dann gar nicht erst annehmen, und die Team-Anmeldung liesse sich
+   * nicht einmal zum Testen aufrufen. Sobald APP_URL auf `https://` zeigt,
+   * greift der Schutz automatisch, ohne dass irgendwo ein Schalter
+   * umgestellt werden muss.
+   */
+  get isSecureUrl(): boolean {
+    return env.appUrl.startsWith("https://");
+  },
 };
 
 /** Einmal beim Serverstart aufgerufen, damit fehlende Werte sofort auffallen. */
@@ -84,7 +98,12 @@ export function assertEnvironment(): void {
   secret("CRON_SECRET");
   required("DATABASE_URL");
 
-  if (env.isProduction && !process.env.APP_URL) {
-    throw new Error("Umgebungsvariable APP_URL fehlt.");
+  if (!env.isSecureUrl) {
+    console.warn(
+      "APP_URL zeigt nicht auf https:// — Sitzungs-Cookies laufen ohne " +
+        "Secure-Schutz. In Ordnung zum ersten Testen, aber vor dem " +
+        "öffentlichen Betrieb gehört ein Reverse Proxy mit TLS davor und " +
+        "APP_URL auf https:// umgestellt.",
+    );
   }
 }

@@ -33,7 +33,7 @@ export async function GET() {
     // fremden Domain her. Bei "strict" käme das Cookie dabei nicht mit und
     // jede Anmeldung schlüge fehl.
     sameSite: "lax",
-    secure: env.isProduction,
+    secure: env.isSecureUrl,
     path: PENDING_COOKIE_PATH,
     maxAge: 300,
   });

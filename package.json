@@ -1,0 +1,35 @@
+{
+  "name": "driveonpoint",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:setup": "tsx src/lib/db/setup.ts"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "2.0.2",
+    "drizzle-orm": "0.36.4",
+    "next": "15.1.6",
+    "nodemailer": "6.9.16",
+    "pg": "8.13.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "zod": "3.24.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.10.5",
+    "@types/nodemailer": "6.4.17",
+    "@types/pg": "8.11.10",
+    "@types/react": "19.0.7",
+    "@types/react-dom": "19.0.3",
+    "drizzle-kit": "0.28.1",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.19.2",
+    "typescript": "5.7.3"
+  }
+}

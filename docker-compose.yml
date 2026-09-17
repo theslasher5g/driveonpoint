@@ -1,0 +1,79 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-driveonpoint}
+      POSTGRES_USER: ${POSTGRES_USER:-driveonpoint}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt in .env}
+      # Schweizer Zeitzone, damit Kalender-Abfragen in der DB nicht abweichen.
+      TZ: Europe/Zurich
+      PGTZ: Europe/Zurich
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-driveonpoint} -d ${POSTGRES_DB:-driveonpoint}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # Nur ausgehender Versand (noreply@). Kein offener Relay: erreichbar
+  # ausschliesslich im internen Docker-Netz, kein Port auf dem Host.
+  mail:
+    image: boky/postfix:v4.4.0
+    restart: unless-stopped
+    environment:
+      ALLOWED_SENDER_DOMAINS: ${MAIL_DOMAIN:?MAIL_DOMAIN fehlt in .env}
+      HOSTNAME: ${MAIL_HOSTNAME:-mail.driveonpoint.ch}
+      DKIM_AUTOGENERATE: "true"
+      TZ: Europe/Zurich
+    volumes:
+      - dkim-keys:/etc/opendkim/keys
+    networks:
+      - internal
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      mail:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      TZ: Europe/Zurich
+      DATABASE_URL: postgres://${POSTGRES_USER:-driveonpoint}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-driveonpoint}
+      APP_URL: ${APP_URL:?APP_URL fehlt in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET fehlt in .env}
+      CAPTCHA_SECRET: ${CAPTCHA_SECRET:?CAPTCHA_SECRET fehlt in .env}
+      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET fehlt in .env}
+      SMTP_HOST: ${SMTP_HOST:-mail}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-Drive on Point <noreply@driveonpoint.ch>}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
+      RETENTION_DAYS: ${RETENTION_DAYS:-30}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+    ports:
+      # Nur auf localhost. Davor gehört ein Reverse Proxy mit TLS (Caddy/nginx).
+      - "127.0.0.1:3000:3000"
+    networks:
+      - internal
+
+volumes:
+  db-data:
+  dkim-keys:
+
+networks:
+  internal:
+    driver: bridge

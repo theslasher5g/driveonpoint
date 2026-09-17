@@ -1,0 +1,127 @@
+"use client";
+
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import { sendContactAction, type ContactState } from "@/app/kontakt/actions";
+import { CaptchaField } from "./captcha-field";
+import { Honeypot } from "./honeypot";
+
+const EMPTY: ContactState = {};
+
+export function ContactForm() {
+  const [state, action] = useActionState(sendContactAction, EMPTY);
+
+  if (state.ok) {
+    return (
+      <div className="bg-paper border-l-4 border-signal px-6 py-6 max-w-xl" role="status">
+        <h2 className="text-lg font-bold">Nachricht ist angekommen</h2>
+        <p className="text-slate mt-2">
+          Wir melden uns innert eines Werktags. Eine Kopie deiner Nachricht liegt in deinem
+          Postfach.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form action={action} noValidate className="space-y-5 max-w-xl">
+      <Honeypot />
+
+      {state.error && (
+        <p role="alert" className="bg-paper border-l-4 border-[#B3261E] px-5 py-4 font-semibold">
+          {state.error}
+        </p>
+      )}
+
+      <div>
+        <label className="field-label" htmlFor="name">
+          Vor- und Nachname
+        </label>
+        <input
+          id="name"
+          name="name"
+          className="field"
+          autoComplete="name"
+          required
+          aria-invalid={state.fieldErrors?.name ? "true" : undefined}
+        />
+        {state.fieldErrors?.name && (
+          <p className="field-hint text-[#B3261E] font-semibold">{state.fieldErrors.name}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="field-label" htmlFor="email">
+          Mailadresse
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          inputMode="email"
+          className="field"
+          autoComplete="email"
+          required
+          aria-invalid={state.fieldErrors?.email ? "true" : undefined}
+        />
+        {state.fieldErrors?.email && (
+          <p className="field-hint text-[#B3261E] font-semibold">{state.fieldErrors.email}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="field-label" htmlFor="telefon">
+          Telefonnummer <span className="font-normal text-slate">(freiwillig)</span>
+        </label>
+        <input
+          id="telefon"
+          name="telefon"
+          type="tel"
+          inputMode="tel"
+          className="field"
+          autoComplete="tel"
+          aria-invalid={state.fieldErrors?.telefon ? "true" : undefined}
+        />
+        {state.fieldErrors?.telefon && (
+          <p className="field-hint text-[#B3261E] font-semibold">{state.fieldErrors.telefon}</p>
+        )}
+      </div>
+
+      <div>
+        <label className="field-label" htmlFor="nachricht">
+          Deine Nachricht
+        </label>
+        <textarea
+          id="nachricht"
+          name="nachricht"
+          rows={6}
+          maxLength={2000}
+          className="field resize-y"
+          required
+          aria-invalid={state.fieldErrors?.nachricht ? "true" : undefined}
+        />
+        {state.fieldErrors?.nachricht && (
+          <p className="field-hint text-[#B3261E] font-semibold">{state.fieldErrors.nachricht}</p>
+        )}
+      </div>
+
+      <CaptchaField scope="kontakt" />
+
+      <p className="text-fine text-slate">
+        Deine Angaben werden ausschliesslich zur Beantwortung dieser Anfrage verwendet und
+        spätestens nach 30 Tagen gelöscht.
+      </p>
+
+      <SubmitButton />
+    </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn btn-primary w-full sm:w-auto" disabled={pending}>
+      {pending ? "Wird gesendet …" : "Nachricht senden"}
+    </button>
+  );
+}

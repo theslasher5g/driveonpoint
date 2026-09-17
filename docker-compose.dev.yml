@@ -1,0 +1,22 @@
+# Entwicklung: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Ersetzt den echten Mailversand durch Mailpit (Web-UI auf http://localhost:8025).
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  mail:
+    image: axllent/mailpit:v1.21
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+      TZ: Europe/Zurich
+    ports:
+      - "127.0.0.1:8025:8025"
+
+  app:
+    environment:
+      NODE_ENV: development
+      SMTP_HOST: mail
+      SMTP_PORT: "1025"
+      SMTP_SECURE: "false"

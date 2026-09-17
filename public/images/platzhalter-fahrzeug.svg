@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-label="Platzhalter für ein Foto des Schulfahrzeugs">
+  <rect width="1600" height="1200" fill="#0B4FD1"/>
+  <g fill="#FFFFFF" opacity="0.09">
+    <rect x="0" y="880" width="1600" height="320"/>
+  </g>
+  <g stroke="#FFFFFF" stroke-width="14" stroke-linecap="square" opacity="0.55">
+    <path d="M120 1040 h150 M370 1040 h150 M620 1040 h150 M870 1040 h150 M1120 1040 h150 M1370 1040 h110"/>
+  </g>
+  <g fill="#FFFFFF" opacity="0.16">
+    <path d="M380 560 h520 l120 130 h150 a70 70 0 0 1 70 70 v90 h-990 v-90 a70 70 0 0 1 70 -70 h30 z"/>
+  </g>
+  <circle cx="560" cy="850" r="58" fill="#FFFFFF" opacity="0.16"/>
+  <circle cx="1060" cy="850" r="58" fill="#FFFFFF" opacity="0.16"/>
+  <rect x="1180" y="180" width="220" height="220" fill="#FFFFFF"/>
+  <text x="1290" y="345" font-family="Archivo, Helvetica, Arial, sans-serif" font-size="180" font-weight="800" fill="#0B4FD1" text-anchor="middle">L</text>
+  <text x="200" y="260" font-family="Archivo, Helvetica, Arial, sans-serif" font-size="66" font-weight="800" fill="#FFFFFF" letter-spacing="-2">Platzhalter</text>
+  <text x="200" y="330" font-family="Archivo, Helvetica, Arial, sans-serif" font-size="38" font-weight="500" fill="#FFFFFF" opacity="0.8">Foto Schulfahrzeug — 1600 × 1200</text>
+</svg>

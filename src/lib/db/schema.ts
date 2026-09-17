@@ -41,13 +41,20 @@ export const staff = pgTable(
     active: boolean("active").notNull().default(true),
     mustChangePassword: boolean("must_change_password").notNull().default(true),
 
-    // Wer sich über Google anmeldet, wird über diese unveränderliche Kennung
-    // wiedererkannt — nicht über die Mailadresse, die sich ändern kann.
-    googleSub: text("google_sub"),
-    googleLinkedAt: timestamp("google_linked_at", { withTimezone: true }),
-    // Lässt sich abschalten, sobald Google eingerichtet ist. Dann ist das
-    // vergebene Startpasswort endgültig wertlos.
-    passwordLoginEnabled: boolean("password_login_enabled").notNull().default(true),
+    // Zwei-Faktor-Authentifizierung per TOTP (RFC 6238), kompatibel mit
+    // Google Authenticator, Authy, 1Password und jeder anderen solchen App.
+    // Der Secret-Wert ist verschlüsselt abgelegt (siehe src/lib/auth/totp.ts)
+    // — ein Datenbankleck allein reicht damit nicht, um Codes zu erzeugen.
+    totpSecret: text("totp_secret"),
+    totpEnabled: boolean("totp_enabled").notNull().default(false),
+    totpConfirmedAt: timestamp("totp_confirmed_at", { withTimezone: true }),
+    // Einmal-Wiederherstellungscodes für den Fall eines verlorenen Geräts.
+    // Gespeichert werden nur Hashes, die Klartext-Codes stehen einmalig in
+    // der Antwort der Einrichtung.
+    mfaRecoveryCodes: jsonb("mfa_recovery_codes").$type<
+      { hash: string; usedAt: string | null }[]
+    >(),
+
     // Erlaubt das Abonnieren des eigenen Kalenders in Google/Apple Kalender.
     calendarToken: text("calendar_token").notNull(),
     // Welche Lektionsarten diese Person überhaupt geben kann.
@@ -58,8 +65,6 @@ export const staff = pgTable(
   (t) => [
     uniqueIndex("staff_email_unique").on(t.email),
     uniqueIndex("staff_calendar_token_unique").on(t.calendarToken),
-    // Ein Google-Konto darf nicht auf zwei Mitarbeitende zeigen.
-    uniqueIndex("staff_google_sub_unique").on(t.googleSub),
   ],
 );
 
@@ -169,7 +174,15 @@ export const promotions = pgTable(
   (t) => [index("promotions_window_idx").on(t.startsOn, t.endsOn)],
 );
 
-/** Wiederkehrende Wochenverfügbarkeit, z. B. jeden Dienstag 08:00–12:00. */
+/**
+ * Wiederkehrende Wochenverfügbarkeit, z. B. jeden Dienstag 08:00–12:00.
+ *
+ * Jedes Angebot hat einen eigenen Planer: der Verkehrskundeunterricht läuft
+ * praktisch immer abends, Fahrstunden eher tagsüber. Ohne diese Zuordnung
+ * liesse sich das nicht getrennt abbilden — eine allgemeine Zeit würde für
+ * jedes Angebot gleichermassen gelten, obwohl ein Kurs faktisch nur zu
+ * bestimmten Zeiten überhaupt stattfindet.
+ */
 export const availabilityRules = pgTable(
   "availability_rules",
   {
@@ -177,6 +190,9 @@ export const availabilityRules = pgTable(
     staffId: uuid("staff_id")
       .notNull()
       .references(() => staff.id, { onDelete: "cascade" }),
+    lessonTypeId: uuid("lesson_type_id")
+      .notNull()
+      .references(() => lessonTypes.id, { onDelete: "cascade" }),
     // 0 = Sonntag … 6 = Samstag
     weekday: smallint("weekday").notNull(),
     startTime: time("start_time").notNull(),
@@ -185,10 +201,21 @@ export const availabilityRules = pgTable(
     validUntil: date("valid_until"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("availability_rules_staff_idx").on(t.staffId, t.weekday)],
+  (t) => [
+    index("availability_rules_staff_lesson_idx").on(t.staffId, t.lessonTypeId, t.weekday),
+  ],
 );
 
-/** Einzelne Ausnahmen: zusätzlicher Block oder Abwesenheit an einem Datum. */
+/**
+ * Einzelne Ausnahmen: zusätzlicher Block oder Abwesenheit an einem Datum.
+ *
+ * Anders als die wöchentliche Regel bewusst ohne Zwang zu einem Angebot:
+ * Ferien oder ein Arzttermin betreffen die ganze Person, nicht nur eine
+ * Kursart — das müsste sonst für jedes Angebot einzeln eingetragen werden,
+ * und ein vergessener Eintrag liesse einen Termin durchrutschen. Leer
+ * bedeutet "gilt für alle Angebote"; wird eines angegeben, betrifft die
+ * Ausnahme nur dieses.
+ */
 export const availabilityExceptions = pgTable(
   "availability_exceptions",
   {
@@ -196,6 +223,9 @@ export const availabilityExceptions = pgTable(
     staffId: uuid("staff_id")
       .notNull()
       .references(() => staff.id, { onDelete: "cascade" }),
+    lessonTypeId: uuid("lesson_type_id").references(() => lessonTypes.id, {
+      onDelete: "cascade",
+    }),
     day: date("day").notNull(),
     startTime: time("start_time").notNull(),
     endTime: time("end_time").notNull(),

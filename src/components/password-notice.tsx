@@ -6,7 +6,7 @@
  */
 export function PasswordNotice({ heading, password }: { heading: string; password: string }) {
   return (
-    <div role="status" className="border-l-4 border-signal bg-concrete px-4 py-4">
+    <div role="status" className="notice notice-warn">
       <p className="font-bold">{heading}</p>
       <p className="nums font-extrabold text-xl mt-2 tracking-wide break-all select-all">
         {password}

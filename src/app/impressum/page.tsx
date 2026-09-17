@@ -7,7 +7,15 @@ import { site } from "@/lib/site";
 export const dynamic = "force-dynamic";
 
 /*
- * Vorlage. Vor dem Aufschalten müssen die mit ### markierten Angaben in
+ * Vorlage für ein Einzelunternehmen ohne Handelsregistereintrag — passend,
+ * solange die Fahrschule nicht als GmbH oder AG geführt wird und der
+ * Jahresumsatz unter der Eintragungspflicht (aktuell CHF 100'000) liegt.
+ * Wird daraus einmal eine eingetragene Firma oder kommt die Umsatzgrenze
+ * in Sicht, gehören eine UID-Nummer und ein Handelsregisterabschnitt hier
+ * wieder hinein — vorher würde eine erfundene Nummer nur eine Eintragung
+ * vortäuschen, die es nicht gibt.
+ *
+ * Vor dem Aufschalten müssen die mit ### markierten Angaben in
  * src/lib/site.ts durch die echten ersetzt und der Text von einer
  * rechtskundigen Person geprüft werden.
  */
@@ -29,7 +37,7 @@ export default function ImpressumPage() {
       <Section>
         <div className="prose-column space-y-8">
           <div>
-            <h2 className="text-lg mb-2">Betreiberin</h2>
+            <h2 className="text-lg mb-2">Verantwortliche Person</h2>
             <address className="not-italic text-slate">
               {site.legalName}
               <br />
@@ -57,20 +65,17 @@ export default function ImpressumPage() {
           </div>
 
           <div>
-            <h2 className="text-lg mb-2">Handelsregister</h2>
+            <h2 className="text-lg mb-2">Rechtsform</h2>
             <p className="text-slate">
-              Unternehmens-Identifikationsnummer {site.contact.uid}
-              <br />
-              Eingetragen im Handelsregister des Kantons Zürich.
+              Einzelunternehmen. Kein Eintrag im Handelsregister.
             </p>
           </div>
 
           <div>
             <h2 className="text-lg mb-2">Bewilligung</h2>
             <p className="text-slate">
-              Die Fahrlehrertätigkeit wird aufgrund einer kantonalen Bewilligung nach der
-              Fahrlehrerverordnung des Bundes ausgeübt. Die Bewilligung liegt am Geschäftssitz zur
-              Einsicht auf.
+              Die Fahrlehrertätigkeit setzt eine kantonale Bewilligung nach der eidgenössischen
+              Fahrlehrerverordnung voraus.
             </p>
           </div>
 
@@ -97,7 +102,7 @@ export default function ImpressumPage() {
             <p className="text-slate">
               Texte, Bilder und Gestaltung dieser Website sind urheberrechtlich geschützt. Eine
               Verwendung ausserhalb der gesetzlichen Schranken bedarf der vorgängigen schriftlichen
-              Zustimmung der Betreiberin.
+              Zustimmung.
             </p>
           </div>
         </div>

@@ -13,7 +13,7 @@ export function ContactForm() {
 
   if (state.ok) {
     return (
-      <div className="bg-paper border-l-4 border-signal px-6 py-6 max-w-xl" role="status">
+      <div className="notice notice-success max-w-xl" role="status">
         <h2 className="text-lg font-bold">Nachricht ist angekommen</h2>
         <p className="text-slate mt-2">
           Wir melden uns innert eines Werktags. Eine Kopie deiner Nachricht liegt in deinem
@@ -28,7 +28,7 @@ export function ContactForm() {
       <Honeypot />
 
       {state.error && (
-        <p role="alert" className="bg-paper border-l-4 border-[#B3261E] px-5 py-4 font-semibold">
+        <p role="alert" className="notice notice-error">
           {state.error}
         </p>
       )}
@@ -46,7 +46,7 @@ export function ContactForm() {
           aria-invalid={state.fieldErrors?.name ? "true" : undefined}
         />
         {state.fieldErrors?.name && (
-          <p className="field-hint text-[#B3261E] font-semibold">{state.fieldErrors.name}</p>
+          <p className="field-hint text-danger font-semibold">{state.fieldErrors.name}</p>
         )}
       </div>
 
@@ -65,7 +65,7 @@ export function ContactForm() {
           aria-invalid={state.fieldErrors?.email ? "true" : undefined}
         />
         {state.fieldErrors?.email && (
-          <p className="field-hint text-[#B3261E] font-semibold">{state.fieldErrors.email}</p>
+          <p className="field-hint text-danger font-semibold">{state.fieldErrors.email}</p>
         )}
       </div>
 
@@ -83,7 +83,7 @@ export function ContactForm() {
           aria-invalid={state.fieldErrors?.telefon ? "true" : undefined}
         />
         {state.fieldErrors?.telefon && (
-          <p className="field-hint text-[#B3261E] font-semibold">{state.fieldErrors.telefon}</p>
+          <p className="field-hint text-danger font-semibold">{state.fieldErrors.telefon}</p>
         )}
       </div>
 
@@ -101,7 +101,7 @@ export function ContactForm() {
           aria-invalid={state.fieldErrors?.nachricht ? "true" : undefined}
         />
         {state.fieldErrors?.nachricht && (
-          <p className="field-hint text-[#B3261E] font-semibold">{state.fieldErrors.nachricht}</p>
+          <p className="field-hint text-danger font-semibold">{state.fieldErrors.nachricht}</p>
         )}
       </div>
 

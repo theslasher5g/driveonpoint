@@ -22,16 +22,19 @@ export default async function BestaetigtPage({ searchParams }: { searchParams: P
 
   return (
     <>
-      <section className="bg-signal text-paper on-signal">
-        <div className="shell pt-14 pb-16 md:pt-20 md:pb-20">
-          <div className="lane lane-draws text-paper">
+      <section className="bg-concrete border-b border-deep/12">
+        <div className="shell pt-12 pb-14 md:pt-20 md:pb-20">
+          <div className="lane lane-draws">
+            <span className="notice notice-success inline-block mb-6 !border-l-0 px-3 py-1.5 text-fine">
+              Bestätigt
+            </span>
             <h1 className="text-title max-w-[16ch]">Der Termin gehört dir.</h1>
-            <p className="text-lead text-paper/85 mt-6 max-w-[54ch]">
+            <p className="text-lead text-slate mt-6 max-w-[54ch]">
               Wir haben dir eine Bestätigung geschickt. Darin steht auch der Link, mit dem du bis
               24 Stunden vorher kostenlos absagen kannst.
             </p>
             {reference && (
-              <p className="nums bg-paper text-deep inline-block mt-8 px-5 py-3 font-extrabold text-lg">
+              <p className="nums bg-paper text-deep inline-block mt-8 px-5 py-3 font-extrabold text-lg border border-deep/15">
                 {reference}
               </p>
             )}

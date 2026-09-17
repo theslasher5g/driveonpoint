@@ -58,7 +58,7 @@ export default async function TeamDashboard({
     <section className="shell py-10 md:py-14">
       <div className="lane">
         {fehler === "keine-berechtigung" && (
-          <p role="alert" className="bg-paper border-l-4 border-[#B3261E] px-5 py-4 font-semibold mb-8">
+          <p role="alert" className="notice notice-error mb-8">
             Für diesen Bereich fehlt dir die Berechtigung.
           </p>
         )}

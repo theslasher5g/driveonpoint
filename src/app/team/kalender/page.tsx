@@ -89,10 +89,32 @@ export default async function KalenderPage({
         ),
       )
       .orderBy(asc(bookings.startsAt)),
-    db.select().from(availabilityRules).where(inArray(availabilityRules.staffId, visibleIds)),
     db
-      .select()
+      .select({
+        staffId: availabilityRules.staffId,
+        weekday: availabilityRules.weekday,
+        startTime: availabilityRules.startTime,
+        endTime: availabilityRules.endTime,
+        validFrom: availabilityRules.validFrom,
+        validUntil: availabilityRules.validUntil,
+        lessonName: lessonTypes.name,
+      })
+      .from(availabilityRules)
+      .innerJoin(lessonTypes, eq(lessonTypes.id, availabilityRules.lessonTypeId))
+      .where(inArray(availabilityRules.staffId, visibleIds)),
+    db
+      .select({
+        id: availabilityExceptions.id,
+        staffId: availabilityExceptions.staffId,
+        day: availabilityExceptions.day,
+        startTime: availabilityExceptions.startTime,
+        endTime: availabilityExceptions.endTime,
+        available: availabilityExceptions.available,
+        note: availabilityExceptions.note,
+        lessonName: lessonTypes.name,
+      })
       .from(availabilityExceptions)
+      .leftJoin(lessonTypes, eq(lessonTypes.id, availabilityExceptions.lessonTypeId))
       .where(
         and(
           inArray(availabilityExceptions.staffId, visibleIds),
@@ -179,12 +201,17 @@ export default async function KalenderPage({
                   if (rule.validUntil && day > rule.validUntil) return false;
                   return true;
                 })
-                .map((rule) => ({ from: rule.startTime.slice(0, 5), to: rule.endTime.slice(0, 5) })),
+                .map((rule) => ({
+                  from: rule.startTime.slice(0, 5),
+                  to: rule.endTime.slice(0, 5),
+                  lessonName: rule.lessonName,
+                })),
               ...exceptions
                 .filter((entry) => entry.day === day && entry.available)
                 .map((entry) => ({
                   from: entry.startTime.slice(0, 5),
                   to: entry.endTime.slice(0, 5),
+                  lessonName: entry.lessonName ?? "alle Angebote",
                 })),
             ].sort((a, b) => minutesSinceMidnight(a.from) - minutesSinceMidnight(b.from));
 
@@ -206,9 +233,13 @@ export default async function KalenderPage({
                 </h2>
 
                 {openBlocks.length > 0 && (
-                  <p className="nums text-[0.72rem] text-slate mt-1.5">
-                    Offen {openBlocks.map((block) => `${block.from}–${block.to}`).join(", ")}
-                  </p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    {openBlocks.map((block, index) => (
+                      <li key={index} className="nums text-[0.72rem] text-slate">
+                        {block.from}–{block.to} <span className="text-deep/70">{block.lessonName}</span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
 
                 {absences.map((absence) => (
@@ -230,7 +261,7 @@ export default async function KalenderPage({
                         className={`px-2 py-1.5 border-l-[3px] ${
                           cancelled
                             ? "bg-concrete-dim border-slate text-slate line-through"
-                            : "bg-signal/10 border-signal"
+                            : "bg-deep/5 border-deep"
                         }`}
                       >
                         <p className="nums text-fine font-bold">

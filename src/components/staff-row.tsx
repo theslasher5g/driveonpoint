@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
+  resetMfaAction,
   resetPasswordAction,
   setLessonTypesAction,
   toggleActiveAction,
@@ -22,6 +23,7 @@ type Person = {
   role: StaffRole;
   active: boolean;
   mustChangePassword: boolean;
+  totpEnabled: boolean;
   lastLoginAt: Date | null;
 };
 
@@ -62,7 +64,14 @@ export function StaffRow({
               Startpasswort offen
             </span>
           )}
-          <span className="text-fine font-bold bg-signal text-paper px-2 py-0.5">
+          <span
+            className={`text-fine font-bold px-2 py-0.5 ${
+              person.totpEnabled ? "bg-concrete-dim text-deep" : "bg-paper border border-deep/20 text-slate"
+            }`}
+          >
+            {person.totpEnabled ? "MFA aktiv" : "MFA nicht eingerichtet"}
+          </span>
+          <span className="text-fine font-bold bg-deep text-paper px-2 py-0.5">
             {ROLE_LABEL[person.role]}
           </span>
         </div>
@@ -74,7 +83,7 @@ export function StaffRow({
         </div>
       )}
       {resetState.error && (
-        <p role="alert" className="border-l-4 border-[#B3261E] bg-concrete px-4 py-3 font-semibold mt-4">
+        <p role="alert" className="notice notice-error mt-4">
           {resetState.error}
         </p>
       )}
@@ -92,7 +101,7 @@ export function StaffRow({
                     name="angebot"
                     value={offer.id}
                     defaultChecked={assigned.includes(offer.id)}
-                    className="w-4.5 h-4.5 accent-[#D33F2C]"
+                    className="w-4.5 h-4.5 accent-signal"
                   />
                   <span className="text-fine">{offer.name}</span>
                 </label>
@@ -136,6 +145,13 @@ export function StaffRow({
               <MiniSubmit idle="Passwort zurücksetzen" busy="Setzt zurück …" />
             </form>
 
+            {person.totpEnabled && !isSelf && (
+              <form action={resetMfaAction}>
+                <input type="hidden" name="id" value={person.id} />
+                <MiniSubmit idle="MFA zurücksetzen" busy="Setzt zurück …" danger />
+              </form>
+            )}
+
             {!isSelf && (
               <form action={toggleActiveAction}>
                 <input type="hidden" name="id" value={person.id} />
@@ -175,7 +191,7 @@ function MiniSubmit({
       type="submit"
       disabled={pending}
       className={`text-fine font-semibold underline underline-offset-2 disabled:opacity-50 mt-3 ${
-        danger ? "text-slate hover:text-[#B3261E]" : "text-signal-ink"
+        danger ? "text-slate hover:text-danger" : "text-signal-ink"
       }`}
     >
       {pending ? busy : idle}

@@ -24,12 +24,12 @@ export function LessonTypeEditor({ lessonType }: { lessonType: LessonType }) {
       </div>
 
       {state.error && (
-        <p role="alert" className="border-l-4 border-[#B3261E] bg-concrete px-4 py-3 font-semibold mb-5">
+        <p role="alert" className="notice notice-error mb-5">
           {state.error}
         </p>
       )}
       {state.ok && (
-        <p role="status" className="border-l-4 border-signal bg-concrete px-4 py-3 font-semibold mb-5">
+        <p role="status" className="notice notice-success mb-5">
           {state.ok}
         </p>
       )}

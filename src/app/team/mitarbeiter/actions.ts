@@ -203,3 +203,31 @@ export async function setLessonTypesAction(formData: FormData): Promise<void> {
   revalidatePath("/team/mitarbeiter");
   revalidatePath("/buchen");
 }
+
+/**
+ * Setzt MFA für eine andere Person zurück — für den Fall eines verlorenen
+ * Geräts, wenn auch die Wiederherstellungscodes nicht mehr auffindbar sind.
+ * Meldet die Person auf allen Geräten ab: der bisherige zweite Faktor ist
+ * wertlos geworden, sie richtet ihn nach der Anmeldung neu ein.
+ */
+export async function resetMfaAction(formData: FormData): Promise<void> {
+  const admin = await assertPermission("mitarbeiter.verwalten");
+
+  const id = String(formData.get("id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+
+  await db
+    .update(staff)
+    .set({
+      totpEnabled: false,
+      totpSecret: null,
+      totpConfirmedAt: null,
+      mfaRecoveryCodes: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(staff.id, id));
+
+  await destroyAllSessions(id);
+  await record("mitarbeiter.mfa-zurueckgesetzt", { id: admin.id, label: admin.name }, { id });
+  revalidatePath("/team/mitarbeiter");
+}

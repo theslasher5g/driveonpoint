@@ -20,6 +20,7 @@ export default async function MitarbeiterPage() {
         role: staff.role,
         active: staff.active,
         mustChangePassword: staff.mustChangePassword,
+        totpEnabled: staff.totpEnabled,
         lastLoginAt: staff.lastLoginAt,
       })
       .from(staff)

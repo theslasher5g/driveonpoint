@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 // Wird beim Bauen ausgewertet, deshalb direkt aus der Umgebung statt über
 // lib/env — dort werden Geheimnisse erzwungen, die zur Bauzeit fehlen.
-const appUrl = (process.env.APP_URL ?? "https://driveonpoint.ch").replace(/\/+$/, "");
+const appUrl = (process.env.APP_URL ?? "https://driveonpoint.com").replace(/\/+$/, "");
 
 const PAGES = [
   { path: "/", priority: 1 },

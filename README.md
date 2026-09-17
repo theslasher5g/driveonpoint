@@ -95,7 +95,7 @@ Sobald die Domain steht: Die Anwendung hört nur auf `127.0.0.1:3000`. Davor
 gehört ein Proxy, der TLS beendet. Mit Caddy genügt:
 
 ```
-driveonpoint.ch {
+driveonpoint.com {
     reverse_proxy 127.0.0.1:3000
 }
 ```
@@ -103,7 +103,7 @@ driveonpoint.ch {
 Danach in der `.env`:
 
 ```
-APP_URL=https://driveonpoint.ch
+APP_URL=https://driveonpoint.com
 ```
 
 und `docker compose up -d` erneut ausführen — das Sitzungs-Cookie bekommt ab
@@ -120,7 +120,7 @@ Löscht Kundendaten nach Ablauf der Frist, entfernt abgelaufene Sitzungen und
 alte Zähler. Als Cron-Eintrag auf dem Server:
 
 ```cron
-17 3 * * * curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://driveonpoint.ch/api/cron/aufraeumen
+17 3 * * * curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://driveonpoint.com/api/cron/aufraeumen
 ```
 
 ---
@@ -149,15 +149,15 @@ braucht die Domain drei DNS-Einträge:
 
 ```bash
 # DKIM-Schlüssel auslesen, nachdem der Container einmal gelaufen ist:
-docker compose exec mail cat /etc/opendkim/keys/driveonpoint.ch/mail.txt
+docker compose exec mail cat /etc/opendkim/keys/driveonpoint.com/mail.txt
 ```
 
 | Typ | Name | Wert |
 |---|---|---|
 | TXT | `@` | `v=spf1 ip4:<Server-IP> -all` |
 | TXT | `mail._domainkey` | aus dem Befehl oben |
-| TXT | `_dmarc` | `v=DMARC1; p=quarantine; rua=mailto:postmaster@driveonpoint.ch` |
-| PTR | Server-IP | `mail.driveonpoint.ch` (beim Hoster setzen) |
+| TXT | `_dmarc` | `v=DMARC1; p=quarantine; rua=mailto:postmaster@driveonpoint.com` |
+| PTR | Server-IP | `mail.driveonpoint.com` (beim Hoster setzen) |
 
 Ohne PTR-Eintrag lehnen viele Anbieter die Mails ab. Wer sich das nicht antun
 will, trägt in der `.env` stattdessen einen externen SMTP-Zugang ein
@@ -173,40 +173,28 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile mail up
 
 ---
 
-## Anmeldung über Google
+## Zwei-Faktor-Authentifizierung (MFA)
 
-Freiwillig. Bleiben `GOOGLE_CLIENT_ID` und `GOOGLE_CLIENT_SECRET` leer,
-erscheint der Knopf gar nicht erst und alles läuft über Passwort.
+Jede Person schaltet das selbst unter *Mein Konto* ein — keine Einrichtung
+auf dem Server nötig. Ablauf: QR-Code mit einer Authenticator-App scannen
+(Google Authenticator, Authy, 1Password oder jede andere, die den offenen
+TOTP-Standard spricht), sechsstelligen Code bestätigen, acht
+Wiederherstellungscodes einmalig notieren.
 
-Einrichten in der Google Cloud Console:
+Läuft vollständig zwischen unserem Server und der App auf dem Gerät — es
+wird nichts an einen fremden Dienst übertragen. Das Geheimnis liegt
+verschlüsselt in der Datenbank (AES-256-GCM, Schlüssel aus `SESSION_SECRET`
+abgeleitet), ein Datenbankleck allein reicht also nicht, um Codes zu
+erzeugen. Wiederherstellungscodes werden nur als Hash gespeichert.
 
-1. Projekt anlegen, OAuth-Zustimmungsbildschirm ausfüllen.
-2. Zugangsdaten → OAuth-Client-ID → Webanwendung.
-3. Als autorisierten Weiterleitungs-URI **exakt** eintragen:
-   `https://driveonpoint.ch/api/auth/google/callback`
-4. Client-ID und Geheimnis in die `.env`, dann `docker compose up -d`.
+Beim Anmelden mit MFA gibt es nach dem Passwort noch keine echte Sitzung,
+sondern nur ein signiertes, zehn Minuten gültiges Zwischen-Cookie, bis der
+Code stimmt — ein gestohlenes Passwort allein reicht damit nicht.
 
-**Die wichtigste Eigenschaft:** Über Google kommt nur herein, wer in dieser
-Anwendung bereits ein aktives Konto hat — mit genau derselben Mailadresse.
-Es wird nie automatisch eines angelegt. Ohne diese Regel hätte jeder mit
-einem Google-Konto Zugang zum Team-Bereich.
-
-Beim ersten Anmelden wird das Google-Konto mit dem bestehenden verknüpft.
-Danach zählt die unveränderliche Google-Kennung, nicht mehr die Adresse — wer
-seine Google-Adresse ändert, behält den Zugang. Unter *Mein Konto* lässt sich
-die Verknüpfung wieder lösen und, sobald Google eingerichtet ist, die
-Passwortanmeldung ganz abschalten. Beides ist gegen Aussperren abgesichert:
-Der letzte verbleibende Weg ins eigene Konto lässt sich nicht entfernen.
-
-Technisch: Authorization Code mit PKCE, `state` gegen untergeschobene
-Anmeldungen, `nonce` gegen wiederverwendete Token, und unbestätigte
-Google-Adressen werden abgewiesen. Der Zwischenstand reist in einem
-signierten, kurzlebigen Cookie mit und wird nach einem Versuch entwertet.
-
-> Datenschutz: Damit fliessen Anmeldezeitpunkt und Domain an Google. Das
-> betrifft ausschliesslich Mitarbeitende, die diesen Weg freiwillig wählen —
-> die Kundschaft bucht weiterhin ohne Google. Der Abschnitt dazu steht in der
-> Datenschutzerklärung; bei Änderungen am Verfahren muss er mitwachsen.
+**Gerät verloren?** Mit einem Wiederherstellungscode kommt man selbst wieder
+hinein (Eingabefeld auf der Codeseite, Format `xxxxx-xxxxx`). Sind auch die
+weg, setzt die Administration unter *Mitarbeitende* das MFA der Person
+zurück — das meldet sie auf allen Geräten ab, sie richtet es danach neu ein.
 
 ---
 
@@ -258,6 +246,14 @@ Kalender erscheint, nicht die Gesamtdauer. Der VKU läuft über vier Abende,
 der Nothilfekurs über ein Wochenende: Eingetragen wird die Verfügbarkeit für
 den Kursbeginn, gebucht wird der Platz, und die Folgetermine stehen im
 Kurstext auf der jeweiligen Seite.
+
+**Verfügbarkeit** wird je Angebot eingetragen, nicht nur je Person: Jede
+Mitarbeiterin hat für Nothilfekurs, VKU, Schnupperstunde und Fahrstunde ein
+eigenes Wochenraster, weil sich die Zeiten stark unterscheiden — der VKU
+findet praktisch immer abends statt, Fahrstunden eher tagsüber. Einzelne
+Ausnahmetage (Ferien, ein zusätzlicher Termin) gelten dagegen standardmässig
+für alle Angebote einer Person und lassen sich beim Eintragen optional auf
+ein einzelnes Angebot eingrenzen.
 
 **In Dateien, danach neu bauen:**
 

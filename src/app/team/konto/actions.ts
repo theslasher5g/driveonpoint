@@ -2,9 +2,9 @@
 
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import QRCode from "qrcode";
 import { record } from "@/lib/audit";
 import { requireUser } from "@/lib/auth/guard";
 import {
@@ -14,10 +14,20 @@ import {
   newCalendarToken,
   verifyPassword,
 } from "@/lib/auth/session";
+import {
+  decryptSecret,
+  encryptSecret,
+  formatSecretForDisplay,
+  generateRecoveryCodes,
+  generateSecret,
+  otpauthUrl,
+  verifyTotp,
+} from "@/lib/auth/totp";
 import { db } from "@/lib/db";
 import { staff } from "@/lib/db/schema";
 import { consume } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
+import { site } from "@/lib/site";
 
 export type AccountState = { error?: string; ok?: string };
 
@@ -93,53 +103,6 @@ export async function changePasswordAction(
   return { ok: "Passwort geändert. Andere Geräte wurden abgemeldet." };
 }
 
-/**
- * Schaltet die Anmeldung mit Passwort ab oder wieder an.
- *
- * Abschalten geht nur, wenn ein Google-Konto verknüpft ist — sonst sperrt
- * man sich mit einem Klick selbst aus. Das ist keine Bequemlichkeitsfrage:
- * ohne diese Bedingung bräuchte es danach eine Administration, die das Konto
- * zurücksetzt, und wenn es das eigene Administrationskonto war, niemanden
- * mehr.
- */
-export async function togglePasswordLoginAction(formData: FormData): Promise<void> {
-  const user = await requireUser();
-  const enable = formData.get("aktiv") === "ja";
-
-  if (!enable && !user.googleSub) {
-    redirect("/team/konto?fehler=ohne-google");
-  }
-
-  await db
-    .update(staff)
-    .set({ passwordLoginEnabled: enable, updatedAt: new Date() })
-    .where(eq(staff.id, user.id));
-
-  await record(
-    enable ? "konto.passwort-anmeldung-an" : "konto.passwort-anmeldung-aus",
-    { id: user.id, label: user.name },
-  );
-
-  revalidatePath("/team/konto");
-}
-
-/** Trennt das Google-Konto wieder. Nur, wenn ein Passwort als Weg bleibt. */
-export async function unlinkGoogleAction(): Promise<void> {
-  const user = await requireUser();
-
-  if (!user.passwordLoginEnabled) {
-    redirect("/team/konto?fehler=letzter-weg");
-  }
-
-  await db
-    .update(staff)
-    .set({ googleSub: null, googleLinkedAt: null, updatedAt: new Date() })
-    .where(eq(staff.id, user.id));
-
-  await record("konto.google-getrennt", { id: user.id, label: user.name });
-  revalidatePath("/team/konto");
-}
-
 export async function rotateCalendarTokenAction(): Promise<void> {
   const user = await requireUser();
 
@@ -150,4 +113,172 @@ export async function rotateCalendarTokenAction(): Promise<void> {
 
   await record("kalenderlink.erneuert", { id: user.id, label: user.name });
   revalidatePath("/team/konto");
+}
+
+// --- Zwei-Faktor-Authentifizierung (MFA) -----------------------------------
+
+export type MfaSetupState = {
+  error?: string;
+  qrDataUrl?: string;
+  secretDisplay?: string;
+};
+
+/**
+ * Startet die Einrichtung: neues Geheimnis erzeugen, verschlüsselt ablegen,
+ * aber `totpEnabled` bleibt aus, bis ein Code bestätigt, dass die App richtig
+ * eingerichtet ist. Ein erneuter Aufruf ersetzt ein vorheriges, noch nicht
+ * bestätigtes Geheimnis — sonst bliebe nach einem Abbruch ein verwaistes
+ * zurück, das QR-Code und tatsächlich gespeicherter Wert auseinanderlaufen
+ * liesse.
+ */
+export async function startMfaSetupAction(): Promise<MfaSetupState> {
+  const user = await requireUser();
+
+  if (user.totpEnabled) {
+    return { error: "MFA ist bereits eingerichtet. Zuerst deaktivieren, um es neu einzurichten." };
+  }
+
+  const verdict = await consume(`mfa-einrichten-start:${user.id}`, 20, 600);
+  if (!verdict.ok) {
+    return { error: "Zu viele Versuche. Bitte in 10 Minuten erneut." };
+  }
+
+  const secret = generateSecret();
+
+  await db
+    .update(staff)
+    .set({ totpSecret: encryptSecret(secret), updatedAt: new Date() })
+    .where(eq(staff.id, user.id));
+
+  const url = otpauthUrl(secret, user.email, site.name);
+  const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 240 });
+
+  return { qrDataUrl, secretDisplay: formatSecretForDisplay(secret) };
+}
+
+export type MfaConfirmState = { error?: string; codes?: string[] };
+
+export async function confirmMfaSetupAction(
+  _previous: MfaConfirmState,
+  formData: FormData,
+): Promise<MfaConfirmState> {
+  const user = await requireUser();
+  const code = String(formData.get("code") ?? "").trim();
+
+  const verdict = await consume(`mfa-einrichten:${user.id}`, 10, 600);
+  if (!verdict.ok) return { error: "Zu viele Versuche. Bitte in 10 Minuten erneut." };
+
+  const [account] = await db
+    .select({ totpSecret: staff.totpSecret })
+    .from(staff)
+    .where(eq(staff.id, user.id))
+    .limit(1);
+
+  const secret = account?.totpSecret ? decryptSecret(account.totpSecret) : null;
+  if (!secret) return { error: "Keine Einrichtung im Gang. Bitte von vorne beginnen." };
+
+  if (!verifyTotp(secret, code)) {
+    return { error: "Der Code stimmt nicht. Prüfe die Uhrzeit deines Geräts." };
+  }
+
+  const { plain, stored } = generateRecoveryCodes();
+
+  await db
+    .update(staff)
+    .set({
+      totpEnabled: true,
+      totpConfirmedAt: new Date(),
+      mfaRecoveryCodes: stored,
+      updatedAt: new Date(),
+    })
+    .where(eq(staff.id, user.id));
+
+  await record("konto.mfa-eingerichtet", { id: user.id, label: user.name });
+  revalidatePath("/team/konto");
+
+  return { codes: plain };
+}
+
+const disableSchema = z.object({ code: z.string().min(1, "Bitte gib deinen Code ein.") });
+
+/** Deaktivieren braucht einen frischen Code — ein blosser Klick reicht nicht. */
+export async function disableMfaAction(
+  _previous: AccountState,
+  formData: FormData,
+): Promise<AccountState> {
+  const user = await requireUser();
+
+  const verdict = await consume(`mfa-deaktivieren:${user.id}`, 10, 600);
+  if (!verdict.ok) return { error: "Zu viele Versuche. Bitte in 10 Minuten erneut." };
+
+  const parsed = disableSchema.safeParse({ code: formData.get("code") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const [account] = await db
+    .select({ totpSecret: staff.totpSecret })
+    .from(staff)
+    .where(eq(staff.id, user.id))
+    .limit(1);
+
+  const secret = account?.totpSecret ? decryptSecret(account.totpSecret) : null;
+  if (!secret || !verifyTotp(secret, parsed.data.code)) {
+    return { error: "Der Code stimmt nicht." };
+  }
+
+  await db
+    .update(staff)
+    .set({
+      totpEnabled: false,
+      totpSecret: null,
+      totpConfirmedAt: null,
+      mfaRecoveryCodes: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(staff.id, user.id));
+
+  await record("konto.mfa-deaktiviert", { id: user.id, label: user.name });
+  revalidatePath("/team/konto");
+
+  return { ok: "MFA ist deaktiviert." };
+}
+
+export type RecoveryCodesState = { error?: string; codes?: string[] };
+
+/** Neue Wiederherstellungscodes — die alten werden dabei alle entwertet. */
+export async function regenerateRecoveryCodesAction(
+  _previous: RecoveryCodesState,
+  formData: FormData,
+): Promise<RecoveryCodesState> {
+  const user = await requireUser();
+
+  const verdict = await consume(`mfa-codes:${user.id}`, 5, 600);
+  if (!verdict.ok) return { error: "Zu viele Versuche. Bitte in 10 Minuten erneut." };
+
+  const parsed = disableSchema.safeParse({ code: formData.get("code") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const [account] = await db
+    .select({ totpSecret: staff.totpSecret, totpEnabled: staff.totpEnabled })
+    .from(staff)
+    .where(eq(staff.id, user.id))
+    .limit(1);
+
+  if (!account?.totpEnabled) return { error: "MFA ist nicht eingerichtet." };
+
+  const secret = account.totpSecret ? decryptSecret(account.totpSecret) : null;
+  if (!secret || !verifyTotp(secret, parsed.data.code)) {
+    return { error: "Der Code stimmt nicht." };
+  }
+
+  const { plain, stored } = generateRecoveryCodes();
+
+  await db
+    .update(staff)
+    .set({ mfaRecoveryCodes: stored, updatedAt: new Date() })
+    .where(eq(staff.id, user.id));
+
+  await record("konto.mfa-codes-erneuert", { id: user.id, label: user.name });
+  revalidatePath("/team/konto");
+
+  return { codes: plain };
 }

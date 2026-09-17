@@ -148,6 +148,7 @@ export async function findSlots(options: {
       .where(
         and(
           inArray(availabilityRules.staffId, staffIds),
+          eq(availabilityRules.lessonTypeId, lessonType.id),
           or(isNull(availabilityRules.validFrom), lte(availabilityRules.validFrom, untilDay)),
           or(isNull(availabilityRules.validUntil), gte(availabilityRules.validUntil, fromDay)),
         ),
@@ -158,6 +159,10 @@ export async function findSlots(options: {
       .where(
         and(
           inArray(availabilityExceptions.staffId, staffIds),
+          or(
+            isNull(availabilityExceptions.lessonTypeId),
+            eq(availabilityExceptions.lessonTypeId, lessonType.id),
+          ),
           gte(availabilityExceptions.day, fromDay),
           lte(availabilityExceptions.day, untilDay),
         ),

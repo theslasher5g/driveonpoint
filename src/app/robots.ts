@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 // Nicht über lib/env: diese Datei wird beim Bauen ausgewertet, und dort
 // stehen die Laufzeit-Geheimnisse noch nicht zur Verfügung.
-const appUrl = (process.env.APP_URL ?? "https://driveonpoint.ch").replace(/\/+$/, "");
+const appUrl = (process.env.APP_URL ?? "https://driveonpoint.com").replace(/\/+$/, "");
 
 export default function robots(): MetadataRoute.Robots {
   return {

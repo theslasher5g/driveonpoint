@@ -34,7 +34,7 @@ export function PromotionRowActions({ id, active }: { id: string; active: boolea
         <button
           type="button"
           onClick={() => setAsking(true)}
-          className="text-fine font-semibold text-slate hover:text-[#B3261E] underline underline-offset-2"
+          className="text-fine font-semibold text-slate hover:text-danger underline underline-offset-2"
         >
           Löschen
         </button>
@@ -62,7 +62,7 @@ function DangerButton() {
     <button
       type="submit"
       disabled={pending}
-      className="text-fine font-bold bg-[#B3261E] text-paper px-2.5 py-1 disabled:opacity-60"
+      className="text-fine font-bold bg-danger text-paper px-2.5 py-1 disabled:opacity-60"
     >
       {pending ? "Löscht …" : "Wirklich löschen"}
     </button>

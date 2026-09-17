@@ -11,74 +11,113 @@ import { weekdayName } from "@/lib/time";
 
 const EMPTY: AvailabilityState = {};
 
-export function AvailabilityForms({ person }: { person: string }) {
+export function AvailabilityForms({
+  person,
+  lessonTypeId,
+  lessonTypeName,
+}: {
+  person: string;
+  lessonTypeId: string;
+  lessonTypeName: string;
+}) {
   const [ruleState, ruleAction] = useActionState(addRuleAction, EMPTY);
+
+  return (
+    <form action={ruleAction} className="space-y-4 mt-8 pt-8 border-t border-deep/15 max-w-md">
+      <input type="hidden" name="person" value={person} />
+      <input type="hidden" name="lessonTypeId" value={lessonTypeId} />
+      <h3 className="text-base font-semibold">Zeit für {lessonTypeName} hinzufügen</h3>
+      <Feedback state={ruleState} />
+
+      <div>
+        <label className="field-label" htmlFor={`wochentag-${lessonTypeId}`}>
+          Wochentag
+        </label>
+        <select
+          id={`wochentag-${lessonTypeId}`}
+          name="wochentag"
+          className="field"
+          defaultValue="1"
+        >
+          {[1, 2, 3, 4, 5, 6, 0].map((weekday) => (
+            <option key={weekday} value={weekday}>
+              {weekdayName(weekday)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <TimePair idPrefix={`regel-${lessonTypeId}`} defaultFrom="08:00" defaultTo="12:00" />
+      <Submit label="Zeit eintragen" busy="Wird eingetragen …" />
+    </form>
+  );
+}
+
+export function AvailabilityExceptionForm({
+  person,
+  offerings,
+}: {
+  person: string;
+  offerings: { id: string; name: string }[];
+}) {
   const [exceptionState, exceptionAction] = useActionState(addExceptionAction, EMPTY);
 
   return (
-    <div className="grid gap-10 lg:grid-cols-2 mt-14 pt-10 border-t border-deep/15">
-      <form action={ruleAction} className="space-y-4">
-        <input type="hidden" name="person" value={person} />
-        <h2 className="text-section">Wöchentliche Zeit hinzufügen</h2>
-        <Feedback state={ruleState} />
+    <form action={exceptionAction} className="space-y-4 mt-8 max-w-md">
+      <input type="hidden" name="person" value={person} />
+      <h3 className="text-base font-semibold">Einzelnen Tag ändern</h3>
+      <Feedback state={exceptionState} />
 
+      <div>
+        <label className="field-label" htmlFor="art">
+          Was gilt an diesem Tag?
+        </label>
+        <select id="art" name="art" className="field" defaultValue="abwesend">
+          <option value="abwesend">Abwesend — Zeit blockieren</option>
+          <option value="frei">Zusätzlich frei — Zeit anbieten</option>
+        </select>
+      </div>
+
+      {offerings.length > 0 && (
         <div>
-          <label className="field-label" htmlFor="wochentag">
-            Wochentag
+          <label className="field-label" htmlFor="lessonTypeId">
+            Angebot <span className="font-normal text-slate">(freiwillig)</span>
           </label>
-          <select id="wochentag" name="wochentag" className="field" defaultValue="1">
-            {[1, 2, 3, 4, 5, 6, 0].map((weekday) => (
-              <option key={weekday} value={weekday}>
-                {weekdayName(weekday)}
+          <select id="lessonTypeId" name="lessonTypeId" className="field" defaultValue="">
+            <option value="">Alle Angebote</option>
+            {offerings.map((offering) => (
+              <option key={offering.id} value={offering.id}>
+                {offering.name}
               </option>
             ))}
           </select>
         </div>
+      )}
 
-        <TimePair idPrefix="regel" defaultFrom="08:00" defaultTo="12:00" />
-        <Submit label="Zeit eintragen" busy="Wird eingetragen …" />
-      </form>
+      <div>
+        <label className="field-label" htmlFor="tag">
+          Datum
+        </label>
+        <input id="tag" name="tag" type="date" className="field nums" required />
+      </div>
 
-      <form action={exceptionAction} className="space-y-4">
-        <input type="hidden" name="person" value={person} />
-        <h2 className="text-section">Einzelnen Tag ändern</h2>
-        <Feedback state={exceptionState} />
+      <TimePair idPrefix="ausnahme" defaultFrom="08:00" defaultTo="17:00" />
 
-        <div>
-          <label className="field-label" htmlFor="art">
-            Was gilt an diesem Tag?
-          </label>
-          <select id="art" name="art" className="field" defaultValue="abwesend">
-            <option value="abwesend">Abwesend — Zeit blockieren</option>
-            <option value="frei">Zusätzlich frei — Zeit anbieten</option>
-          </select>
-        </div>
+      <div>
+        <label className="field-label" htmlFor="notiz">
+          Notiz <span className="font-normal text-slate">(freiwillig)</span>
+        </label>
+        <input
+          id="notiz"
+          name="notiz"
+          maxLength={120}
+          className="field"
+          placeholder="Ferien, Weiterbildung, Arzttermin"
+        />
+      </div>
 
-        <div>
-          <label className="field-label" htmlFor="tag">
-            Datum
-          </label>
-          <input id="tag" name="tag" type="date" className="field nums" required />
-        </div>
-
-        <TimePair idPrefix="ausnahme" defaultFrom="08:00" defaultTo="17:00" />
-
-        <div>
-          <label className="field-label" htmlFor="notiz">
-            Notiz <span className="font-normal text-slate">(freiwillig)</span>
-          </label>
-          <input
-            id="notiz"
-            name="notiz"
-            maxLength={120}
-            className="field"
-            placeholder="Ferien, Weiterbildung, Arzttermin"
-          />
-        </div>
-
-        <Submit label="Eintragen" busy="Wird eingetragen …" />
-      </form>
-    </div>
+      <Submit label="Eintragen" busy="Wird eingetragen …" />
+    </form>
   );
 }
 
@@ -128,14 +167,14 @@ function TimePair({
 function Feedback({ state }: { state: AvailabilityState }) {
   if (state.error) {
     return (
-      <p role="alert" className="bg-paper border-l-4 border-[#B3261E] px-4 py-3 font-semibold">
+      <p role="alert" className="notice notice-error">
         {state.error}
       </p>
     );
   }
   if (state.ok) {
     return (
-      <p role="status" className="bg-paper border-l-4 border-signal px-4 py-3 font-semibold">
+      <p role="status" className="notice notice-success">
         {state.ok}
       </p>
     );

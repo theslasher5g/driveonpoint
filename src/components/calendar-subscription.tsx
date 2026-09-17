@@ -79,7 +79,7 @@ function RotateButton() {
     <button
       type="submit"
       disabled={pending}
-      className="text-fine font-semibold text-slate hover:text-[#B3261E] underline underline-offset-2 disabled:opacity-50"
+      className="text-fine font-semibold text-slate hover:text-danger underline underline-offset-2 disabled:opacity-50"
     >
       {pending ? "Wird erneuert …" : "Neuen Link erzeugen"}
     </button>

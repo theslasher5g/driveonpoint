@@ -5,7 +5,7 @@ import { site } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.APP_URL ?? "https://driveonpoint.ch"),
+  metadataBase: new URL(process.env.APP_URL ?? "https://driveonpoint.com"),
   title: {
     default: `${site.name} — Fahrschule in ${site.contact.city}`,
     template: `%s — ${site.name}`,

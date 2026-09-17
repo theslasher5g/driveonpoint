@@ -19,12 +19,12 @@ export function PromotionForm({
   return (
     <form action={action} className="space-y-4">
       {state.error && (
-        <p role="alert" className="bg-paper border-l-4 border-[#B3261E] px-4 py-3 font-semibold">
+        <p role="alert" className="notice notice-error">
           {state.error}
         </p>
       )}
       {state.ok && (
-        <p role="status" className="bg-paper border-l-4 border-signal px-4 py-3 font-semibold">
+        <p role="status" className="notice notice-success">
           {state.ok}
         </p>
       )}

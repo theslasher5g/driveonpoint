@@ -12,6 +12,12 @@ export type RateVerdict = { ok: true } | { ok: false; retryAfterSeconds: number 
  * Bewusst in Postgres statt im Arbeitsspeicher: bei mehreren App-Containern
  * hätte jeder sein eigenes Zählwerk, und ein Neustart würde jede Sperre
  * aufheben — beides macht die Begrenzung wirkungslos.
+ *
+ * Zählen und Eintragen laufen in einer Transaktion mit einer Sperre je
+ * Bucket: ohne sie könnten mehrere gleichzeitige Anfragen alle noch unter
+ * dem Limit lesen, bevor eine von ihnen ihren Treffer einträgt, und so
+ * gemeinsam über das Limit hinaus durchkommen — bei automatisiertem
+ * Durchprobieren keine bloss theoretische Lücke.
  */
 export async function consume(
   bucket: string,
@@ -20,17 +26,21 @@ export async function consume(
 ): Promise<RateVerdict> {
   const since = new Date(Date.now() - windowSeconds * 1000);
 
-  const [existing] = await db
-    .select({ hits: count() })
-    .from(rateLimitHits)
-    .where(and(eq(rateLimitHits.bucket, bucket), gt(rateLimitHits.occurredAt, since)));
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${bucket}))`);
 
-  if ((existing?.hits ?? 0) >= limit) {
-    return { ok: false, retryAfterSeconds: windowSeconds };
-  }
+    const [existing] = await tx
+      .select({ hits: count() })
+      .from(rateLimitHits)
+      .where(and(eq(rateLimitHits.bucket, bucket), gt(rateLimitHits.occurredAt, since)));
 
-  await db.insert(rateLimitHits).values({ bucket });
-  return { ok: true };
+    if ((existing?.hits ?? 0) >= limit) {
+      return { ok: false, retryAfterSeconds: windowSeconds };
+    }
+
+    await tx.insert(rateLimitHits).values({ bucket });
+    return { ok: true };
+  });
 }
 
 /** Trägt einen Treffer ein, ohne eine Obergrenze zu prüfen. */

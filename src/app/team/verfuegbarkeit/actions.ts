@@ -7,7 +7,7 @@ import { record } from "@/lib/audit";
 import { assertPermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
-import { availabilityExceptions, availabilityRules } from "@/lib/db/schema";
+import { availabilityExceptions, availabilityRules, staffLessonTypes } from "@/lib/db/schema";
 import { minutesSinceMidnight } from "@/lib/time";
 
 const timeRange = z
@@ -39,6 +39,22 @@ async function resolveTarget(formData: FormData) {
   return { user, staffId: user.id };
 }
 
+/**
+ * Prüft, dass die Lektionsart tatsächlich zu den Angeboten dieser Person
+ * gehört — sonst liesse sich sonst ein Zeitfenster für ein Angebot
+ * eintragen, das die Person gar nicht unterrichtet.
+ */
+async function assertOffering(staffId: string, lessonTypeId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ lessonTypeId: staffLessonTypes.lessonTypeId })
+    .from(staffLessonTypes)
+    .where(
+      and(eq(staffLessonTypes.staffId, staffId), eq(staffLessonTypes.lessonTypeId, lessonTypeId)),
+    )
+    .limit(1);
+  return row !== undefined;
+}
+
 export type AvailabilityState = { error?: string; ok?: string };
 
 export async function addRuleAction(
@@ -49,11 +65,13 @@ export async function addRuleAction(
 
   const parsed = z
     .object({
+      lessonTypeId: z.string().uuid("Bitte ein Angebot wählen."),
       wochentag: z.coerce.number().int().min(0).max(6),
       von: z.string(),
       bis: z.string(),
     })
     .safeParse({
+      lessonTypeId: formData.get("lessonTypeId"),
       wochentag: formData.get("wochentag"),
       von: formData.get("von"),
       bis: formData.get("bis"),
@@ -64,8 +82,13 @@ export async function addRuleAction(
   const range = timeRange.safeParse({ von: parsed.data.von, bis: parsed.data.bis });
   if (!range.success) return { error: range.error.issues[0].message };
 
+  if (!(await assertOffering(staffId, parsed.data.lessonTypeId))) {
+    return { error: "Dieses Angebot gehört nicht zu dieser Person." };
+  }
+
   await db.insert(availabilityRules).values({
     staffId,
+    lessonTypeId: parsed.data.lessonTypeId,
     weekday: parsed.data.wochentag,
     startTime: parsed.data.von,
     endTime: parsed.data.bis,
@@ -73,6 +96,7 @@ export async function addRuleAction(
 
   await record("verfuegbarkeit.regel-erstellt", { id: user.id, label: user.name }, {
     fuer: staffId,
+    lektionsart: parsed.data.lessonTypeId,
     wochentag: parsed.data.wochentag,
   });
 
@@ -109,6 +133,7 @@ export async function addExceptionAction(
       von: z.string(),
       bis: z.string(),
       art: z.enum(["frei", "abwesend"]),
+      lessonTypeId: z.string().uuid().optional(),
       notiz: z.string().trim().max(120).optional(),
     })
     .safeParse({
@@ -116,6 +141,7 @@ export async function addExceptionAction(
       von: formData.get("von"),
       bis: formData.get("bis"),
       art: formData.get("art"),
+      lessonTypeId: formData.get("lessonTypeId") || undefined,
       notiz: formData.get("notiz") || undefined,
     });
 
@@ -124,8 +150,13 @@ export async function addExceptionAction(
   const range = timeRange.safeParse({ von: parsed.data.von, bis: parsed.data.bis });
   if (!range.success) return { error: range.error.issues[0].message };
 
+  if (parsed.data.lessonTypeId && !(await assertOffering(staffId, parsed.data.lessonTypeId))) {
+    return { error: "Dieses Angebot gehört nicht zu dieser Person." };
+  }
+
   await db.insert(availabilityExceptions).values({
     staffId,
+    lessonTypeId: parsed.data.lessonTypeId ?? null,
     day: parsed.data.tag,
     startTime: parsed.data.von,
     endTime: parsed.data.bis,
@@ -137,6 +168,7 @@ export async function addExceptionAction(
     fuer: staffId,
     tag: parsed.data.tag,
     art: parsed.data.art,
+    lektionsart: parsed.data.lessonTypeId ?? "alle",
   });
 
   revalidatePath("/team/verfuegbarkeit");

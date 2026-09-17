@@ -176,7 +176,7 @@ async function ChooseOffer({ unknown }: { unknown?: string } = {}) {
       <section className="shell py-12 md:py-16">
         <div className="lane">
           {unknown && (
-            <p className="bg-paper border-l-4 border-signal px-5 py-4 mb-8 max-w-[56ch]">
+            <p className="notice notice-warn mb-8 max-w-[56ch]">
               Das Angebot „{unknown}“ gibt es nicht mehr. Hier sind die aktuellen.
             </p>
           )}

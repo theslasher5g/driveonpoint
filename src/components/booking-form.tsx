@@ -28,10 +28,7 @@ export function BookingForm({
       <Honeypot />
 
       {state.error && (
-        <p
-          role="alert"
-          className="bg-paper border-l-4 border-[#B3261E] px-5 py-4 font-semibold"
-        >
+        <p role="alert" className="notice notice-error">
           {state.error}
         </p>
       )}
@@ -78,7 +75,7 @@ export function BookingForm({
           placeholder="Zum Beispiel ein abweichender Treffpunkt."
         />
         {state.fieldErrors?.bemerkung && (
-          <p className="field-hint text-[#B3261E]">{state.fieldErrors.bemerkung}</p>
+          <p className="field-hint text-danger">{state.fieldErrors.bemerkung}</p>
         )}
       </div>
 
@@ -90,7 +87,7 @@ export function BookingForm({
             type="checkbox"
             name="agb"
             value="ja"
-            className="mt-1 w-5 h-5 accent-[#D33F2C] shrink-0"
+            className="mt-1 w-5 h-5 accent-signal shrink-0"
             aria-invalid={state.fieldErrors?.agb ? "true" : undefined}
           />
           <span className="text-fine">
@@ -106,7 +103,7 @@ export function BookingForm({
           </span>
         </label>
         {state.fieldErrors?.agb && (
-          <p className="field-hint text-[#B3261E]">{state.fieldErrors.agb}</p>
+          <p className="field-hint text-danger">{state.fieldErrors.agb}</p>
         )}
       </div>
 
@@ -162,7 +159,7 @@ function Field({
         aria-describedby={hintId}
       />
       {(hint || error) && (
-        <p id={hintId} className={`field-hint ${error ? "text-[#B3261E] font-semibold" : ""}`}>
+        <p id={hintId} className={`field-hint ${error ? "text-danger font-semibold" : ""}`}>
           {error ?? hint}
         </p>
       )}

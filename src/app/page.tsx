@@ -42,7 +42,7 @@ const STAGES = [
 export default function HomePage() {
   return (
     <>
-      <section className="bg-signal text-paper on-signal overflow-hidden">
+      <section className="bg-deep text-paper on-signal overflow-hidden">
         <div className="shell pt-14 pb-16 md:pt-24 md:pb-24">
           <div className="lane lane-draws text-paper">
             <div className="flex items-start justify-between gap-5 md:gap-8">
@@ -54,7 +54,7 @@ export default function HomePage() {
               <BrandMark className="w-16 md:w-28" tone="invert" />
             </div>
 
-            <p className="text-lead text-paper/85 max-w-[54ch] mt-7 md:mt-9">{site.hero.lead}</p>
+            <p className="text-lead text-paper/80 max-w-[54ch] mt-7 md:mt-9">{site.hero.lead}</p>
 
             <div className="mt-10 md:mt-12">
               <Suspense fallback={<NextSlotSkeleton />}>
@@ -62,7 +62,7 @@ export default function HomePage() {
               </Suspense>
             </div>
 
-            <p className="text-fine text-paper/75 mt-5 max-w-[48ch]">
+            <p className="text-fine text-paper/70 mt-5 max-w-[48ch]">
               Lieber zuerst reden? {site.contact.phone} — oder{" "}
               <Link href="/kontakt" className="underline underline-offset-4 hover:text-paper">
                 schreib uns

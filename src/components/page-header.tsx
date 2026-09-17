@@ -10,13 +10,14 @@ export function PageHeader({
   action?: { href: string; label: string };
 }) {
   return (
-    <section className="bg-signal text-paper on-signal">
+    <section className="bg-concrete border-b border-deep/12">
       <div className="shell pt-12 pb-14 md:pt-20 md:pb-20">
-        <div className="lane lane-draws text-paper">
-          <h1 className="text-title max-w-[17ch]">{title}</h1>
-          <p className="text-lead text-paper/85 mt-6 max-w-[56ch]">{lead}</p>
+        <div className="lane lane-draws">
+          <span className="block w-10 h-1 bg-signal mb-6" aria-hidden="true" />
+          <h1 className="text-title max-w-[24ch]">{title}</h1>
+          <p className="text-lead text-slate mt-6 max-w-[56ch]">{lead}</p>
           {action && (
-            <Link href={action.href} className="btn btn-invert mt-8">
+            <Link href={action.href} className="btn btn-primary mt-8">
               {action.label}
             </Link>
           )}

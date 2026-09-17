@@ -15,6 +15,20 @@
       "when": 1789627871885,
       "tag": "0001_lucky_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789642736150,
+      "tag": "0002_perfect_stephen_strange",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789643148526,
+      "tag": "0003_first_nuke",
+      "breakpoints": true
     }
   ]
 }

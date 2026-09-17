@@ -41,9 +41,12 @@ const team: TeamMember[] = [
 
 export const site = {
   name: "DriveOnPoint",
-  legalName: "DriveOnPoint GmbH", // ###
+  // Einzelunternehmen, kein Handelsregistereintrag: der volle Name der
+  // verantwortlichen Person gehört ins Impressum, nicht ein Firmenname.
+  // ### Vor- und Nachname der Inhaberin eintragen.
+  legalName: "Christina Vorname Nachname", // ###
   claim: "Fahrschule",
-  domain: "driveonpoint.ch",
+  domain: "driveonpoint.com",
 
   contact: {
     street: "Musterstrasse 12", // ###
@@ -51,8 +54,7 @@ export const site = {
     city: "Zürich", // ###
     phone: "+41 44 000 00 00", // ###
     phoneHref: "+41440000000", // ###
-    email: "info@driveonpoint.ch", // ###
-    uid: "CHE-000.000.000", // ### Handelsregister-Nummer
+    email: "info@driveonpoint.com", // ###
   },
 
   hours: [

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { record } from "@/lib/audit";
 import { burnPasswordTime, createSession, verifyPassword } from "@/lib/auth/session";
+import { startMfaChallenge } from "@/lib/auth/mfa-session";
 import { db } from "@/lib/db";
 import { staff } from "@/lib/db/schema";
 import { blockIp, blockedUntil, clearBucket, currentHits, hit } from "@/lib/rate-limit";
@@ -57,17 +58,16 @@ export async function loginAction(
       passwordHash: staff.passwordHash,
       active: staff.active,
       mustChangePassword: staff.mustChangePassword,
-      passwordLoginEnabled: staff.passwordLoginEnabled,
+      totpEnabled: staff.totpEnabled,
       name: staff.name,
     })
     .from(staff)
     .where(eq(staff.email, email))
     .limit(1);
 
-  // Wer die Passwortanmeldung abgeschaltet hat, kommt nur noch über Google
-  // herein. Der gleiche Rechenaufwand wie sonst, damit sich der Zustand
-  // nicht an der Antwortzeit ablesen lässt.
-  if (!account || !account.active || !account.passwordLoginEnabled) {
+  if (!account || !account.active) {
+    // Gleicher Rechenaufwand wie bei einem echten Konto, damit sich aus der
+    // Antwortzeit nicht ablesen lässt, ob die Adresse existiert.
     await burnPasswordTime();
     await registerFailure(ip, email);
     return generic;
@@ -82,6 +82,14 @@ export async function loginAction(
   // Gelungene Anmeldung setzt die Zähler zurück, damit ein vergessenes
   // Passwort am Morgen nicht den Rest des Tages blockiert.
   await Promise.all([clearBucket(`login-ip:${ip}`), clearBucket(`login-konto:${email}`)]);
+
+  // Mit MFA ist das Passwort erst der erste Faktor. Es gibt jetzt bewusst
+  // noch keine echte Sitzung — sonst wäre der zweite Faktor wirkungslos.
+  if (account.totpEnabled) {
+    await startMfaChallenge(account.id);
+    await record("anmeldung.mfa-angefordert", { id: account.id, label: account.name });
+    redirect("/team/mfa");
+  }
 
   const store = await headers();
   await createSession(account.id, { userAgent: store.get("user-agent"), ip });

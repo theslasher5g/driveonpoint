@@ -15,7 +15,7 @@ export function CreateStaffForm() {
   return (
     <form action={action} className="bg-paper border border-deep/15 p-5 md:p-6 max-w-2xl space-y-4">
       {state.error && (
-        <p role="alert" className="border-l-4 border-[#B3261E] bg-concrete px-4 py-3 font-semibold">
+        <p role="alert" className="notice notice-error">
           {state.error}
         </p>
       )}

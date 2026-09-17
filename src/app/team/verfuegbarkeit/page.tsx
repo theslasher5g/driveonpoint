@@ -129,58 +129,65 @@ export default async function VerfuegbarkeitPage({
               }
 
               return (
-                <div key={offering.id} className="border-t-2 border-deep pt-8">
-                  <h2 className="text-section">{offering.name}</h2>
-                  <p className="text-slate mt-2 mb-6 max-w-[48ch]">
-                    Wöchentliche Zeiten für {target.name}, nur für dieses Angebot.
-                  </p>
+                <div key={offering.id} className="border-t-2 border-deep pt-5">
+                  <h2 className="text-section mb-4">{offering.name}</h2>
 
-                  {ownRules.length === 0 ? (
-                    <p className="text-slate">Noch nichts eingetragen.</p>
-                  ) : (
-                    <div className="border-t border-deep/15">
-                      {[1, 2, 3, 4, 5, 6, 0].map((weekday) => {
-                        const list = byWeekday.get(weekday);
-                        if (!list || list.length === 0) return null;
-                        return (
-                          <div key={weekday} className="border-b border-deep/15 py-3.5">
-                            <h3 className="text-base">{weekdayName(weekday)}</h3>
-                            <ul className="mt-1.5 space-y-1.5">
-                              {list.map((rule) => (
-                                <li key={rule.id} className="nums flex items-center gap-3">
-                                  <span className="font-semibold">
-                                    {rule.startTime.slice(0, 5)} – {rule.endTime.slice(0, 5)}
-                                  </span>
-                                  <DeleteRuleButton id={rule.id} person={targetId} />
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {/* Bestand links, Eingabe rechts. Vorher stand das Formular
+                      unter der Liste, viermal untereinander — dieselbe Seite
+                      war dadurch mehr als doppelt so hoch. */}
+                  <div className="grid gap-6 lg:grid-cols-2 lg:gap-10 items-start">
+                    {ownRules.length === 0 ? (
+                      <p className="text-slate text-fine">Noch nichts eingetragen.</p>
+                    ) : (
+                      <div className="border-t border-deep/15">
+                        {[1, 2, 3, 4, 5, 6, 0].map((weekday) => {
+                          const list = byWeekday.get(weekday);
+                          if (!list || list.length === 0) return null;
+                          return (
+                            <div
+                              key={weekday}
+                              className="border-b border-deep/15 py-2 flex items-baseline gap-4"
+                            >
+                              <h3 className="text-fine font-bold w-[11ch] shrink-0 break-normal">
+                                {weekdayName(weekday)}
+                              </h3>
+                              <ul className="flex flex-wrap gap-x-4 gap-y-1">
+                                {list.map((rule) => (
+                                  <li key={rule.id} className="nums flex items-center gap-2">
+                                    <span className="font-semibold">
+                                      {rule.startTime.slice(0, 5)} – {rule.endTime.slice(0, 5)}
+                                    </span>
+                                    <DeleteRuleButton id={rule.id} person={targetId} />
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
-                  <AvailabilityForms
-                    person={targetId}
-                    lessonTypeId={offering.id}
-                    lessonTypeName={offering.name}
-                  />
+                    <AvailabilityForms
+                      person={targetId}
+                      lessonTypeId={offering.id}
+                      lessonTypeName={offering.name}
+                    />
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
 
-        <div className="mt-14 pt-10 border-t border-deep/15">
+        <div className="mt-10 pt-6 border-t-2 border-deep">
           <h2 className="text-section">Einzelne Tage</h2>
-          <p className="text-slate mt-2 mb-6 max-w-[52ch]">
+          <p className="text-slate text-fine mt-1.5 mb-5 max-w-[60ch]">
             Ferien, Arzttermine oder ein zusätzlicher Termin. Gilt standardmässig für alle
             Angebote von {target.name} — lässt sich beim Eintragen auf ein Angebot eingrenzen.
           </p>
 
           {exceptions.length === 0 ? (
-            <p className="text-slate">Keine Ausnahmen für die kommenden Tage.</p>
+            <p className="text-slate text-fine">Keine Ausnahmen für die kommenden Tage.</p>
           ) : (
             <ul className="border-t border-deep/15">
               {exceptions.map((entry) => (

@@ -23,7 +23,7 @@ export default function KontaktPage() {
         action={{ href: "/buchen", label: "Lieber direkt buchen" }}
       />
 
-      <section className="shell py-12 md:py-16">
+      <section className="shell band">
         <div className="lane grid gap-12 lg:grid-cols-[1fr_0.8fr] lg:gap-16">
           <div>
             <h2 className="text-section mb-7">Anfrage stellen</h2>

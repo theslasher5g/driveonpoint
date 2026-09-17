@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default function NotFound() {
   return (
-    <section className="shell py-16 md:py-24">
+    <section className="shell band">
       <div className="lane lane-draws">
         <h1 className="text-title max-w-[16ch]">Diese Seite gibt es nicht.</h1>
         <p className="text-lead text-slate mt-6 max-w-[50ch]">

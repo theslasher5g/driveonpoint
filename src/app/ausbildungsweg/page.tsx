@@ -23,11 +23,14 @@ export default function AusbildungswegPage() {
         action={{ href: "/buchen", label: "Mit Schritt eins beginnen" }}
       />
 
-      <section className="shell py-14 md:py-20">
+      <section className="shell band">
         {/*
           Hier wird die durchlaufende Markierung zur Zeitachse: dieselbe
           Linie wie überall, nur trägt sie jetzt die Schrittnummern.
           Nummeriert ist das, weil es tatsächlich eine Reihenfolge ist.
+
+          Dauer und Ort stehen rechts auf der Höhe des Titels statt auf einer
+          eigenen Zeile darunter — wie in der Kurzfassung auf der Startseite.
         */}
         <ol className="timeline">
           {site.path.map((step, index) => (
@@ -35,19 +38,23 @@ export default function AusbildungswegPage() {
               <span className="timeline-mark nums text-base md:text-lg" aria-hidden="true">
                 {index + 1}
               </span>
-              <h2 className="text-section stretch-wide leading-none pt-1">
-                <span className="sr-only">Schritt {index + 1}: </span>
-                {step.title}
-              </h2>
-              <p className="nums text-fine text-slate mt-2">{step.meta}</p>
-              <p className="text-slate mt-3 max-w-[58ch]">{step.body}</p>
+              <div className="max-w-3xl">
+                <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
+                  <h2 className="text-section stretch-wide leading-tight flex-1 min-w-0">
+                    <span className="sr-only">Schritt {index + 1}: </span>
+                    {step.title}
+                  </h2>
+                  <p className="nums text-fine text-slate shrink-0 break-normal">{step.meta}</p>
+                </div>
+                <p className="text-slate text-fine mt-1.5 max-w-[62ch]">{step.body}</p>
+              </div>
             </li>
           ))}
         </ol>
       </section>
 
       <section className="bg-paper">
-        <div className="shell py-14 md:py-20">
+        <div className="shell band">
           <div className="lane">
             <h2 className="text-section max-w-[22ch]">Zwei Dinge, die oft schiefgehen</h2>
             <div className="mt-7 grid gap-8 sm:grid-cols-2 max-w-4xl">

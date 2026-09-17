@@ -93,10 +93,7 @@ export default function FahrstundenPage() {
 
       <Section title="Preise" tone="paper">
         <div className="max-w-2xl">
-          <PriceTable onlySlug="fahrstunde" />
-          <div className="mt-8">
-            <PriceTable onlySlug="schnupperstunde" />
-          </div>
+          <PriceTable onlySlug={["fahrstunde", "schnupperstunde"]} />
           <p className="text-fine text-slate mt-6">
             {offer.note} Absagen bis 24 Stunden vor Beginn sind kostenlos, danach wird die
             Lektion verrechnet. Bezahlt wird nach der Lektion per TWINT oder Karte, oder
@@ -108,15 +105,27 @@ export default function FahrstundenPage() {
         </div>
       </Section>
 
+      {/* Aufklappbar statt sechs offener Antworten untereinander: die Fragen
+          sind so auf einen Blick zu überfliegen, und wer eine davon hat,
+          klappt sie auf. <details> kann das von sich aus — mit Tastatur,
+          ohne JavaScript und auch dann, wenn die Seite noch lädt. */}
       <Section title="Häufige Fragen">
-        <dl className="border-t border-deep/12 max-w-3xl">
+        <div className="border-t border-deep/12 max-w-3xl">
           {site.faq.map((entry) => (
-            <div key={entry.q} className="border-b border-deep/12 py-5">
-              <dt className="text-lg">{entry.q}</dt>
-              <dd className="text-slate mt-1.5 max-w-[62ch]">{entry.a}</dd>
-            </div>
+            <details key={entry.q} className="group border-b border-deep/12">
+              <summary className="flex items-baseline gap-4 py-3.5 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                <span className="flex-1 font-bold">{entry.q}</span>
+                <span
+                  aria-hidden="true"
+                  className="shrink-0 text-xl leading-none text-slate transition-transform duration-150 group-open:rotate-45"
+                >
+                  +
+                </span>
+              </summary>
+              <p className="text-slate text-fine pb-4 max-w-[62ch]">{entry.a}</p>
+            </details>
           ))}
-        </dl>
+        </div>
       </Section>
     </>
   );

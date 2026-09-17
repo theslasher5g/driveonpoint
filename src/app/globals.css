@@ -89,8 +89,8 @@
     background: var(--color-concrete);
     color: var(--color-deep);
     font-family: var(--font-sans);
-    font-size: 1.0625rem;
-    line-height: 1.6;
+    font-size: 1rem;
+    line-height: 1.55;
     font-synthesis-weight: none;
     -webkit-font-smoothing: antialiased;
   }
@@ -220,7 +220,7 @@
   .timeline > li {
     position: relative;
     padding-left: 3.25rem;
-    padding-bottom: 2.5rem;
+    padding-bottom: 1.75rem;
   }
 
   .timeline > li:last-child {
@@ -307,6 +307,47 @@
 
   .prose-column {
     max-width: 62ch;
+  }
+
+  /* --- Bandhöhe ---------------------------------------------------------
+     Ein einziger Wert für den Abstand zwischen Abschnitten, statt in jeder
+     Seite eigene Zahlen. Wer ihn ändert, ändert die ganze Seite. */
+  .band {
+    padding-block: 2.75rem;
+  }
+
+  @media (min-width: 900px) {
+    .band {
+      padding-block: 4rem;
+    }
+  }
+
+  /* --- Überschrift neben den Inhalt -------------------------------------
+     Vorher stand über jedem Abschnitt eine Überschrift, darunter ein
+     Einleitungssatz über die volle Breite, und erst darunter der Inhalt —
+     drei Bänder übereinander für eine Information. Ab 900px steht der
+     Kopf jetzt links daneben, darunter wieder gestapelt: auf dem Telefon
+     ist vertikaler Platz billig, auf dem Bildschirm nicht. */
+  .split {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 900px) {
+    .split {
+      grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+      gap: 3.5rem;
+      align-items: start;
+    }
+  }
+
+  /* Der Kopf bleibt beim Scrollen kurz stehen, solange sein Inhalt
+     danebenläuft — sonst verliert man bei langen Listen den Bezug. */
+  @media (min-width: 900px) {
+    .split-head-sticky {
+      position: sticky;
+      top: 6rem;
+    }
   }
 
   /* --- Schaltflächen --------------------------------------------------- */
@@ -497,17 +538,21 @@
 }
 
 @layer utilities {
+  /* Die Stufen sind bewusst enger als zuvor. Die Seite beantwortet
+     Nachschlagefragen — welcher Kurs, welcher Preis, welcher freie Termin —
+     und dafür zählt, wie viel gleichzeitig sichtbar ist, nicht wie gross die
+     Überschrift war. */
   .text-display {
-    font-size: clamp(2.75rem, 8.5vw, 6.75rem);
+    font-size: clamp(2.5rem, 6vw, 4.25rem);
   }
   .text-title {
-    font-size: clamp(1.95rem, 4.6vw, 3.25rem);
+    font-size: clamp(1.7rem, 3.4vw, 2.375rem);
   }
   .text-section {
-    font-size: clamp(1.55rem, 3vw, 2.25rem);
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
   }
   .text-lead {
-    font-size: clamp(1.05rem, 1.6vw, 1.3rem);
+    font-size: clamp(1rem, 1.2vw, 1.125rem);
     line-height: 1.5;
   }
   .text-fine {

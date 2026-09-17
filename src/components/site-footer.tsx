@@ -24,9 +24,12 @@ const RECHTLICHES = [
 
 export function SiteFooter() {
   return (
-    <footer className="bg-deep text-paper mt-24">
-      <div className="shell py-14 md:py-20">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+    // Kein Abstand nach oben: der dunkle Grund trennt den Fuss schon von
+    // allem darüber, und auf der Startseite entstand daraus ein heller
+    // Streifen zwischen zwei dunklen Bändern.
+    <footer className="bg-deep text-paper">
+      <div className="shell band">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-3 mb-5">
               <BrandMark className="w-9" tone="invert" />

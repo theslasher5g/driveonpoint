@@ -47,7 +47,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
             title="Deine Angaben"
             lead={`${lessonType.name} am ${formatDayLong(chosen.day)} um ${chosen.time} Uhr. Noch drei Felder, dann ist der Termin dir.`}
           />
-          <section className="shell py-12 md:py-16">
+          <section className="shell band">
             <div className="lane max-w-2xl">
               <div className="bg-paper border border-deep/15 p-5 mb-8">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
@@ -90,7 +90,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
             : "Für die nächsten vier Wochen ist gerade nichts frei. Ruf uns an, oft lässt sich trotzdem etwas einrichten."
         }
       />
-      <section className="shell py-12 md:py-16">
+      <section className="shell band">
         <div className="lane">
           <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 mb-9">
             <p className="nums stretch-wide font-extrabold text-2xl">
@@ -173,7 +173,7 @@ async function ChooseOffer({ unknown }: { unknown?: string } = {}) {
         title="Was möchtest du buchen?"
         lead="Wähle dein Angebot. Danach siehst du sofort, welche Termine frei sind — ohne Anruf und ohne Warten auf eine Antwort."
       />
-      <section className="shell py-12 md:py-16">
+      <section className="shell band">
         <div className="lane">
           {unknown && (
             <p className="notice notice-warn mb-8 max-w-[56ch]">
@@ -184,27 +184,33 @@ async function ChooseOffer({ unknown }: { unknown?: string } = {}) {
           {types.length === 0 ? (
             <p className="text-slate">Es sind gerade keine Angebote hinterlegt.</p>
           ) : (
-            <ul className="grid gap-px bg-deep/15 border border-deep/15 sm:grid-cols-2 lg:grid-cols-3">
+            /* Rahmen an der Karte statt Rasterlinien über den Hintergrund
+               des Behälters: bei vier Angeboten in drei Spalten blieb sonst
+               eine leere graue Zelle stehen, die wie ein Fehler aussah. So
+               stimmt das Bild bei jeder Anzahl. */
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {types.map((lessonType) => {
                 const priced = applyPromotions(lessonType, promotions);
                 return (
-                  <li key={lessonType.id}>
+                  <li key={lessonType.id} className="flex">
                     <Link
                       href={`/buchen?angebot=${lessonType.slug}`}
-                      className="group bg-concrete hover:bg-paper transition-colors p-6 md:p-7 h-full flex flex-col"
+                      className="group surface bg-paper border border-deep/15 hover:bg-signal-tint transition-colors p-5 w-full flex flex-col"
                     >
-                      <h2 className="text-section stretch-wide leading-none">{lessonType.name}</h2>
-                      <p className="text-slate mt-3 flex-1">
+                      <h2 className="text-xl stretch-wide font-extrabold leading-tight">
+                        {lessonType.name}
+                      </h2>
+                      <p className="text-slate text-fine mt-2 flex-1">
                         {lessonType.shortDescription ||
                           `${lessonType.durationMinutes} Minuten pro Termin`}
                       </p>
                       {priced.promotion && (
-                        <p className="promo-tag mt-4 self-start">{priced.promotion.label}</p>
+                        <p className="promo-tag mt-3 self-start">{priced.promotion.label}</p>
                       )}
-                      <p className="nums stretch-wide font-extrabold text-xl mt-4">
+                      <p className="nums stretch-wide font-extrabold text-xl mt-3">
                         CHF {formatPrice(priced.finalRappen)}
                       </p>
-                      <span className="font-bold text-signal-ink mt-4 underline-offset-4 group-hover:underline">
+                      <span className="text-fine font-bold text-signal-ink mt-3 underline-offset-4 group-hover:underline">
                         Freie Termine ansehen
                       </span>
                     </Link>

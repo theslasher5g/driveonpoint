@@ -63,7 +63,9 @@ export default function NothilfekursPage() {
       </Section>
 
       <Section title="Organisatorisches">
-        <ul className="border-t border-deep/12 max-w-2xl">
+        {/* Zweispaltig wie „Was geübt wird“ darüber: sechs kurze Antworten
+            untereinander ergaben eine halbe Bildschirmhöhe Leerraum daneben. */}
+        <ul className="grid gap-x-10 gap-y-4 sm:grid-cols-2">
           {[
             ["Ab welchem Alter?", `Ab ${offer.minAge}. Der Ausweis wird erst beim Gesuch für den Lernfahrausweis gebraucht.`],
             ["Prüfung?", "Keine. Wer durchgehend anwesend ist und mitmacht, bekommt den Ausweis am Ende des Kurses."],
@@ -72,9 +74,9 @@ export default function NothilfekursPage() {
             ["Anerkennung", "Der Ausweis wird in der ganzen Schweiz anerkannt, auch bei anderen Fahrschulen."],
             ["Abwesenheit", "Wer einen Teil verpasst, muss ihn nachholen — die Stundenzahl ist vorgeschrieben."],
           ].map(([q, a]) => (
-            <li key={q} className="border-b border-deep/12 py-4">
+            <li key={q}>
               <h3 className="text-base">{q}</h3>
-              <p className="text-slate mt-1">{a}</p>
+              <p className="text-slate text-fine mt-1">{a}</p>
             </li>
           ))}
         </ul>

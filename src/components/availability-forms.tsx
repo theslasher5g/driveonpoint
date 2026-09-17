@@ -23,32 +23,37 @@ export function AvailabilityForms({
   const [ruleState, ruleAction] = useActionState(addRuleAction, EMPTY);
 
   return (
-    <form action={ruleAction} className="space-y-4 mt-8 pt-8 border-t border-deep/15 max-w-md">
+    // Die vier Felder passen nebeneinander in eine Zeile. Untereinander
+    // brauchte jedes Angebot den Platz eines halben Bildschirms, bei vier
+    // Angeboten auf derselben Seite.
+    <form action={ruleAction} className="bg-paper border border-deep/15 p-4">
       <input type="hidden" name="person" value={person} />
       <input type="hidden" name="lessonTypeId" value={lessonTypeId} />
-      <h3 className="text-base font-semibold">Zeit für {lessonTypeName} hinzufügen</h3>
+      <h3 className="text-fine font-bold mb-3">Zeit für {lessonTypeName} hinzufügen</h3>
       <Feedback state={ruleState} />
 
-      <div>
-        <label className="field-label" htmlFor={`wochentag-${lessonTypeId}`}>
-          Wochentag
-        </label>
-        <select
-          id={`wochentag-${lessonTypeId}`}
-          name="wochentag"
-          className="field"
-          defaultValue="1"
-        >
-          {[1, 2, 3, 4, 5, 6, 0].map((weekday) => (
-            <option key={weekday} value={weekday}>
-              {weekdayName(weekday)}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className="flex flex-wrap items-end gap-3 mt-3">
+        <div className="min-w-[8.5rem] flex-1">
+          <label className="field-label text-fine" htmlFor={`wochentag-${lessonTypeId}`}>
+            Wochentag
+          </label>
+          <select
+            id={`wochentag-${lessonTypeId}`}
+            name="wochentag"
+            className="field py-2"
+            defaultValue="1"
+          >
+            {[1, 2, 3, 4, 5, 6, 0].map((weekday) => (
+              <option key={weekday} value={weekday}>
+                {weekdayName(weekday)}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <TimePair idPrefix={`regel-${lessonTypeId}`} defaultFrom="08:00" defaultTo="12:00" />
-      <Submit label="Zeit eintragen" busy="Wird eingetragen …" />
+        <TimePair idPrefix={`regel-${lessonTypeId}`} defaultFrom="08:00" defaultTo="12:00" />
+        <Submit label="Eintragen" busy="…" />
+      </div>
     </form>
   );
 }
@@ -63,60 +68,62 @@ export function AvailabilityExceptionForm({
   const [exceptionState, exceptionAction] = useActionState(addExceptionAction, EMPTY);
 
   return (
-    <form action={exceptionAction} className="space-y-4 mt-8 max-w-md">
+    <form action={exceptionAction} className="bg-paper border border-deep/15 p-4 mt-5">
       <input type="hidden" name="person" value={person} />
-      <h3 className="text-base font-semibold">Einzelnen Tag ändern</h3>
+      <h3 className="text-fine font-bold mb-3">Einzelnen Tag ändern</h3>
       <Feedback state={exceptionState} />
 
-      <div>
-        <label className="field-label" htmlFor="art">
-          Was gilt an diesem Tag?
-        </label>
-        <select id="art" name="art" className="field" defaultValue="abwesend">
-          <option value="abwesend">Abwesend — Zeit blockieren</option>
-          <option value="frei">Zusätzlich frei — Zeit anbieten</option>
-        </select>
-      </div>
-
-      {offerings.length > 0 && (
-        <div>
-          <label className="field-label" htmlFor="lessonTypeId">
-            Angebot <span className="font-normal text-slate">(freiwillig)</span>
+      <div className="flex flex-wrap items-end gap-3 mt-3">
+        <div className="min-w-[13rem] flex-1">
+          <label className="field-label text-fine" htmlFor="art">
+            Was gilt an diesem Tag?
           </label>
-          <select id="lessonTypeId" name="lessonTypeId" className="field" defaultValue="">
-            <option value="">Alle Angebote</option>
-            {offerings.map((offering) => (
-              <option key={offering.id} value={offering.id}>
-                {offering.name}
-              </option>
-            ))}
+          <select id="art" name="art" className="field py-2" defaultValue="abwesend">
+            <option value="abwesend">Abwesend — Zeit blockieren</option>
+            <option value="frei">Zusätzlich frei — Zeit anbieten</option>
           </select>
         </div>
-      )}
 
-      <div>
-        <label className="field-label" htmlFor="tag">
-          Datum
-        </label>
-        <input id="tag" name="tag" type="date" className="field nums" required />
+        {offerings.length > 0 && (
+          <div className="min-w-[11rem] flex-1">
+            <label className="field-label text-fine" htmlFor="lessonTypeId">
+              Angebot <span className="font-normal text-slate">(freiwillig)</span>
+            </label>
+            <select id="lessonTypeId" name="lessonTypeId" className="field py-2" defaultValue="">
+              <option value="">Alle Angebote</option>
+              {offerings.map((offering) => (
+                <option key={offering.id} value={offering.id}>
+                  {offering.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="min-w-[9rem]">
+          <label className="field-label text-fine" htmlFor="tag">
+            Datum
+          </label>
+          <input id="tag" name="tag" type="date" className="field nums py-2" required />
+        </div>
+
+        <TimePair idPrefix="ausnahme" defaultFrom="08:00" defaultTo="17:00" />
+
+        <div className="min-w-[13rem] flex-1">
+          <label className="field-label text-fine" htmlFor="notiz">
+            Notiz <span className="font-normal text-slate">(freiwillig)</span>
+          </label>
+          <input
+            id="notiz"
+            name="notiz"
+            maxLength={120}
+            className="field py-2"
+            placeholder="Ferien, Weiterbildung, Arzttermin"
+          />
+        </div>
+
+        <Submit label="Eintragen" busy="…" />
       </div>
-
-      <TimePair idPrefix="ausnahme" defaultFrom="08:00" defaultTo="17:00" />
-
-      <div>
-        <label className="field-label" htmlFor="notiz">
-          Notiz <span className="font-normal text-slate">(freiwillig)</span>
-        </label>
-        <input
-          id="notiz"
-          name="notiz"
-          maxLength={120}
-          className="field"
-          placeholder="Ferien, Weiterbildung, Arzttermin"
-        />
-      </div>
-
-      <Submit label="Eintragen" busy="Wird eingetragen …" />
     </form>
   );
 }
@@ -131,9 +138,9 @@ function TimePair({
   defaultTo: string;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <label className="field-label" htmlFor={`${idPrefix}-von`}>
+    <>
+      <div className="min-w-[7rem]">
+        <label className="field-label text-fine" htmlFor={`${idPrefix}-von`}>
           Von
         </label>
         <input
@@ -142,12 +149,12 @@ function TimePair({
           type="time"
           step={900}
           defaultValue={defaultFrom}
-          className="field nums"
+          className="field nums py-2"
           required
         />
       </div>
-      <div>
-        <label className="field-label" htmlFor={`${idPrefix}-bis`}>
+      <div className="min-w-[7rem]">
+        <label className="field-label text-fine" htmlFor={`${idPrefix}-bis`}>
           Bis
         </label>
         <input
@@ -156,11 +163,11 @@ function TimePair({
           type="time"
           step={900}
           defaultValue={defaultTo}
-          className="field nums"
+          className="field nums py-2"
           required
         />
       </div>
-    </div>
+    </>
   );
 }
 
@@ -185,7 +192,7 @@ function Feedback({ state }: { state: AvailabilityState }) {
 function Submit({ label, busy }: { label: string; busy: string }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className="btn btn-primary" disabled={pending}>
+    <button type="submit" className="btn btn-primary py-2 px-4 text-fine" disabled={pending}>
       {pending ? busy : label}
     </button>
   );

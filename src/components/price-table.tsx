@@ -12,7 +12,13 @@ export async function PriceTable({
   onlySlug,
   withPackages = true,
 }: {
-  onlySlug?: string;
+  /**
+   * Ein Angebot oder mehrere. Mehrere gehören in einen einzigen Aufruf und
+   * nicht in zwei nebeneinander: sonst erscheint der Abschnitt „Pakete und
+   * Abos“ samt Erklärung zweimal auf derselben Seite. Bei einer Liste gilt
+   * die angegebene Reihenfolge, sonst die aus dem Team-Bereich.
+   */
+  onlySlug?: string | string[];
   withPackages?: boolean;
 }) {
   let rows: Awaited<ReturnType<typeof listLessonTypes>> = [];
@@ -34,14 +40,20 @@ export async function PriceTable({
     );
   }
 
-  const visible = onlySlug ? rows.filter((row) => row.slug === onlySlug) : rows;
+  const wanted = onlySlug === undefined ? null : [onlySlug].flat();
+  const visible = wanted
+    ? wanted
+        .map((slug) => rows.find((row) => row.slug === slug))
+        .filter((row): row is (typeof rows)[number] => row !== undefined)
+    : rows;
+
   if (visible.length === 0) {
     return <p className="text-slate">Für dieses Angebot ist noch kein Preis hinterlegt.</p>;
   }
 
   const visibleIds = new Set(visible.map((row) => row.id));
   const bundles = withPackages
-    ? packages.filter((bundle) => !onlySlug || (bundle.lessonTypeId && visibleIds.has(bundle.lessonTypeId)))
+    ? packages.filter((bundle) => !wanted || (bundle.lessonTypeId && visibleIds.has(bundle.lessonTypeId)))
     : [];
 
   return (

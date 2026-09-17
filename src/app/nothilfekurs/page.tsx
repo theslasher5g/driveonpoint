@@ -2,26 +2,49 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader, Section } from "@/components/page-header";
 import { PriceTable } from "@/components/price-table";
+import { site } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
+const offer = site.offers.nothilfekurs;
+
 export const metadata: Metadata = {
-  title: "Nothelferkurs",
-  description:
-    "Zehn Stunden lebensrettende Sofortmassnahmen an einem Wochenende. Der Ausweis gilt sechs Jahre und wird für den Lernfahrausweis verlangt.",
-  alternates: { canonical: "/nothelfer" },
+  title: "Nothilfekurs",
+  description: offer.lead,
+  alternates: { canonical: "/nothilfekurs" },
 };
 
-export default function NothelferPage() {
+export default function NothilfekursPage() {
   return (
     <>
       <PageHeader
-        title="Nothelferkurs"
-        lead="Zehn Stunden an einem Wochenende. Der Ausweis gilt sechs Jahre und ist die erste Hürde auf dem Weg zum Lernfahrausweis — ohne ihn nimmt das Strassenverkehrsamt dein Gesuch nicht entgegen."
-        action={{ href: "/buchen?angebot=nothelfer", label: "Kursdaten ansehen" }}
+        title="Nothilfekurs"
+        lead={offer.lead}
+        action={{ href: "/buchen?angebot=nothilfekurs", label: "Kursdaten ansehen" }}
       />
 
-      <Section title="Was geübt wird">
+      <Section>
+        <div className="flex flex-wrap gap-10 mb-9">
+          <div>
+            <p className="text-fine text-slate">Dauer</p>
+            <p className="nums stretch-wide font-extrabold text-2xl text-signal-ink mt-1">
+              {offer.duration}
+            </p>
+          </div>
+          <div>
+            <p className="text-fine text-slate">Ab Alter</p>
+            <p className="nums stretch-wide font-extrabold text-2xl text-signal-ink mt-1">
+              {offer.minAge}
+            </p>
+          </div>
+        </div>
+
+        <p className="surface bg-signal-tint border-l-4 border-signal px-5 py-4 italic max-w-[62ch]">
+          {offer.note}
+        </p>
+      </Section>
+
+      <Section title="Was geübt wird" tone="paper">
         <div className="grid gap-x-10 gap-y-6 sm:grid-cols-2 max-w-4xl">
           {[
             ["Unfallstelle sichern", "Warnblinker, Weste, Pannendreieck — und wie du dich selbst nicht zum zweiten Opfer machst."],
@@ -39,16 +62,17 @@ export default function NothelferPage() {
         </div>
       </Section>
 
-      <Section title="Organisatorisches" tone="paper">
-        <ul className="border-t border-deep/15 max-w-2xl">
+      <Section title="Organisatorisches">
+        <ul className="border-t border-deep/12 max-w-2xl">
           {[
-            ["Ab welchem Alter?", "Ab 16 Jahren. Jünger geht auch, der Ausweis wird aber erst mit dem Gesuch gebraucht."],
+            ["Ab welchem Alter?", `Ab ${offer.minAge}. Der Ausweis wird erst beim Gesuch für den Lernfahrausweis gebraucht.`],
             ["Prüfung?", "Keine. Wer durchgehend anwesend ist und mitmacht, bekommt den Ausweis am Ende des Kurses."],
+            ["Wie lange gültig?", "Sechs Jahre. Danach musst du ihn erneuern, falls du ihn noch brauchst."],
             ["Kleidung", "Bequem. Es wird auf dem Boden gearbeitet."],
             ["Anerkennung", "Der Ausweis wird in der ganzen Schweiz anerkannt, auch bei anderen Fahrschulen."],
             ["Abwesenheit", "Wer einen Teil verpasst, muss ihn nachholen — die Stundenzahl ist vorgeschrieben."],
           ].map(([q, a]) => (
-            <li key={q} className="border-b border-deep/15 py-4">
+            <li key={q} className="border-b border-deep/12 py-4">
               <h3 className="text-base">{q}</h3>
               <p className="text-slate mt-1">{a}</p>
             </li>
@@ -56,13 +80,14 @@ export default function NothelferPage() {
         </ul>
       </Section>
 
-      <Section title="Preis">
+      <Section title="Preis" tone="paper">
         <div className="max-w-2xl">
-          <PriceTable onlySlug="nothelfer" />
+          <PriceTable onlySlug="nothilfekurs" />
           <p className="text-fine text-slate mt-5">
-            Inklusive Kursunterlagen und Ausweis. Zahlbar vor Kursbeginn.
+            Inklusive Kursunterlagen und Ausweis. Zahlbar vor Kursbeginn. Für die Ermässigung
+            bring bitte den Lehrlings-, Studenten- oder IV-Ausweis mit.
           </p>
-          <Link href="/buchen?angebot=nothelfer" className="btn btn-primary mt-7">
+          <Link href="/buchen?angebot=nothilfekurs" className="btn btn-primary mt-7">
             Zu den Kursdaten
           </Link>
         </div>

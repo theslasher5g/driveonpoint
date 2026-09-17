@@ -2,10 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { PageHeader, Section } from "@/components/page-header";
-import { site } from "@/lib/site";
+import { site, type TeamMember } from "@/lib/site";
 
-// Pro Anfrage gerendert, damit Next seine Skripte mit der Einmalkennung
-// der Inhaltsrichtlinie versehen kann. Siehe src/middleware.ts.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -23,21 +21,25 @@ export default function UeberUnsPage() {
       />
 
       <Section>
+        <div className="grid gap-6 md:grid-cols-2 max-w-5xl">
+          {site.team.map((person) => (
+            <TeamCard key={person.name} person={person} />
+          ))}
+        </div>
+      </Section>
+
+      <Section title={site.philosophy.title} tone="paper">
         <div className="grid gap-12 lg:grid-cols-[1fr_0.85fr] lg:items-start">
           <div className="prose-column space-y-4 text-slate">
+            <p>{site.philosophy.body}</p>
             <p>
-              Wir unterrichten seit über zehn Jahren im Grossraum {site.contact.city}. In dieser
-              Zeit hat sich vor allem eines bestätigt: Wer bei wechselnden Fahrlehrern sitzt,
-              braucht mehr Lektionen. Deshalb bleibst du bei uns bei derselben Person — von der
-              ersten Stunde bis zur Prüfungsanmeldung.
+              In der Praxis heisst das: Wir sagen dir ehrlich, wann du bereit bist. Eine
+              Anmeldung zur Prüfung, die absehbar scheitert, kostet dich Geld und Nerven. Und
+              umgekehrt melden wir dich an, sobald es reicht — nicht erst nach einer Wunschzahl
+              an Lektionen.
             </p>
             <p>
-              Wir sagen dir ehrlich, wann du bereit bist. Eine Anmeldung zur Prüfung, die
-              absehbar scheitert, kostet dich Geld und Nerven und uns den Ruf. Umgekehrt melden
-              wir dich an, sobald es reicht, und nicht erst nach einer Wunschzahl an Lektionen.
-            </p>
-            <p>
-              Unterrichtet wird in {site.languages.join(", ")}. Wir fahren in{" "}
+              Unterrichtet wird in {site.languages.join(" und ")}. Wir fahren in{" "}
               {site.region.join(", ")} und Umgebung.
             </p>
           </div>
@@ -47,22 +49,9 @@ export default function UeberUnsPage() {
             alt={site.images.team.alt}
             width={site.images.team.width}
             height={site.images.team.height}
-            className="w-full h-auto"
+            className="w-full h-auto surface"
             sizes="(min-width: 1024px) 40vw, 100vw"
-            priority
           />
-        </div>
-      </Section>
-
-      <Section title="Das Team" tone="paper">
-        <div className="border-t border-deep/15 max-w-3xl">
-          {site.team.map((person, index) => (
-            <div key={`${person.name}-${index}`} className="border-b border-deep/15 py-6">
-              <h3 className="text-lg">{person.name}</h3>
-              <p className="text-fine text-signal font-semibold mt-0.5">{person.role}</p>
-              <p className="text-slate mt-2 max-w-[58ch]">{person.body}</p>
-            </div>
-          ))}
         </div>
       </Section>
 
@@ -70,7 +59,7 @@ export default function UeberUnsPage() {
         <div className="max-w-2xl">
           <ul className="flex flex-wrap gap-2">
             {site.region.map((place) => (
-              <li key={place} className="bg-paper border border-deep/15 px-3.5 py-2 font-semibold">
+              <li key={place} className="chip chip-quiet">
                 {place}
               </li>
             ))}
@@ -84,5 +73,56 @@ export default function UeberUnsPage() {
         </div>
       </Section>
     </>
+  );
+}
+
+function TeamCard({ person }: { person: TeamMember }) {
+  return (
+    <article
+      className={`surface bg-paper flex flex-col ${
+        person.owner ? "ring-2 ring-signal" : "ring-1 ring-deep/10"
+      }`}
+    >
+      <div className="relative bg-deep aspect-[4/3]">
+        {person.photo ? (
+          <Image
+            src={person.photo}
+            alt={`Porträt von ${person.name}`}
+            fill
+            className="object-cover"
+            sizes="(min-width: 768px) 45vw, 100vw"
+          />
+        ) : (
+          /* Bis ein Porträt da ist: die Initiale auf dunklem Grund. Ein
+             graues Rechteck mit Kamerasymbol sagt nichts aus. */
+          <span
+            className="absolute inset-0 grid place-items-center stretch-wide font-extrabold text-paper/15 text-[7rem] leading-none select-none"
+            aria-hidden="true"
+          >
+            {person.name.charAt(0)}
+          </span>
+        )}
+
+        {person.owner && <span className="chip absolute top-4 left-4">Inhaberin</span>}
+
+        {/* Name auf dem Bild, wie in der bestehenden Gestaltung. Der Verlauf
+            darunter hält die Schrift auch auf hellen Fotos lesbar. */}
+        <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black/85 via-black/45 to-transparent">
+          <h2 className="text-section stretch-wide leading-none text-paper">{person.name}</h2>
+          <p className="text-fine text-paper/85 mt-1.5">{person.role}</p>
+        </div>
+      </div>
+
+      <div className="p-6 flex flex-col flex-1">
+        <p className="text-slate flex-1">{person.body}</p>
+        <ul className="flex flex-wrap gap-2 mt-5">
+          {person.tags.map((tag) => (
+            <li key={tag} className="chip chip-quiet">
+              {tag}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </article>
   );
 }

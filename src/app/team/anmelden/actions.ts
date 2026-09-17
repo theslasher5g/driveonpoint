@@ -57,14 +57,17 @@ export async function loginAction(
       passwordHash: staff.passwordHash,
       active: staff.active,
       mustChangePassword: staff.mustChangePassword,
+      passwordLoginEnabled: staff.passwordLoginEnabled,
       name: staff.name,
     })
     .from(staff)
     .where(eq(staff.email, email))
     .limit(1);
 
-  if (!account || !account.active) {
-    // Gleicher Rechenaufwand wie bei einem echten Konto.
+  // Wer die Passwortanmeldung abgeschaltet hat, kommt nur noch über Google
+  // herein. Der gleiche Rechenaufwand wie sonst, damit sich der Zustand
+  // nicht an der Antwortzeit ablesen lässt.
+  if (!account || !account.active || !account.passwordLoginEnabled) {
     await burnPasswordTime();
     await registerFailure(ip, email);
     return generic;

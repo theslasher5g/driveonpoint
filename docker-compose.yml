@@ -58,10 +58,12 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      MAIL_FROM: ${MAIL_FROM:-Drive on Point <noreply@driveonpoint.ch>}
+      MAIL_FROM: ${MAIL_FROM:-DriveOnPoint <noreply@driveonpoint.ch>}
       MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
       RETENTION_DAYS: ${RETENTION_DAYS:-30}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     ports:

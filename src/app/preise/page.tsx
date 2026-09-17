@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Preise",
   description:
-    "Alle Preise für Fahrstunden, Verkehrskundeunterricht und Nothelferkurs — ohne Anmeldegebühr und ohne Kleingedrucktes.",
+    "Alle Preise für Fahrstunden, Verkehrskundeunterricht und Nothilfekurs — ohne Anmeldegebühr und ohne Kleingedrucktes.",
   alternates: { canonical: "/preise" },
 };
 

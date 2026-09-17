@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { BrandMark } from "./brand-mark";
 import { site } from "@/lib/site";
 
 const NAV = [
   { href: "/fahrstunden", label: "Fahrstunden" },
   { href: "/vku", label: "VKU" },
-  { href: "/nothelfer", label: "Nothelfer" },
+  { href: "/nothilfekurs", label: "Nothilfe" },
   { href: "/preise", label: "Preise" },
   { href: "/ausbildungsweg", label: "Ablauf" },
   { href: "/ueber-uns", label: "Über uns" },
@@ -39,9 +40,7 @@ export function SiteHeader() {
           className="flex items-center gap-3 shrink-0"
           aria-label={`${site.name} — zur Startseite`}
         >
-          <span className="l-plate bg-signal text-paper w-9 h-9 md:w-10 md:h-10 text-xl md:text-2xl">
-            L
-          </span>
+          <BrandMark className="w-9 md:w-10" />
           <span className="stretch-wide font-extrabold text-lg md:text-xl tracking-tight leading-none">
             {site.name}
           </span>
@@ -56,7 +55,7 @@ export function SiteHeader() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={`px-3 py-2 text-[0.95rem] font-semibold transition-colors ${
-                  active ? "text-signal" : "text-deep/75 hover:text-deep"
+                  active ? "text-signal-ink" : "text-deep/75 hover:text-deep"
                 }`}
               >
                 {item.label}
@@ -106,7 +105,7 @@ export function SiteHeader() {
                   href={item.href}
                   aria-current={pathname === item.href ? "page" : undefined}
                   className={`block py-3.5 font-semibold ${
-                    pathname === item.href ? "text-signal" : "text-deep"
+                    pathname === item.href ? "text-signal-ink" : "text-deep"
                   }`}
                 >
                   {item.label}

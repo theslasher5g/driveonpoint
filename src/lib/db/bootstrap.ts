@@ -5,7 +5,7 @@ import { hash as argonHash } from "@node-rs/argon2";
 import { eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { db, pool } from "./index";
-import { lessonTypes, staff, staffLessonTypes } from "./schema";
+import { lessonTypes, pricePackages, staff, staffLessonTypes } from "./schema";
 
 /**
  * Bringt die Datenbank beim Serverstart auf Stand.
@@ -20,16 +20,25 @@ import { lessonTypes, staff, staffLessonTypes } from "./schema";
 
 const LOCK_KEY = 4_919_233_071;
 
+/**
+ * Die buchbaren Angebote mit den Preisen der bestehenden Seite.
+ *
+ * Bei den Kursen ist `durationMinutes` die Länge des ersten Termins, der im
+ * Kalender erscheint — nicht die Gesamtdauer des Kurses. Der VKU läuft über
+ * vier Abende, der Nothilfekurs über ein Wochenende; gebucht wird jeweils der
+ * Kursplatz, und die Folgetermine stehen im Kurstext.
+ */
 const OFFERS = [
   {
-    slug: "fahrstunde",
-    name: "Fahrstunde",
-    shortDescription: "Einzellektion im Schulfahrzeug, Abholung im Einzugsgebiet",
-    durationMinutes: 45,
-    bufferMinutes: 15,
-    priceRappen: 9500,
-    capacity: 1,
-    leadTimeHours: 24,
+    slug: "nothilfekurs",
+    name: "Nothilfekurs",
+    shortDescription: "10 Stunden, ab 14 Jahren, inklusive Ausweis",
+    durationMinutes: 300,
+    bufferMinutes: 0,
+    priceRappen: 12000,
+    reducedPriceRappen: 10000,
+    capacity: 16,
+    leadTimeHours: 48,
     sortOrder: 1,
   },
   {
@@ -38,20 +47,62 @@ const OFFERS = [
     shortDescription: "8 Lektionen an 4 Abenden, inklusive Unterlagen",
     durationMinutes: 180,
     bufferMinutes: 0,
-    priceRappen: 24000,
+    priceRappen: 18000,
+    reducedPriceRappen: null,
     capacity: 12,
     leadTimeHours: 48,
     sortOrder: 2,
   },
   {
-    slug: "nothelfer",
-    name: "Nothelferkurs",
-    shortDescription: "10 Stunden an einem Wochenende, inklusive Ausweis",
-    durationMinutes: 300,
-    bufferMinutes: 0,
-    priceRappen: 12000,
-    capacity: 16,
-    leadTimeHours: 48,
+    slug: "schnupperstunde",
+    name: "Schnupperstunde",
+    shortDescription: "Die erste Lektion, zum Kennenlernen",
+    durationMinutes: 45,
+    bufferMinutes: 15,
+    priceRappen: 7000,
+    reducedPriceRappen: null,
+    capacity: 1,
+    leadTimeHours: 24,
+    sortOrder: 3,
+  },
+  {
+    slug: "fahrstunde",
+    name: "Fahrstunde",
+    shortDescription: "Einzellektion im Schulfahrzeug, 45 Minuten",
+    durationMinutes: 45,
+    bufferMinutes: 15,
+    priceRappen: 9000,
+    reducedPriceRappen: null,
+    capacity: 1,
+    leadTimeHours: 24,
+    sortOrder: 4,
+  },
+];
+
+/** Pakete und Abos. Erscheinen in der Preisliste, sind aber kein Termin. */
+const PACKAGES = [
+  {
+    forSlug: "schnupperstunde",
+    label: "5er Schnupperpaket",
+    priceRappen: 29500,
+    lessons: 5,
+    note: "Für Lehrlinge, Studierende und IV",
+    sortOrder: 1,
+  },
+  {
+    forSlug: "fahrstunde",
+    label: "10er Abo",
+    priceRappen: 85000,
+    lessons: 10,
+    note: null,
+    sortOrder: 2,
+  },
+  {
+    forSlug: "fahrstunde",
+    label: "15er Abo",
+    priceRappen: 127500,
+    lessons: 15,
+    note: null,
     sortOrder: 3,
   },
 ];
@@ -98,6 +149,24 @@ export async function bootstrapDatabase(): Promise<void> {
         .where(eq(lessonTypes.slug, offer.slug))
         .limit(1);
       if (!existing) await db.insert(lessonTypes).values(offer);
+    }
+
+    for (const bundle of PACKAGES) {
+      const [existing] = await db
+        .select({ id: pricePackages.id })
+        .from(pricePackages)
+        .where(eq(pricePackages.label, bundle.label))
+        .limit(1);
+      if (existing) continue;
+
+      const [owner] = await db
+        .select({ id: lessonTypes.id })
+        .from(lessonTypes)
+        .where(eq(lessonTypes.slug, bundle.forSlug))
+        .limit(1);
+
+      const { forSlug: _forSlug, ...values } = bundle;
+      await db.insert(pricePackages).values({ ...values, lessonTypeId: owner?.id ?? null });
     }
 
     await createFirstAdmin();

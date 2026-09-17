@@ -86,11 +86,26 @@ export default function DatenschutzPage() {
           </div>
 
           <div>
-            <h2 className="text-lg mb-2">Keine Weitergabe, kein Ausland</h2>
+            <h2 className="text-lg mb-2">Keine Weitergabe</h2>
             <p className="text-slate">
               Deine Daten liegen auf einem Server in der Schweiz und werden nicht an Dritte
-              verkauft oder für Werbung genutzt. Eine Übermittlung ins Ausland findet nicht statt.
-              Mailversand und Datenbank laufen auf derselben, von uns betriebenen Infrastruktur.
+              verkauft oder für Werbung genutzt. Mailversand und Datenbank laufen auf derselben,
+              von uns betriebenen Infrastruktur. Als Besucherin oder Besucher dieser Website und
+              als buchende Kundschaft wird nichts an Dritte übermittelt.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-lg mb-2">Anmeldung unserer Mitarbeitenden über Google</h2>
+            <p className="text-slate">
+              Mitarbeitende können sich im internen Bereich wahlweise über ein Google-Konto
+              anmelden. Dabei werden Google die Adresse dieser Website und der Zeitpunkt der
+              Anmeldung bekannt; wir erhalten von Google die Mailadresse, den Namen und eine
+              unveränderliche Kontokennung und speichern die Kennung, um das Konto beim nächsten
+              Mal wiederzuerkennen. Betroffen sind ausschliesslich unsere Mitarbeitenden, die
+              diesen Weg freiwillig wählen — für Kundinnen und Kunden findet keine solche
+              Übermittlung statt, und die Buchung funktioniert vollständig ohne Google. Anbieterin
+              ist Google Ireland Limited; es gilt deren Datenschutzerklärung.
             </p>
           </div>
 

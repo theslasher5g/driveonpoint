@@ -44,7 +44,7 @@ export async function NextSlotPanel() {
         <p className="stretch-wide font-extrabold text-2xl sm:text-[1.75rem] leading-[1.05] tracking-tight">
           {formatDayLong(slot.day)}
         </p>
-        <p className="nums stretch-wide font-extrabold text-signal text-4xl sm:text-5xl leading-none mt-2">
+        <p className="nums stretch-wide font-extrabold text-signal-ink text-4xl sm:text-5xl leading-none mt-2">
           {slot.time}
         </p>
         <p className="text-fine text-slate mt-3">

@@ -97,6 +97,6 @@ function revalidateEverywhere(): void {
   revalidatePath("/buchen");
   revalidatePath("/fahrstunden");
   revalidatePath("/vku");
-  revalidatePath("/nothelfer");
+  revalidatePath("/nothilfekurs");
   revalidatePath("/");
 }

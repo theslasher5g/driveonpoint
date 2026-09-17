@@ -53,7 +53,7 @@ const CLAUSES = [
   },
   {
     title: "Kurse",
-    body: "Nothelferkurs und Verkehrskundeunterricht setzen die vollständige Anwesenheit voraus; die Stundenzahl ist eidgenössisch vorgeschrieben. Wer Teile verpasst, holt sie in einem späteren Kurs nach. Erreicht ein Kurs die Mindestteilnehmerzahl nicht, kann er abgesagt werden; bereits bezahlte Beträge werden vollständig zurückerstattet.",
+    body: "Nothilfekurs und Verkehrskundeunterricht setzen die vollständige Anwesenheit voraus; die Stundenzahl ist eidgenössisch vorgeschrieben. Wer Teile verpasst, holt sie in einem späteren Kurs nach. Erreicht ein Kurs die Mindestteilnehmerzahl nicht, kann er abgesagt werden; bereits bezahlte Beträge werden vollständig zurückerstattet.",
   },
   {
     title: "Prüfungsanmeldung und Prüfungsfahrzeug",
@@ -85,7 +85,7 @@ export default function AgbPage() {
         <ol className="border-t border-deep/15 max-w-3xl">
           {CLAUSES.map((clause, index) => (
             <li key={clause.title} className="border-b border-deep/15 py-5 flex gap-5 sm:gap-8">
-              <span className="nums stretch-wide font-extrabold text-signal text-lg w-7 shrink-0">
+              <span className="nums stretch-wide font-extrabold text-signal-ink text-lg w-7 shrink-0">
                 {index + 1}
               </span>
               <div>

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Weg zum Führerausweis",
   description:
-    "Nothelferkurs, Sehtest, Theorieprüfung, VKU, Fahrstunden, praktische Prüfung, WAB — die sieben Schritte zum Führerausweis Kategorie B in der Schweiz.",
+    "Nothilfekurs, Sehtest, Theorieprüfung, VKU, Fahrstunden, praktische Prüfung, WAB — die sieben Schritte zum Führerausweis Kategorie B in der Schweiz.",
   alternates: { canonical: "/ausbildungsweg" },
 };
 

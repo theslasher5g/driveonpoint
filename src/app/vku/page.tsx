@@ -7,18 +7,31 @@ import { site } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
+const offer = site.offers.vku;
+
 export const metadata: Metadata = {
   title: "Verkehrskundeunterricht (VKU)",
-  description:
-    "Der obligatorische VKU: 8 Lektionen an 4 Abenden. Ohne ihn keine praktische Prüfung. Kursdaten online buchen.",
+  description: offer.lead,
   alternates: { canonical: "/vku" },
 };
 
-const LESSONS = [
-  ["Abend 1", "Wahrnehmung und Blicktechnik", "Warum man Dinge übersieht, die eigentlich sichtbar sind — und wie man den Blick systematisch führt."],
-  ["Abend 2", "Verkehrsdynamik", "Reaktionsweg, Bremsweg, Fliehkraft. Was Physik im Strassenverkehr erzwingt und was nicht verhandelbar ist."],
-  ["Abend 3", "Partnerkunde", "Wie sich Velofahrende, Kinder, ältere Menschen und Lastwagen verhalten — und wo sie dich nicht sehen können."],
-  ["Abend 4", "Umwelt und Verantwortung", "Vorausschauend fahren, Treibstoff sparen, Alkohol und Medikamente, Verhalten nach einem Unfall."],
+const EVENINGS = [
+  [
+    "Wahrnehmung und Blicktechnik",
+    "Warum man Dinge übersieht, die eigentlich sichtbar sind — und wie man den Blick systematisch führt.",
+  ],
+  [
+    "Physikalische Grundlagen",
+    "Reaktionsweg, Bremsweg, Fliehkraft. Was die Physik im Strassenverkehr erzwingt und was nicht verhandelbar ist.",
+  ],
+  [
+    "Partnerkunde",
+    "Wie sich Velofahrende, Kinder, ältere Menschen und Lastwagen verhalten — und wo sie dich nicht sehen können.",
+  ],
+  [
+    "Umwelt und Verantwortung",
+    "Vorausschauend fahren, Treibstoff sparen, Alkohol und Medikamente, Verhalten nach einem Unfall.",
+  ],
 ];
 
 export default function VkuPage() {
@@ -26,15 +39,28 @@ export default function VkuPage() {
     <>
       <PageHeader
         title="Verkehrskundeunterricht"
-        lead="Acht Lektionen an vier Abenden, für alle Neulenkerinnen und Neulenker obligatorisch. Ohne VKU-Bescheinigung lässt dich das Strassenverkehrsamt nicht zur praktischen Prüfung antreten."
+        lead={offer.lead}
         action={{ href: "/buchen?angebot=vku", label: "Kursdaten ansehen" }}
       />
 
-      <Section title="Die vier Abende">
-        <ol className="border-t border-deep/15 max-w-3xl">
-          {LESSONS.map(([label, title, body], index) => (
-            <li key={label} className="border-b border-deep/15 py-5 flex gap-5 sm:gap-8">
-              <span className="nums stretch-wide font-extrabold text-signal text-xl w-7 shrink-0">
+      <Section>
+        <ul className="flex flex-wrap gap-2 mb-8">
+          {offer.topics.map((topic) => (
+            <li key={topic} className="chip chip-quiet">
+              {topic}
+            </li>
+          ))}
+        </ul>
+        <p className="surface bg-signal-tint border-l-4 border-signal px-5 py-4 italic max-w-[62ch]">
+          {offer.note}
+        </p>
+      </Section>
+
+      <Section title="Die vier Abende" tone="paper">
+        <ol className="border-t border-deep/12 max-w-3xl">
+          {EVENINGS.map(([title, body], index) => (
+            <li key={title} className="border-b border-deep/12 py-5 flex gap-5 sm:gap-8">
+              <span className="nums stretch-wide font-extrabold text-signal-ink text-xl w-7 shrink-0">
                 {index + 1}
               </span>
               <div>
@@ -50,16 +76,16 @@ export default function VkuPage() {
         </p>
       </Section>
 
-      <Section title="Gut zu wissen" tone="paper">
+      <Section title="Gut zu wissen">
         <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-start">
-          <ul className="border-t border-deep/15">
+          <ul className="border-t border-deep/12">
             {[
               ["Lernfahrausweis nötig?", "Nein. Du kannst den VKU schon vorher besuchen. Viele machen ihn parallel zu den ersten Fahrstunden."],
               ["Wie lange gültig?", "Die Bescheinigung verfällt nicht. Du kannst dir mit der Prüfung also Zeit lassen."],
               ["Wie gross sind die Gruppen?", "Höchstens zwölf Personen, damit Fragen auch wirklich drankommen."],
               ["Was mitbringen?", "Nur den Ausweis. Kursunterlagen bekommst du am ersten Abend."],
             ].map(([q, a]) => (
-              <li key={q} className="border-b border-deep/15 py-4">
+              <li key={q} className="border-b border-deep/12 py-4">
                 <h3 className="text-base">{q}</h3>
                 <p className="text-slate mt-1">{a}</p>
               </li>
@@ -71,13 +97,13 @@ export default function VkuPage() {
             alt={site.images.course.alt}
             width={site.images.course.width}
             height={site.images.course.height}
-            className="w-full h-auto"
+            className="w-full h-auto surface"
             sizes="(min-width: 1024px) 40vw, 100vw"
           />
         </div>
       </Section>
 
-      <Section title="Preis">
+      <Section title="Preis" tone="paper">
         <div className="max-w-2xl">
           <PriceTable onlySlug="vku" />
           <p className="text-fine text-slate mt-5">

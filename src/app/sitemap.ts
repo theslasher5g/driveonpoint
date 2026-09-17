@@ -8,7 +8,7 @@ const PAGES = [
   { path: "/", priority: 1 },
   { path: "/fahrstunden", priority: 0.9 },
   { path: "/vku", priority: 0.9 },
-  { path: "/nothelfer", priority: 0.9 },
+  { path: "/nothilfekurs", priority: 0.9 },
   { path: "/preise", priority: 0.8 },
   { path: "/ausbildungsweg", priority: 0.8 },
   { path: "/buchen", priority: 0.8 },

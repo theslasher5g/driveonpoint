@@ -123,6 +123,43 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 ---
 
+## Anmeldung über Google
+
+Freiwillig. Bleiben `GOOGLE_CLIENT_ID` und `GOOGLE_CLIENT_SECRET` leer,
+erscheint der Knopf gar nicht erst und alles läuft über Passwort.
+
+Einrichten in der Google Cloud Console:
+
+1. Projekt anlegen, OAuth-Zustimmungsbildschirm ausfüllen.
+2. Zugangsdaten → OAuth-Client-ID → Webanwendung.
+3. Als autorisierten Weiterleitungs-URI **exakt** eintragen:
+   `https://driveonpoint.ch/api/auth/google/callback`
+4. Client-ID und Geheimnis in die `.env`, dann `docker compose up -d`.
+
+**Die wichtigste Eigenschaft:** Über Google kommt nur herein, wer in dieser
+Anwendung bereits ein aktives Konto hat — mit genau derselben Mailadresse.
+Es wird nie automatisch eines angelegt. Ohne diese Regel hätte jeder mit
+einem Google-Konto Zugang zum Team-Bereich.
+
+Beim ersten Anmelden wird das Google-Konto mit dem bestehenden verknüpft.
+Danach zählt die unveränderliche Google-Kennung, nicht mehr die Adresse — wer
+seine Google-Adresse ändert, behält den Zugang. Unter *Mein Konto* lässt sich
+die Verknüpfung wieder lösen und, sobald Google eingerichtet ist, die
+Passwortanmeldung ganz abschalten. Beides ist gegen Aussperren abgesichert:
+Der letzte verbleibende Weg ins eigene Konto lässt sich nicht entfernen.
+
+Technisch: Authorization Code mit PKCE, `state` gegen untergeschobene
+Anmeldungen, `nonce` gegen wiederverwendete Token, und unbestätigte
+Google-Adressen werden abgewiesen. Der Zwischenstand reist in einem
+signierten, kurzlebigen Cookie mit und wird nach einem Versuch entwertet.
+
+> Datenschutz: Damit fliessen Anmeldezeitpunkt und Domain an Google. Das
+> betrifft ausschliesslich Mitarbeitende, die diesen Weg freiwillig wählen —
+> die Kundschaft bucht weiterhin ohne Google. Der Abschnitt dazu steht in der
+> Datenschutzerklärung; bei Änderungen am Verfahren muss er mitwachsen.
+
+---
+
 ## Kalender in Google oder Apple einbinden
 
 Jede Person findet unter **Mein Konto** einen persönlichen Link. In Google
@@ -154,6 +191,23 @@ eingebaut.
 Preise, Dauer, Plätze und Vorlaufzeit je Angebot; Rabattaktionen starten,
 pausieren und löschen; Verfügbarkeit und Abwesenheiten; Konten, Rollen und
 Passwörter; Termine absagen.
+
+### Wie Angebote, Ermässigungen und Abos zusammenhängen
+
+Buchbar sind vier Dinge: Nothilfekurs, Verkehrskundeunterricht,
+Schnupperstunde und Fahrstunde. Jedes hat einen regulären Preis und
+wahlweise einen ermässigten für Lehrlinge, Studierende und IV.
+
+**Pakete und Abos** sind bewusst davon getrennt. Ein 10er-Abo ist ein Kauf,
+kein Kalendertermin — es erscheint in der Preisliste, und die einzelnen
+Lektionen daraus werden danach ganz normal als Fahrstunde gebucht. Bezahlt
+wird ausserhalb der Website.
+
+**Bei Kursen** ist die hinterlegte Dauer die Länge des ersten Termins, der im
+Kalender erscheint, nicht die Gesamtdauer. Der VKU läuft über vier Abende,
+der Nothilfekurs über ein Wochenende: Eingetragen wird die Verfügbarkeit für
+den Kursbeginn, gebucht wird der Platz, und die Folgetermine stehen im
+Kurstext auf der jeweiligen Seite.
 
 **In Dateien, danach neu bauen:**
 

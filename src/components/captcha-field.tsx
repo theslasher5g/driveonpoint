@@ -79,7 +79,7 @@ export function CaptchaField({ scope }: { scope: "buchung" | "kontakt" }) {
             <button
               type="button"
               onClick={() => void solve()}
-              className="font-bold text-signal underline underline-offset-4"
+              className="font-bold text-signal-ink underline underline-offset-4"
             >
               Erneut versuchen
             </button>
@@ -93,7 +93,7 @@ export function CaptchaField({ scope }: { scope: "buchung" | "kontakt" }) {
 function Indicator({ state }: { state: State }) {
   if (state === "fertig") {
     return (
-      <svg width="20" height="20" viewBox="0 0 20 20" className="text-signal shrink-0" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 20 20" className="text-signal-ink shrink-0" aria-hidden="true">
         <path d="M3 10.5 L8 15.5 L17 5" stroke="currentColor" strokeWidth="2.75" fill="none" />
       </svg>
     );

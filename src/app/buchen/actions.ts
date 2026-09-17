@@ -196,23 +196,23 @@ async function sendConfirmation(details: {
     "Dein Termin ist eingetragen",
     `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin:0 0 20px;">
-  <tr><td style="padding:10px 0;border-bottom:1px solid #E8EAE5;font-size:14px;color:#5A6B82;width:38%;">Angebot</td>
-      <td style="padding:10px 0;border-bottom:1px solid #E8EAE5;font-weight:700;">${escapeHtml(details.lessonName)}</td></tr>
-  <tr><td style="padding:10px 0;border-bottom:1px solid #E8EAE5;font-size:14px;color:#5A6B82;">Termin</td>
-      <td style="padding:10px 0;border-bottom:1px solid #E8EAE5;font-weight:700;">${escapeHtml(when)}</td></tr>
-  <tr><td style="padding:10px 0;border-bottom:1px solid #E8EAE5;font-size:14px;color:#5A6B82;">Dauer</td>
-      <td style="padding:10px 0;border-bottom:1px solid #E8EAE5;">${details.durationMinutes} Minuten</td></tr>
-  <tr><td style="padding:10px 0;border-bottom:1px solid #E8EAE5;font-size:14px;color:#5A6B82;">Preis</td>
-      <td style="padding:10px 0;border-bottom:1px solid #E8EAE5;">CHF ${formatPrice(details.priceRappen)}</td></tr>
-  <tr><td style="padding:10px 0;font-size:14px;color:#5A6B82;">Referenz</td>
+  <tr><td style="padding:10px 0;border-bottom:1px solid #EFEFEE;font-size:14px;color:#6C6C74;width:38%;">Angebot</td>
+      <td style="padding:10px 0;border-bottom:1px solid #EFEFEE;font-weight:700;">${escapeHtml(details.lessonName)}</td></tr>
+  <tr><td style="padding:10px 0;border-bottom:1px solid #EFEFEE;font-size:14px;color:#6C6C74;">Termin</td>
+      <td style="padding:10px 0;border-bottom:1px solid #EFEFEE;font-weight:700;">${escapeHtml(when)}</td></tr>
+  <tr><td style="padding:10px 0;border-bottom:1px solid #EFEFEE;font-size:14px;color:#6C6C74;">Dauer</td>
+      <td style="padding:10px 0;border-bottom:1px solid #EFEFEE;">${details.durationMinutes} Minuten</td></tr>
+  <tr><td style="padding:10px 0;border-bottom:1px solid #EFEFEE;font-size:14px;color:#6C6C74;">Preis</td>
+      <td style="padding:10px 0;border-bottom:1px solid #EFEFEE;">CHF ${formatPrice(details.priceRappen)}</td></tr>
+  <tr><td style="padding:10px 0;font-size:14px;color:#6C6C74;">Referenz</td>
       <td style="padding:10px 0;font-weight:700;">${escapeHtml(details.reference)}</td></tr>
 </table>
 <p style="margin:0 0 8px;font-weight:700;">Treffpunkt</p>
-<p style="margin:0 0 20px;color:#5A6B82;">${escapeHtml(site.contact.street)}, ${escapeHtml(site.contact.zip)} ${escapeHtml(site.contact.city)}<br>Einen abweichenden Treffpunkt im Einzugsgebiet vereinbaren wir telefonisch.</p>
+<p style="margin:0 0 20px;color:#6C6C74;">${escapeHtml(site.contact.street)}, ${escapeHtml(site.contact.zip)} ${escapeHtml(site.contact.city)}<br>Einen abweichenden Treffpunkt im Einzugsgebiet vereinbaren wir telefonisch.</p>
 <p style="margin:0 0 20px;">
-  <a href="${escapeHtml(cancelUrl)}" style="display:inline-block;background:#0B4FD1;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 22px;">Termin absagen</a>
+  <a href="${escapeHtml(cancelUrl)}" style="display:inline-block;background:#D33F2C;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 22px;">Termin absagen</a>
 </p>
-<p style="margin:0;color:#5A6B82;font-size:14px;">Absagen bis 24 Stunden vor Beginn sind kostenlos. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
+<p style="margin:0;color:#6C6C74;font-size:14px;">Absagen bis 24 Stunden vor Beginn sind kostenlos. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
   );
 
   await sendMail({

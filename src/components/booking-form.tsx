@@ -90,7 +90,7 @@ export function BookingForm({
             type="checkbox"
             name="agb"
             value="ja"
-            className="mt-1 w-5 h-5 accent-[#0B4FD1] shrink-0"
+            className="mt-1 w-5 h-5 accent-[#D33F2C] shrink-0"
             aria-invalid={state.fieldErrors?.agb ? "true" : undefined}
           />
           <span className="text-fine">

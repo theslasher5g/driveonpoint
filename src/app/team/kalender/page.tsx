@@ -197,7 +197,7 @@ export default async function KalenderPage({
                 key={day}
                 className={`p-3 md:min-h-40 ${isToday ? "bg-paper" : "bg-concrete"}`}
               >
-                <h2 className={`text-fine font-bold ${isToday ? "text-signal" : ""}`}>
+                <h2 className={`text-fine font-bold ${isToday ? "text-signal-ink" : ""}`}>
                   {weekdayName(weekday, true)}
                   <span className="nums font-normal text-slate">
                     {" "}
@@ -246,7 +246,7 @@ export default async function KalenderPage({
                         {entry.customerPhone && (
                           <a
                             href={`tel:${entry.customerPhone}`}
-                            className="nums text-[0.72rem] text-signal font-semibold block mt-0.5"
+                            className="nums text-[0.72rem] text-signal-ink font-semibold block mt-0.5"
                           >
                             {entry.customerPhone}
                           </a>
@@ -267,7 +267,7 @@ export default async function KalenderPage({
         <p className="text-fine text-slate mt-6 max-w-[62ch]">
           Freie Zeiten entstehen aus deiner Verfügbarkeit abzüglich der hier eingetragenen
           Termine. Den Kalender kannst du unter{" "}
-          <Link href="/team/konto" className="font-semibold text-signal underline underline-offset-4">
+          <Link href="/team/konto" className="font-semibold text-signal-ink underline underline-offset-4">
             Mein Konto
           </Link>{" "}
           in Google oder Apple Kalender abonnieren.

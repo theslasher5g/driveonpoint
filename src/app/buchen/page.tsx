@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Termin buchen",
   description:
-    "Freie Termine für Fahrstunden, Verkehrskundeunterricht und Nothelferkurs direkt online auswählen.",
+    "Freie Termine für Fahrstunden, Verkehrskundeunterricht und Nothilfekurs direkt online auswählen.",
   alternates: { canonical: "/buchen" },
   robots: { index: true, follow: true },
 };
@@ -65,7 +65,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
                 {priced.promotion && <p className="promo-tag mt-3">{priced.promotion.label}</p>}
                 <Link
                   href={`/buchen?angebot=${lessonType.slug}`}
-                  className="inline-block text-fine font-bold text-signal underline underline-offset-4 mt-4"
+                  className="inline-block text-fine font-bold text-signal-ink underline underline-offset-4 mt-4"
                 >
                   Anderen Termin wählen
                 </Link>
@@ -99,7 +99,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
             {priced.promotion && <p className="promo-tag">{priced.promotion.label}</p>}
             <Link
               href="/buchen"
-              className="text-fine font-bold text-signal underline underline-offset-4 ml-auto"
+              className="text-fine font-bold text-signal-ink underline underline-offset-4 ml-auto"
             >
               Anderes Angebot
             </Link>
@@ -204,7 +204,7 @@ async function ChooseOffer({ unknown }: { unknown?: string } = {}) {
                       <p className="nums stretch-wide font-extrabold text-xl mt-4">
                         CHF {formatPrice(priced.finalRappen)}
                       </p>
-                      <span className="font-bold text-signal mt-4 underline-offset-4 group-hover:underline">
+                      <span className="font-bold text-signal-ink mt-4 underline-offset-4 group-hover:underline">
                         Freie Termine ansehen
                       </span>
                     </Link>

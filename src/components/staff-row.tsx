@@ -92,7 +92,7 @@ export function StaffRow({
                     name="angebot"
                     value={offer.id}
                     defaultChecked={assigned.includes(offer.id)}
-                    className="w-4.5 h-4.5 accent-[#0B4FD1]"
+                    className="w-4.5 h-4.5 accent-[#D33F2C]"
                   />
                   <span className="text-fine">{offer.name}</span>
                 </label>
@@ -175,7 +175,7 @@ function MiniSubmit({
       type="submit"
       disabled={pending}
       className={`text-fine font-semibold underline underline-offset-2 disabled:opacity-50 mt-3 ${
-        danger ? "text-slate hover:text-[#B3261E]" : "text-signal"
+        danger ? "text-slate hover:text-[#B3261E]" : "text-signal-ink"
       }`}
     >
       {pending ? busy : idle}

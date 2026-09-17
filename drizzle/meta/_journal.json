@@ -8,6 +8,13 @@
       "when": 1789624695094,
       "tag": "0000_perpetual_infant_terrible",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789627871885,
+      "tag": "0001_lucky_guardian",
+      "breakpoints": true
     }
   ]
 }

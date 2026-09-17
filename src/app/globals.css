@@ -26,24 +26,42 @@
 }
 
 @theme {
-  --color-signal: #0b4fd1;
-  --color-signal-deep: #083ca0;
-  --color-deep: #0a1e3f;
-  --color-concrete: #e8eae5;
-  --color-concrete-dim: #d8dcd4;
+  /* Markenrot von DriveOnPoint. Trägt jede Hauptaktion.
+     Gegenüber dem Rot der bisherigen Seite (#E24C3A) eine Spur dunkler: mit
+     weisser Schrift kam jenes nur auf 3,9:1 und blieb damit unter der
+     Lesbarkeitsschwelle von 4,5:1. Dieser Wert erreicht 4,6:1 — mit blossem
+     Auge derselbe Farbton, aber auf jedem Knopf und in jedem Hero lesbar. */
+  --color-signal: #d33f2c;
+  /* Dieselbe Farbe eine Stufe dunkler, für rote SCHRIFT auf hellem Grund.
+     Das Füllrot erreicht auf dem grauen Seitengrund nur 4,0:1 — als Fläche
+     mit weisser Schrift genügt es, als Schrift nicht. Zwei Töne, zwei
+     Aufgaben: signal füllt, signal-ink schreibt. */
+  --color-signal-ink: #b3331f;
+  --color-signal-deep: #a02d1b;
+  /* Sehr helle Tönung für ruhige Hinweisflächen. */
+  --color-signal-tint: #fdf1ee;
+
+  --color-deep: #16161a;
+  --color-concrete: #efefee;
+  --color-concrete-dim: #dedede;
   --color-paper: #ffffff;
-  --color-slate: #5a6b82;
-  /* Das Gelb der Schweizer Baustellensignalisation. Es trägt Information und
-     dekoriert nie: es markiert ausschliesslich einen befristeten Zustand, auf
-     den die lesende Person reagieren soll — eine laufende Rabattaktion, eine
-     Absage innert der Frist, ein noch offenes Startpasswort. Überall sonst
-     hat es nichts verloren, sonst verliert es seine Aussage. */
-  --color-amber: #ffb703;
+  --color-slate: #6c6c74;
+
+  /* Gelb trägt Information und dekoriert nie: es markiert ausschliesslich
+     einen befristeten Zustand, auf den die lesende Person reagieren soll —
+     eine laufende Rabattaktion, eine Absage innert der Frist, ein noch
+     offenes Startpasswort. Bewusst deutlich gelber als das Markenrot, sonst
+     verschwimmen die beiden und die Aussage geht verloren. */
+  --color-amber: #f2b705;
 
   --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
 
-  --radius-none: 0;
+  /* Die bestehende Marke arbeitet durchgehend mit weichen Ecken. Drei
+     Stufen, mehr braucht es nicht: Flächen, Bedienelemente, Marken. */
+  --radius-surface: 14px;
+  --radius-control: 8px;
+  --radius-pill: 999px;
 }
 
 @layer base {
@@ -231,6 +249,7 @@
     place-items: center;
     width: 2.375rem;
     height: 2.375rem;
+    border-radius: var(--radius-control);
     background: var(--color-signal);
     color: var(--color-paper);
     font-weight: 800;
@@ -252,7 +271,13 @@
 
   /* --- Flächen ---------------------------------------------------------
      Trennung entsteht über Flächenwechsel und 1px-Linien, nicht über
-     Schatten. Kein Radius: das L-Schild ist eckig, die Seite auch. */
+     Schatten. Weiche Ecken, weil die bestehende Marke durchgehend so
+     arbeitet — harte Kanten wirkten daneben wie ein Fremdkörper. */
+  .surface {
+    border-radius: var(--radius-surface);
+    overflow: hidden;
+  }
+
   .rule {
     border: 0;
     border-top: 1px solid color-mix(in srgb, var(--color-deep) 18%, transparent);
@@ -287,6 +312,7 @@
     font-stretch: 105%;
     letter-spacing: -0.01em;
     border: 2px solid transparent;
+    border-radius: var(--radius-control);
     cursor: pointer;
     text-decoration: none;
     transition:
@@ -320,7 +346,7 @@
 
   .btn-invert {
     background: var(--color-paper);
-    color: var(--color-signal);
+    color: var(--color-signal-ink);
   }
   .btn-invert:hover:not(:disabled) {
     background: var(--color-concrete);
@@ -345,6 +371,7 @@
     color: var(--color-deep);
     background: var(--color-paper);
     border: 1px solid color-mix(in srgb, var(--color-deep) 25%, transparent);
+    border-radius: var(--radius-control);
     transition: border-color 120ms ease;
   }
 
@@ -385,21 +412,25 @@
     font-weight: 750;
     font-size: 0.82rem;
     line-height: 1.2;
-    padding: 0.3rem 0.55rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--radius-pill);
   }
 
-  /* --- Das L-Schild ----------------------------------------------------
-     Das blaue Lernfahrer-Schild, aus dem die ganze Farbwelt kommt. */
-  .l-plate {
-    display: grid;
-    place-items: center;
-    background: var(--color-paper);
-    color: var(--color-signal);
-    font-weight: 800;
-    font-stretch: 125%;
-    line-height: 1;
-    aspect-ratio: 1;
-    user-select: none;
+  /* Kleine Auszeichnung wie „Inhaberin“ oder „01 · Voraussetzung“. */
+  .chip {
+    display: inline-block;
+    background: var(--color-signal);
+    color: var(--color-paper);
+    font-weight: 700;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--radius-pill);
+  }
+
+  .chip-quiet {
+    background: var(--color-signal-tint);
+    color: var(--color-signal-ink);
   }
 
   .skip-link {

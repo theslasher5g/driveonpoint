@@ -2,6 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { record } from "@/lib/audit";
@@ -90,6 +91,53 @@ export async function changePasswordAction(
   revalidatePath("/team");
 
   return { ok: "Passwort geändert. Andere Geräte wurden abgemeldet." };
+}
+
+/**
+ * Schaltet die Anmeldung mit Passwort ab oder wieder an.
+ *
+ * Abschalten geht nur, wenn ein Google-Konto verknüpft ist — sonst sperrt
+ * man sich mit einem Klick selbst aus. Das ist keine Bequemlichkeitsfrage:
+ * ohne diese Bedingung bräuchte es danach eine Administration, die das Konto
+ * zurücksetzt, und wenn es das eigene Administrationskonto war, niemanden
+ * mehr.
+ */
+export async function togglePasswordLoginAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const enable = formData.get("aktiv") === "ja";
+
+  if (!enable && !user.googleSub) {
+    redirect("/team/konto?fehler=ohne-google");
+  }
+
+  await db
+    .update(staff)
+    .set({ passwordLoginEnabled: enable, updatedAt: new Date() })
+    .where(eq(staff.id, user.id));
+
+  await record(
+    enable ? "konto.passwort-anmeldung-an" : "konto.passwort-anmeldung-aus",
+    { id: user.id, label: user.name },
+  );
+
+  revalidatePath("/team/konto");
+}
+
+/** Trennt das Google-Konto wieder. Nur, wenn ein Passwort als Weg bleibt. */
+export async function unlinkGoogleAction(): Promise<void> {
+  const user = await requireUser();
+
+  if (!user.passwordLoginEnabled) {
+    redirect("/team/konto?fehler=letzter-weg");
+  }
+
+  await db
+    .update(staff)
+    .set({ googleSub: null, googleLinkedAt: null, updatedAt: new Date() })
+    .where(eq(staff.id, user.id));
+
+  await record("konto.google-getrennt", { id: user.id, label: user.name });
+  revalidatePath("/team/konto");
 }
 
 export async function rotateCalendarTokenAction(): Promise<void> {

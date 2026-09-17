@@ -40,6 +40,14 @@ export const staff = pgTable(
     role: staffRole("role").notNull().default("bearbeiter"),
     active: boolean("active").notNull().default(true),
     mustChangePassword: boolean("must_change_password").notNull().default(true),
+
+    // Wer sich über Google anmeldet, wird über diese unveränderliche Kennung
+    // wiedererkannt — nicht über die Mailadresse, die sich ändern kann.
+    googleSub: text("google_sub"),
+    googleLinkedAt: timestamp("google_linked_at", { withTimezone: true }),
+    // Lässt sich abschalten, sobald Google eingerichtet ist. Dann ist das
+    // vergebene Startpasswort endgültig wertlos.
+    passwordLoginEnabled: boolean("password_login_enabled").notNull().default(true),
     // Erlaubt das Abonnieren des eigenen Kalenders in Google/Apple Kalender.
     calendarToken: text("calendar_token").notNull(),
     // Welche Lektionsarten diese Person überhaupt geben kann.
@@ -50,6 +58,8 @@ export const staff = pgTable(
   (t) => [
     uniqueIndex("staff_email_unique").on(t.email),
     uniqueIndex("staff_calendar_token_unique").on(t.calendarToken),
+    // Ein Google-Konto darf nicht auf zwei Mitarbeitende zeigen.
+    uniqueIndex("staff_google_sub_unique").on(t.googleSub),
   ],
 );
 
@@ -82,6 +92,10 @@ export const lessonTypes = pgTable(
     bufferMinutes: integer("buffer_minutes").notNull().default(15),
     // Preise in Rappen — Ganzzahl, damit nichts gerundet wird.
     priceRappen: integer("price_rappen").notNull().default(0),
+    // Ermässigter Betrag für Lehrlinge, Studierende und IV. Leer bedeutet:
+    // für dieses Angebot gibt es keine Ermässigung.
+    reducedPriceRappen: integer("reduced_price_rappen"),
+    reducedLabel: text("reduced_label").notNull().default("Lehrlinge, Studierende und IV"),
     // Gruppenkurse (VKU, Nothelfer) haben mehrere Plätze pro Termin.
     capacity: integer("capacity").notNull().default(1),
     // Wie viele Stunden im Voraus mindestens gebucht werden muss.
@@ -91,6 +105,33 @@ export const lessonTypes = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("lesson_types_slug_unique").on(t.slug)],
+);
+
+/**
+ * Pakete und Abos.
+ *
+ * Bewusst getrennt von den Lektionsarten: ein 10er-Abo ist ein Kauf, kein
+ * Kalendertermin. Es erscheint in der Preisliste, und die einzelnen Lektionen
+ * daraus werden danach ganz normal als Fahrstunde gebucht.
+ */
+export const pricePackages = pgTable(
+  "price_packages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // Leer bedeutet: gehört zu keinem bestimmten Angebot.
+    lessonTypeId: uuid("lesson_type_id").references(() => lessonTypes.id, {
+      onDelete: "cascade",
+    }),
+    label: text("label").notNull(),
+    priceRappen: integer("price_rappen").notNull(),
+    // Wie viele Lektionen enthalten sind. Nur zur Anzeige.
+    lessons: smallint("lessons"),
+    note: text("note"),
+    active: boolean("active").notNull().default(true),
+    sortOrder: smallint("sort_order").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("price_packages_sort_idx").on(t.sortOrder)],
 );
 
 /** Welche Lektionsart welche Person anbieten darf. */
@@ -244,5 +285,6 @@ export const auditLog = pgTable(
 export type Staff = typeof staff.$inferSelect;
 export type StaffRole = (typeof staffRole.enumValues)[number];
 export type LessonType = typeof lessonTypes.$inferSelect;
+export type PricePackage = typeof pricePackages.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Promotion = typeof promotions.$inferSelect;

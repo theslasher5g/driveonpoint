@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { BrandMark } from "./brand-mark";
 import { site } from "@/lib/site";
 
 const ANGEBOT = [
   { href: "/fahrstunden", label: "Fahrstunden Kategorie B" },
   { href: "/vku", label: "Verkehrskundeunterricht" },
-  { href: "/nothelfer", label: "Nothelferkurs" },
+  { href: "/nothilfekurs", label: "Nothilfekurs" },
   { href: "/preise", label: "Preise und Aktionen" },
 ];
 
@@ -28,7 +29,7 @@ export function SiteFooter() {
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-3 mb-5">
-              <span className="l-plate w-9 h-9 text-xl">L</span>
+              <BrandMark className="w-9" tone="invert" />
               <span className="stretch-wide font-extrabold text-lg leading-none">{site.name}</span>
             </div>
             <address className="not-italic text-paper/70 text-fine">

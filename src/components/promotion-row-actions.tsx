@@ -49,7 +49,7 @@ function SmallButton({ idle, busy }: { idle: string; busy: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="text-fine font-semibold text-signal underline underline-offset-2 disabled:opacity-50"
+      className="text-fine font-semibold text-signal-ink underline underline-offset-2 disabled:opacity-50"
     >
       {pending ? busy : idle}
     </button>

@@ -37,7 +37,7 @@ export default function KontaktPage() {
               <div className="border-b border-deep/15 py-4">
                 <dt className="text-fine text-slate">Telefon</dt>
                 <dd className="nums font-bold text-lg mt-0.5">
-                  <a href={`tel:${site.contact.phoneHref}`} className="hover:text-signal">
+                  <a href={`tel:${site.contact.phoneHref}`} className="hover:text-signal-ink">
                     {site.contact.phone}
                   </a>
                 </dd>
@@ -45,7 +45,7 @@ export default function KontaktPage() {
               <div className="border-b border-deep/15 py-4">
                 <dt className="text-fine text-slate">Mail</dt>
                 <dd className="font-bold text-lg mt-0.5 break-all">
-                  <a href={`mailto:${site.contact.email}`} className="hover:text-signal">
+                  <a href={`mailto:${site.contact.email}`} className="hover:text-signal-ink">
                     {site.contact.email}
                   </a>
                 </dd>

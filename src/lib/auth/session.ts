@@ -74,7 +74,14 @@ export async function createSession(
 
 export type SessionUser = Pick<
   Staff,
-  "id" | "email" | "name" | "role" | "mustChangePassword" | "calendarToken"
+  | "id"
+  | "email"
+  | "name"
+  | "role"
+  | "mustChangePassword"
+  | "calendarToken"
+  | "googleSub"
+  | "passwordLoginEnabled"
 >;
 
 export async function currentUser(): Promise<SessionUser | null> {
@@ -90,6 +97,8 @@ export async function currentUser(): Promise<SessionUser | null> {
       role: staff.role,
       mustChangePassword: staff.mustChangePassword,
       calendarToken: staff.calendarToken,
+      googleSub: staff.googleSub,
+      passwordLoginEnabled: staff.passwordLoginEnabled,
       active: staff.active,
     })
     .from(staffSessions)

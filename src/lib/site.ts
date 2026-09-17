@@ -1,17 +1,47 @@
 /**
  * Sämtliche Texte und Stammdaten der öffentlichen Seite.
  *
- * Preise, Rabatte, Termine und Mitarbeitende kommen aus der Datenbank und
- * werden im Team-Bereich gepflegt. Alles in dieser Datei ist fester Text und
- * wird hier geändert — danach neu bauen und den Container neu starten.
+ * Preise, Pakete, Rabatte, Termine und Mitarbeitende kommen aus der Datenbank
+ * und werden im Team-Bereich gepflegt. Alles in dieser Datei ist fester Text
+ * und wird hier geändert — danach neu bauen und den Container neu starten.
  *
  * Mit ### markierte Stellen sind Platzhalter und müssen vor dem Aufschalten
  * durch die echten Angaben ersetzt werden.
  */
 
+export type TeamMember = {
+  name: string;
+  role: string;
+  /** Kennzeichnet die Inhaberin. Erscheint als Marke auf der Karte. */
+  owner: boolean;
+  body: string;
+  tags: string[];
+  /** Pfad zum Porträt unter /public/images. Leer lassen, bis eines da ist. */
+  photo: string;
+};
+
+const team: TeamMember[] = [
+  {
+    name: "Christina",
+    role: "Sozialpädagogin HF & Fahrlehrerin",
+    owner: true,
+    body: "Ich bin Sozialpädagogin HF, Fahrlehrerin sowie Nothelferinstruktorin und BLS-AED Instruktorin. Durch meine pädagogische Erfahrung lege ich grossen Wert auf eine klare, ruhige und verständliche Kommunikation. Mir ist wichtig, dass du dich in jeder Fahrsituation wohl und sicher fühlst.",
+    tags: ["Fahrlehrerin", "Sozialpädagogin HF", "BLS-AED Instruktorin"],
+    photo: "",
+  },
+  {
+    name: "Jolanda",
+    role: "Nothelferinstruktorin & FaBe",
+    owner: false,
+    body: "Ich bin Fachfrau Betreuung mit Herz und Leidenschaft. Als sozialer, selbstbewusster und lebensfroher Mensch bringe ich viel Humor und positive Energie in meinen Alltag. Neben meiner Tätigkeit als FaBe bin ich auch Nothelferinstruktorin. Es bereitet mir grosse Freude, Menschen für das Thema Erste Hilfe zu begeistern – in Notfällen richtig zu handeln ist für mich eine Herzenssache.",
+    tags: ["Nothelferinstruktorin", "FaBe"],
+    photo: "",
+  },
+];
+
 export const site = {
-  name: "Drive on Point",
-  legalName: "Drive on Point GmbH", // ###
+  name: "DriveOnPoint",
+  legalName: "DriveOnPoint GmbH", // ###
   claim: "Fahrschule",
   domain: "driveonpoint.ch",
 
@@ -31,26 +61,52 @@ export const site = {
     { days: "Sonntag", time: "geschlossen" },
   ],
 
-  /** Einzugsgebiet — erscheint im Fussbereich und in den Metadaten. */
-  region: ["Zürich", "Oerlikon", "Wallisellen", "Dübendorf", "Kloten", "Opfikon"],
+  region: ["Zürich", "Oerlikon", "Wallisellen", "Dübendorf", "Kloten", "Opfikon"], // ###
 
-  languages: ["Deutsch", "Englisch", "Italienisch"], // ###
+  languages: ["Deutsch", "Englisch"], // ###
 
   hero: {
-    headline: ["Fahren lernen,", "ohne Umwege."],
-    lead:
-      "Fahrstunden, Verkehrskundeunterricht und Nothelferkurs für den Führerausweis Kategorie B — in Zürich Nord, bei Fahrlehrerinnen und Fahrlehrern, die dich bis zur Prüfung begleiten.",
+    headline: ["Fahren lernen,", "ohne Druck."],
+    lead: "Herzlich willkommen bei DriveOnPoint — deiner Fahrschule mit Herz, Leidenschaft und Professionalität. Wir begleiten dich auf deinem Weg zum Führerausweis kompetent, empathisch und mit Freude am Fahren.",
   },
 
-  /**
-   * Der Schweizer Weg zum Führerausweis. Diese Reihenfolge ist tatsächlich
-   * eine Abfolge — deshalb ist sie nummeriert, anders als die Angebote.
-   */
+  philosophy: {
+    title: "Unsere Philosophie",
+    body: "Bei DriveOnPoint steht dein persönlicher Lernstand im Mittelpunkt. Wir arbeiten mit dir individuell und in deinem eigenen Lerntempo – ganz ohne Druck. Leidenschaft, Professionalität und Menschlichkeit bilden dabei die Grundlage unserer Arbeit.",
+    tags: ["Individuell", "Professionell", "Mit Herz"],
+  },
+
+  /** Kurzbeschreibungen der drei Stufen, wie sie auf der Startseite stehen. */
+  offers: {
+    nothilfekurs: {
+      step: "Voraussetzung",
+      title: "Nothilfekurs",
+      lead: "In unserem Nothilfekurs lernst du praxisnah, wie du in Notsituationen ruhig bleibst und richtig handelst – vom Absichern der Unfallstelle bis zur Wiederbelebung.",
+      duration: "10 Stunden",
+      minAge: "14 Jahre",
+      note: "Pflicht vor der Theorieprüfung – damit du im Ernstfall Leben retten kannst",
+    },
+    vku: {
+      step: "VKU",
+      title: "Verkehrskundeunterricht",
+      lead: "Der VKU bereitet dich auf die Verantwortung im Strassenverkehr vor – mit Themen wie Gefahrenwahrnehmung, physikalische Grundlagen, Reaktionszeit und sicheres Verhalten.",
+      topics: ["Gefahrenwahrnehmung", "Physikalische Grundlagen", "Sicheres Verhalten"],
+      note: "Investiere in deine Sicherheit und die der anderen Verkehrsteilnehmer",
+    },
+    fahrstunden: {
+      step: "Praxis",
+      title: "Fahrstunden",
+      lead: "Flexible Pakete für deine praktische Ausbildung – vom Schnuppern bis zum kompletten Abo.",
+      note: "Alle Preise inklusive Versicherung und Administration.",
+    },
+  },
+
+  /** Der Schweizer Weg zum Führerausweis, in der Reihenfolge der Schritte. */
   path: [
     {
-      title: "Nothelferkurs",
-      body: "Zehn Stunden lebensrettende Sofortmassnahmen. Der Ausweis gilt sechs Jahre und wird für den Lernfahrausweis verlangt.",
-      meta: "10 Stunden, ab 16 Jahren",
+      title: "Nothilfekurs",
+      body: "Zehn Stunden lebensrettende Sofortmassnahmen. Pflicht, bevor du zur Theorieprüfung antreten darfst.",
+      meta: "10 Stunden, ab 14 Jahren",
     },
     {
       title: "Sehtest und Gesuch",
@@ -69,7 +125,7 @@ export const site = {
     },
     {
       title: "Fahrstunden",
-      body: "So viele, wie du brauchst. Wir sagen dir ehrlich, wann du bereit bist — und melden dich erst dann an.",
+      body: "So viele, wie du brauchst — in deinem eigenen Lerntempo. Wir sagen dir ehrlich, wann du bereit bist, und melden dich erst dann an.",
       meta: "45 Minuten pro Lektion",
     },
     {
@@ -84,82 +140,75 @@ export const site = {
     },
   ],
 
-  /** Gründe, hier zu buchen. Bewusst konkret statt werbend. */
   reasons: [
+    {
+      title: "Dein Lerntempo bestimmt den Takt",
+      body: "Wir arbeiten individuell mit dir, ganz ohne Druck. Niemand wird durch einen Lehrplan gehetzt, der nicht zu ihm passt.",
+    },
     {
       title: "Du fährst immer bei derselben Person",
       body: "Kein Wechsel zwischen Fahrlehrern, kein Erklären von vorne. Wer dich anlernt, meldet dich auch zur Prüfung an.",
     },
     {
-      title: "Abholung, wo du gerade bist",
-      body: "Zuhause, Schule oder Arbeitsplatz im Einzugsgebiet — die Lektion beginnt dort, wo sie dir passt.",
+      title: "Kurse und Fahrstunden aus einer Hand",
+      body: "Nothilfekurs, Verkehrskunde und Praxis bei denselben Leuten — du musst nichts zweimal organisieren.",
     },
     {
       title: "Absagen bis 24 Stunden vorher",
       body: "Kostenlos und ohne Rückfragen. Der Link dazu steht in deiner Bestätigungsmail.",
     },
-    {
-      title: "Prüfungsfahrzeug ist dein Übungsfahrzeug",
-      body: "Du trittst mit dem Auto an, das du kennst. Keine Überraschung am Prüfungstag.",
-    },
   ],
 
   /**
    * Drei Bildplätze. Die Dateien liegen unter /public/images und sind aktuell
-   * Platzhalter — einfach durch echte Fotos gleichen Namens ersetzen.
+   * Platzhalter — einfach durch echte Fotos ersetzen. Weil die Dateien
+   * dauerhaft zwischengespeichert werden, dabei einen neuen Dateinamen
+   * vergeben und ihn hier eintragen.
    * Empfohlen: 1600×1200 px, WebP oder JPEG, unter 300 KB.
    */
   images: {
     hero: {
       src: "/images/platzhalter-fahrzeug.svg",
-      alt: "Schulfahrzeug von Drive on Point vor der Fahrschule",
+      alt: "Schulfahrzeug von DriveOnPoint",
       width: 1600,
       height: 1200,
     },
     team: {
       src: "/images/platzhalter-team.svg",
-      alt: "Fahrlehrerinnen und Fahrlehrer von Drive on Point",
+      alt: "Christina und Jolanda von DriveOnPoint",
       width: 1600,
       height: 1200,
     },
     course: {
       src: "/images/platzhalter-kursraum.svg",
-      alt: "Kursraum für Verkehrskundeunterricht und Nothelferkurs",
+      alt: "Kursraum für Verkehrskundeunterricht und Nothilfekurs",
       width: 1600,
       height: 1200,
     },
   },
 
-  /** Wird im Team-Bereich nicht gepflegt — hier ändern. */
-  team: [
-    {
-      name: "Vorname Nachname", // ###
-      role: "Inhaberin und Fahrlehrerin",
-      body: "Seit 2012 Fahrlehrerin, Ausbildung Kategorie B und Verkehrskundeunterricht.", // ###
-    },
-    {
-      name: "Vorname Nachname", // ###
-      role: "Fahrlehrer",
-      body: "Unterrichtet auf Deutsch und Italienisch, Schwerpunkt Autobahn und Nachtfahrten.", // ###
-    },
-  ],
+  team,
 
   faq: [
     {
       q: "Wie viele Fahrstunden brauche ich?",
-      a: "Das lässt sich vorher nicht sagen. Wer regelmässig privat mitfährt, braucht erfahrungsgemäss weniger. Wir schauen nach jeder Lektion gemeinsam, wo du stehst, und melden dich erst zur Prüfung an, wenn du sie bestehst.",
+      a: "Das lässt sich vorher nicht sagen — und wir raten dir von jeder Fahrschule ab, die dir eine Zahl nennt. Wer regelmässig privat mitfährt, braucht erfahrungsgemäss weniger. Wir schauen nach jeder Lektion gemeinsam, wo du stehst.",
     },
     {
       q: "Kann ich eine Lektion absagen?",
       a: "Ja, kostenlos bis 24 Stunden vor Beginn. Den Link findest du in der Bestätigungsmail. Später abgesagte Lektionen werden verrechnet.",
     },
     {
-      q: "Muss ich den Nothelferkurs bei euch machen?",
-      a: "Nein. Jeder anerkannte Nothelferausweis wird akzeptiert, solange er nicht älter als sechs Jahre ist.",
+      q: "Muss ich den Nothilfekurs bei euch machen?",
+      a: "Nein. Jeder anerkannte Nothilfeausweis wird akzeptiert, solange er nicht älter als sechs Jahre ist.",
+    },
+    {
+      q: "Gibt es eine Ermässigung?",
+      a: "Ja. Lehrlinge, Studierende und IV-Bezügerinnen und -Bezüger zahlen bei mehreren Angeboten weniger. Bring einfach den Ausweis mit.",
     },
     {
       q: "Wie bezahle ich?",
-      a: "Nach der Lektion per TWINT oder Karte, oder gesammelt auf Rechnung. Kurse werden vor Kursbeginn bezahlt.",
+      a: "Nach der Lektion per TWINT oder Karte, oder gesammelt auf Rechnung. Kurse und Abos werden vor Beginn bezahlt.",
     },
     {
       q: "Bekomme ich das Auto für die Prüfung?",

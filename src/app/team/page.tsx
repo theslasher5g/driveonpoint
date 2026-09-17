@@ -87,7 +87,7 @@ export default async function TeamDashboard({
         {upcoming.length === 0 ? (
           <p className="text-slate max-w-[54ch]">
             Keine Termine eingetragen. Prüf deine{" "}
-            <Link href="/team/verfuegbarkeit" className="font-semibold text-signal underline underline-offset-4">
+            <Link href="/team/verfuegbarkeit" className="font-semibold text-signal-ink underline underline-offset-4">
               Verfügbarkeit
             </Link>{" "}
             — ohne eingetragene Zeiten kann niemand bei dir buchen.
@@ -114,7 +114,7 @@ export default async function TeamDashboard({
                   </h3>
                   {entry.customerPhone && (
                     <p className="nums text-fine text-slate mt-0.5">
-                      <a href={`tel:${entry.customerPhone}`} className="hover:text-signal">
+                      <a href={`tel:${entry.customerPhone}`} className="hover:text-signal-ink">
                         {entry.customerPhone}
                       </a>
                     </p>

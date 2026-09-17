@@ -7,10 +7,12 @@ import {
   availabilityRules,
   bookings,
   lessonTypes,
+  pricePackages,
   promotions,
   staff,
   staffLessonTypes,
   type LessonType,
+  type PricePackage,
   type Promotion,
 } from "./db/schema";
 import { subtract, type Interval } from "./intervals";
@@ -45,6 +47,14 @@ export async function listLessonTypes(): Promise<LessonType[]> {
 export async function lessonTypeBySlug(slug: string): Promise<LessonType | null> {
   const [row] = await db.select().from(lessonTypes).where(eq(lessonTypes.slug, slug)).limit(1);
   return row ?? null;
+}
+
+export async function listPackages(): Promise<PricePackage[]> {
+  return db
+    .select()
+    .from(pricePackages)
+    .where(eq(pricePackages.active, true))
+    .orderBy(asc(pricePackages.sortOrder), asc(pricePackages.priceRappen));
 }
 
 export async function activePromotions(): Promise<Promotion[]> {

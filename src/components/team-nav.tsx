@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { logoutAction } from "@/app/team/actions";
 import { ROLE_LABEL } from "@/lib/auth/permissions";
 import type { StaffRole } from "@/lib/db/schema";
+import { BrandMark } from "./brand-mark";
+import { site } from "@/lib/site";
 
 export function TeamNav({
   links,
@@ -23,10 +25,16 @@ export function TeamNav({
           Navigation über die volle Breite. In einer Zeile bliebe für die
           Navigation ein Streifen von wenigen Zentimetern. */}
       <div className="shell py-3 flex flex-wrap items-center gap-x-5 gap-y-2">
-        <p className="text-fine shrink-0">
-          <span className="font-bold">{name}</span>
-          <span className="text-paper/55"> — {ROLE_LABEL[role]}</span>
-        </p>
+        {/* Seit die öffentliche Kopfzeile hier nicht mehr mitläuft, ist das
+            der einzige Weg zurück auf die Website. */}
+        <Link
+          href="/"
+          className="flex items-center gap-2 shrink-0"
+          aria-label={`${site.name} — zur Website`}
+        >
+          <BrandMark className="w-6" tone="invert" />
+          <span className="stretch-wide font-extrabold leading-none">{site.name}</span>
+        </Link>
 
         <nav
           aria-label="Team-Bereich"
@@ -55,14 +63,20 @@ export function TeamNav({
           </ul>
         </nav>
 
-        <form action={logoutAction} className="ml-auto shrink-0 sm:ml-0">
-          <button
-            type="submit"
-            className="text-fine font-semibold text-paper/70 hover:text-paper underline-offset-4 hover:underline"
-          >
-            Abmelden
-          </button>
-        </form>
+        <div className="ml-auto shrink-0 flex items-center gap-4">
+          <p className="text-fine hidden sm:block">
+            <span className="font-bold">{name}</span>
+            <span className="text-paper/55"> — {ROLE_LABEL[role]}</span>
+          </p>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="text-fine font-semibold text-paper/70 hover:text-paper underline-offset-4 hover:underline"
+            >
+              Abmelden
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

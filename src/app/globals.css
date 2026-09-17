@@ -53,6 +53,10 @@
      offenes Startpasswort. Bewusst deutlich gelber als das Markenrot, sonst
      verschwimmen die beiden und die Aussage geht verloren. */
   --color-amber: #f2b705;
+  /* Für Gelb als SCHRIFT statt Fläche: das Füllgelb kommt auf weissem
+     Papier nur auf rund 1,6:1 — als Ziffer oder Text unlesbar. Dieser Ton
+     erreicht 6,4:1, derselbe Farbcharakter, aber lesbar. */
+  --color-amber-ink: #7a5900;
 
   /* Rückmeldungen: erledigt und fehlgeschlagen sehen sich bewusst nicht
      ähnlich. Vorher liefen beide über eine Rot-Variante — eine bestätigte

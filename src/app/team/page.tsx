@@ -3,7 +3,7 @@ import { and, asc, eq, gte, lte, ne } from "drizzle-orm";
 import { requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
-import { bookings, lessonTypes, staff } from "@/lib/db/schema";
+import { availabilityRules, bookings, lessonTypes, staff, staffLessonTypes } from "@/lib/db/schema";
 import {
   addDays,
   formatDayLong,
@@ -24,70 +24,112 @@ export default async function TeamDashboard({
   const { fehler } = await searchParams;
 
   const today = todayInZurich();
+  const weekEnd = addDays(today, 6);
   const seesEveryone = can(user.role, "verfuegbarkeit.alle");
 
-  const upcoming = await db
-    .select({
-      id: bookings.id,
-      reference: bookings.reference,
-      startsAt: bookings.startsAt,
-      status: bookings.status,
-      customerName: bookings.customerName,
-      customerPhone: bookings.customerPhone,
-      customerNote: bookings.customerNote,
-      lessonName: lessonTypes.name,
-      staffName: staff.name,
-    })
-    .from(bookings)
-    .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
-    .leftJoin(staff, eq(staff.id, bookings.staffId))
-    .where(
-      and(
-        ne(bookings.status, "abgesagt"),
-        gte(bookings.startsAt, zurichToInstant(today, "00:00")),
-        lte(bookings.startsAt, zurichToInstant(addDays(today, 7), "23:59")),
-        seesEveryone ? undefined : eq(bookings.staffId, user.id),
-      ),
-    )
-    .orderBy(asc(bookings.startsAt))
-    .limit(60);
+  const [upcoming, ownOfferings, coveredOfferingIds] = await Promise.all([
+    db
+      .select({
+        id: bookings.id,
+        reference: bookings.reference,
+        startsAt: bookings.startsAt,
+        status: bookings.status,
+        customerName: bookings.customerName,
+        customerPhone: bookings.customerPhone,
+        customerNote: bookings.customerNote,
+        lessonName: lessonTypes.name,
+        staffName: staff.name,
+      })
+      .from(bookings)
+      .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
+      .leftJoin(staff, eq(staff.id, bookings.staffId))
+      .where(
+        and(
+          ne(bookings.status, "abgesagt"),
+          gte(bookings.startsAt, zurichToInstant(today, "00:00")),
+          lte(bookings.startsAt, zurichToInstant(weekEnd, "23:59")),
+          seesEveryone ? undefined : eq(bookings.staffId, user.id),
+        ),
+      )
+      .orderBy(asc(bookings.startsAt))
+      .limit(60),
+    // Die eigenen Angebote, um sie gegen die eingetragene Verfügbarkeit
+    // abzugleichen — ohne Zeiten kann dort niemand buchen.
+    db
+      .select({ id: lessonTypes.id, name: lessonTypes.name })
+      .from(staffLessonTypes)
+      .innerJoin(lessonTypes, eq(lessonTypes.id, staffLessonTypes.lessonTypeId))
+      .where(and(eq(staffLessonTypes.staffId, user.id), eq(lessonTypes.active, true))),
+    db
+      .selectDistinct({ id: availabilityRules.lessonTypeId })
+      .from(availabilityRules)
+      .where(eq(availabilityRules.staffId, user.id))
+      .then((rows) => rows.map((row) => row.id)),
+  ]);
+
+  const uncovered = ownOfferings.filter((offering) => !coveredOfferingIds.includes(offering.id));
 
   const todays = upcoming.filter((entry) => zurichDay(entry.startsAt) === today);
+  const thisWeek = upcoming.length;
 
   return (
-    <section className="shell py-10 md:py-14">
+    <section className="shell band">
       <div className="lane">
         {fehler === "keine-berechtigung" && (
-          <p role="alert" className="notice notice-error mb-8">
+          <p role="alert" className="notice notice-error mb-6">
             Für diesen Bereich fehlt dir die Berechtigung.
           </p>
         )}
 
-        <h1 className="text-title">Guten Tag, {user.name.split(" ")[0]}.</h1>
-        <p className="text-slate text-lead mt-4 max-w-[54ch]">
-          {todays.length === 0
-            ? "Heute stehen keine Termine an."
-            : `Heute ${todays.length === 1 ? "steht ein Termin" : `stehen ${todays.length} Termine`} an.`}
-        </p>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <h1 className="text-title">Guten Tag, {user.name.split(" ")[0]}.</h1>
+          {user.mustChangePassword && (
+            <Link
+              href="/team/konto"
+              className="text-fine font-bold text-signal-ink underline underline-offset-4"
+            >
+              Startpasswort noch nicht geändert
+            </Link>
+          )}
+        </div>
 
-        {user.mustChangePassword && (
-          <p className="bg-amber text-deep px-5 py-4 font-semibold mt-7 max-w-xl">
-            Dein Passwort ist noch das vergebene.{" "}
-            <Link href="/team/konto" className="underline underline-offset-4">
-              Jetzt ändern
+        {/* Drei Kennzahlen statt eines Satzes Fliesstext: was heute und
+            diese Woche ansteht, und ob irgendwo die Verfügbarkeit fehlt —
+            der einzige der drei Werte, der wirklich Handeln verlangt, daher
+            in Gelb statt in der neutralen Kopf-Farbe. */}
+        <dl className="grid gap-px bg-deep/12 border border-deep/12 grid-cols-2 sm:grid-cols-3 mt-7">
+          <StatTile label="Heute" value={todays.length} />
+          <StatTile label={seesEveryone ? "Diese Woche, alle" : "Diese Woche"} value={thisWeek} />
+          <StatTile
+            label="Ohne Verfügbarkeit"
+            value={uncovered.length}
+            tone={uncovered.length > 0 ? "warn" : undefined}
+            className="col-span-2 sm:col-span-1"
+          />
+        </dl>
+
+        {uncovered.length > 0 && (
+          <p className="notice notice-warn mt-5 max-w-[62ch]">
+            Für {uncovered.map((offering) => offering.name).join(", ")} ist noch keine
+            wöchentliche Zeit eingetragen — dort kann dich niemand buchen.{" "}
+            <Link href="/team/verfuegbarkeit" className="underline underline-offset-2">
+              Jetzt eintragen
             </Link>
             .
           </p>
         )}
 
-        <h2 className="text-section mt-12 mb-5">
+        <h2 className="text-section mt-10 mb-4">
           {seesEveryone ? "Nächste sieben Tage, alle" : "Deine nächsten sieben Tage"}
         </h2>
 
         {upcoming.length === 0 ? (
-          <p className="text-slate max-w-[54ch]">
+          <p className="text-slate text-fine max-w-[54ch]">
             Keine Termine eingetragen. Prüf deine{" "}
-            <Link href="/team/verfuegbarkeit" className="font-semibold text-signal-ink underline underline-offset-4">
+            <Link
+              href="/team/verfuegbarkeit"
+              className="font-semibold text-signal-ink underline underline-offset-4"
+            >
               Verfügbarkeit
             </Link>{" "}
             — ohne eingetragene Zeiten kann niemand bei dir buchen.
@@ -97,18 +139,18 @@ export default async function TeamDashboard({
             {upcoming.map((entry) => (
               <article
                 key={entry.id}
-                className="border-b border-deep/15 py-4 grid gap-x-6 gap-y-1 sm:grid-cols-[9rem_1fr_auto] items-baseline"
+                className="border-b border-deep/15 py-3 grid gap-x-6 gap-y-0.5 sm:grid-cols-[8rem_1fr_auto] items-baseline"
               >
-                <p className="nums font-bold">
+                <p className="nums text-fine font-bold">
                   {zurichTime(entry.startsAt)}
-                  <span className="block text-fine font-normal text-slate">
+                  <span className="block font-normal text-slate">
                     {formatDayLong(zurichDay(entry.startsAt)).split(",")[0]},{" "}
                     {zurichDay(entry.startsAt).slice(8)}.{zurichDay(entry.startsAt).slice(5, 7)}.
                   </span>
                 </p>
 
                 <div className="min-w-0">
-                  <h3 className="text-base">
+                  <h3 className="text-fine font-bold">
                     {entry.customerName ?? "Angaben gelöscht"}
                     <span className="font-normal text-slate"> — {entry.lessonName ?? "Termin"}</span>
                   </h3>
@@ -132,7 +174,7 @@ export default async function TeamDashboard({
           </div>
         )}
 
-        <div className="flex flex-wrap gap-3 mt-10">
+        <div className="flex flex-wrap gap-3 mt-8">
           <Link href="/team/kalender" className="btn btn-primary">
             Zum Kalender
           </Link>
@@ -142,5 +184,34 @@ export default async function TeamDashboard({
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * Kennzahl mit grosser Ziffer.
+ *
+ * Die Zahl steht in normalen, proportionalen Ziffern statt in `.nums`
+ * (tabellarisch): Letzteres richtet Spalten aus, macht eine einzelne grosse
+ * Zahl aber unnötig breit. Farbe trägt hier ausschliesslich Bedeutung — Gelb
+ * ausschliesslich für die Kachel, die tatsächlich eine Reaktion braucht.
+ */
+function StatTile({
+  label,
+  value,
+  tone,
+  className = "",
+}: {
+  label: string;
+  value: number;
+  tone?: "warn";
+  className?: string;
+}) {
+  return (
+    <div className={`bg-paper p-4 ${className}`}>
+      <p className="text-fine text-slate">{label}</p>
+      <p className={`text-3xl font-semibold leading-none mt-2 ${tone === "warn" ? "text-amber-ink" : ""}`}>
+        {value}
+      </p>
+    </div>
   );
 }

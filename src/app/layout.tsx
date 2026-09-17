@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { PublicOnly } from "@/components/public-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/lib/site";
@@ -33,11 +34,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#inhalt" className="skip-link">
           Zum Inhalt springen
         </a>
-        <SiteHeader />
+        <PublicOnly>
+          <SiteHeader />
+        </PublicOnly>
         <main id="inhalt" className="flex-1">
           {children}
         </main>
-        <SiteFooter />
+        <PublicOnly>
+          <SiteFooter />
+        </PublicOnly>
       </body>
     </html>
   );

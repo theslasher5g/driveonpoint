@@ -9,6 +9,7 @@ export const PERMISSIONS = [
   "aktionen.verwalten",
   "mitarbeiter.verwalten",
   "protokoll.ansehen",
+  "buchhaltung.ansehen",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -37,7 +38,7 @@ export const ROLE_LABEL: Record<StaffRole, string> = {
 };
 
 export const ROLE_DESCRIPTION: Record<StaffRole, string> = {
-  admin: "Sieht und ändert alles, inklusive Konten und Rollen der anderen.",
+  admin: "Sieht und ändert alles, inklusive Konten, Rollen und Buchhaltung.",
   manager: "Kalender aller Mitarbeitenden, Preise und Rabattaktionen.",
   bearbeiter: "Sieht den Kalender und trägt die eigene Verfügbarkeit ein.",
 };

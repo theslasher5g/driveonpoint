@@ -113,6 +113,11 @@ export function weekdayName(weekday: number, short = false): string {
   return short ? WEEKDAY_SHORT[weekday] : WEEKDAY_LONG[weekday];
 }
 
+/** Monatsname zu einer Zahl von 1 bis 12. */
+export function monthName(month: number): string {
+  return MONTHS[month - 1] ?? "";
+}
+
 /** "Dienstag, 22. September 2026" */
 export function formatDayLong(day: string): string {
   const [year, month, date] = day.split("-").map(Number);

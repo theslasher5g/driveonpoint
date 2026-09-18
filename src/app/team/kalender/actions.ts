@@ -36,9 +36,10 @@ export async function cancelByStaffAction(formData: FormData): Promise<void> {
 
   if (!entry || entry.status === "abgesagt") return;
 
+  const now = new Date();
   await db
     .update(bookings)
-    .set({ status: "abgesagt", updatedAt: new Date() })
+    .set({ status: "abgesagt", cancelledAt: now, updatedAt: now })
     .where(eq(bookings.id, id));
 
   await record("buchung.abgesagt-intern", { id: user.id, label: user.name }, {

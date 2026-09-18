@@ -23,12 +23,14 @@ export async function cancelBookingAction(formData: FormData): Promise<void> {
   const verdict = await consume(`absage:${ip}`, 20, 3600);
   if (!verdict.ok) redirect("/?fehler=zu-viele-anfragen");
 
+  const now = new Date();
   const [cancelled] = await db
     .update(bookings)
     .set({
       status: "abgesagt",
       cancelToken: `abgesagt:${crypto.randomUUID()}`,
-      updatedAt: new Date(),
+      cancelledAt: now,
+      updatedAt: now,
     })
     .where(and(eq(bookings.cancelToken, token), gt(bookings.startsAt, new Date())))
     .returning({ reference: bookings.reference });

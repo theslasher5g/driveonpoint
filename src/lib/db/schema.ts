@@ -262,6 +262,13 @@ export const bookings = pgTable(
 
     // Erlaubt der Kundschaft das Absagen per Link, ohne Konto.
     cancelToken: text("cancel_token").notNull(),
+    /**
+     * Wann abgesagt wurde. Eigene Spalte statt `updatedAt`, weil der
+     * Aufräumlauf nach 30 Tagen ebenfalls `updatedAt` anfasst — für die
+     * Buchhaltung muss aber auch danach noch erkennbar sein, ob eine Absage
+     * kurzfristig war und laut AGB verrechnet werden durfte.
+     */
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     priceRappen: integer("price_rappen").notNull().default(0),
     appliedPromotionLabel: text("applied_promotion_label"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

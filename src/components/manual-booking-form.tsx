@@ -1,0 +1,137 @@
+"use client";
+
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import { createManualBookingAction, type ManualBookingState } from "@/app/team/kalender/erfassen/actions";
+
+const EMPTY: ManualBookingState = {};
+
+export function ManualBookingForm({
+  angebot,
+  person,
+  day,
+  time,
+}: {
+  angebot: string;
+  person: string;
+  day: string;
+  time: string;
+}) {
+  const [state, action] = useActionState(createManualBookingAction, EMPTY);
+
+  return (
+    <form action={action} className="space-y-5">
+      <input type="hidden" name="angebot" value={angebot} />
+      <input type="hidden" name="person" value={person} />
+      <input type="hidden" name="tag" value={day} />
+      <input type="hidden" name="zeit" value={time} />
+
+      {state.error && (
+        <p role="alert" className="notice notice-error">
+          {state.error}
+        </p>
+      )}
+
+      <Field
+        name="name"
+        label="Vor- und Nachname"
+        autoComplete="name"
+        error={state.fieldErrors?.name}
+        required
+      />
+      <Field
+        name="telefon"
+        type="tel"
+        label="Telefonnummer"
+        autoComplete="tel"
+        inputMode="tel"
+        error={state.fieldErrors?.telefon}
+        required
+      />
+      <Field
+        name="email"
+        type="email"
+        label="Mailadresse"
+        hint="Freiwillig — ohne sie geht keine Bestätigung raus, der Termin steht trotzdem."
+        autoComplete="email"
+        inputMode="email"
+        error={state.fieldErrors?.email}
+      />
+
+      <div>
+        <label className="field-label" htmlFor="bemerkung">
+          Bemerkung <span className="font-normal text-slate">(freiwillig)</span>
+        </label>
+        <textarea
+          id="bemerkung"
+          name="bemerkung"
+          rows={3}
+          maxLength={500}
+          className="field resize-y"
+          aria-invalid={state.fieldErrors?.bemerkung ? "true" : undefined}
+          placeholder="Zum Beispiel ein abweichender Treffpunkt."
+        />
+        {state.fieldErrors?.bemerkung && (
+          <p className="field-hint text-danger">{state.fieldErrors.bemerkung}</p>
+        )}
+      </div>
+
+      <SubmitButton />
+    </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn btn-primary w-full sm:w-auto" disabled={pending}>
+      {pending ? "Wird eingetragen …" : "Termin erfassen"}
+    </button>
+  );
+}
+
+function Field({
+  name,
+  label,
+  hint,
+  error,
+  type = "text",
+  required,
+  autoComplete,
+  inputMode,
+}: {
+  name: string;
+  label: string;
+  hint?: string;
+  error?: string;
+  type?: string;
+  required?: boolean;
+  autoComplete?: string;
+  inputMode?: "text" | "email" | "tel";
+}) {
+  const hintId = hint || error ? `${name}-hinweis` : undefined;
+
+  return (
+    <div>
+      <label className="field-label" htmlFor={name}>
+        {label}
+      </label>
+      <input
+        id={name}
+        name={name}
+        type={type}
+        required={required}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        className="field"
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby={hintId}
+      />
+      {(hint || error) && (
+        <p id={hintId} className={`field-hint ${error ? "text-danger font-semibold" : ""}`}>
+          {error ?? hint}
+        </p>
+      )}
+    </div>
+  );
+}

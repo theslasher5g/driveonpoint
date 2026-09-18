@@ -35,6 +35,7 @@ export default async function TeamLayout({ children }: { children: React.ReactNo
           label: "Mitarbeitende",
           show: can(user.role, "mitarbeiter.verwalten"),
         },
+        { href: "/team/protokoll", label: "Protokoll", show: can(user.role, "protokoll.ansehen") },
         { href: "/team/konto", label: "Mein Konto", show: true },
       ].filter((link) => link.show)
     : [];

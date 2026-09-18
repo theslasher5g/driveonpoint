@@ -120,6 +120,8 @@ export async function findSlots(options: {
   fromDay?: string;
   days?: number;
   staffId?: string;
+  /** Beim Verschieben: der eigene, bereits belegte Termin zählt nicht als Sperre. */
+  excludeBookingId?: string;
 }): Promise<Slot[]> {
   const { lessonType } = options;
   const fromDay = options.fromDay ?? todayInZurich();
@@ -181,6 +183,7 @@ export async function findSlots(options: {
           ne(bookings.status, "abgesagt"),
           gte(bookings.startsAt, zurichToInstant(fromDay, "00:00")),
           lte(bookings.startsAt, zurichToInstant(untilDay, "23:59")),
+          options.excludeBookingId ? ne(bookings.id, options.excludeBookingId) : undefined,
         ),
       ),
   ]);
@@ -374,6 +377,7 @@ export async function createBooking(input: {
   staffId: string;
   startsAt: Date;
   customerName: string;
+  /** Leer bedeutet: keine Mailadresse bekannt, etwa bei einer telefonischen Buchung. */
   customerEmail: string;
   customerPhone: string;
   customerNote?: string;
@@ -426,7 +430,7 @@ export async function createBooking(input: {
         endsAt,
         status: "angefragt",
         customerName: input.customerName,
-        customerEmail: input.customerEmail,
+        customerEmail: input.customerEmail || null,
         customerPhone: input.customerPhone,
         customerNote: input.customerNote ?? null,
         priceRappen: input.priceRappen,

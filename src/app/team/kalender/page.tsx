@@ -34,7 +34,7 @@ function mondayOf(day: string): string {
 export default async function KalenderPage({
   searchParams,
 }: {
-  searchParams: Promise<{ woche?: string; person?: string }>;
+  searchParams: Promise<{ woche?: string; person?: string; erfasst?: string; verschoben?: string }>;
 }) {
   const user = await requirePermission("kalender.ansehen");
   const params = await searchParams;
@@ -127,6 +127,17 @@ export default async function KalenderPage({
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
+        {params.erfasst && (
+          <p role="status" className="notice notice-success mb-6">
+            Termin {params.erfasst} eingetragen.
+          </p>
+        )}
+        {params.verschoben && (
+          <p role="status" className="notice notice-success mb-6">
+            Termin {params.verschoben} verschoben.
+          </p>
+        )}
+
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-title">Kalender</h1>
@@ -135,7 +146,7 @@ export default async function KalenderPage({
             </p>
           </div>
 
-          <nav className="flex gap-2" aria-label="Woche wechseln">
+          <nav className="flex flex-wrap gap-2" aria-label="Woche wechseln">
             <Link
               href={`/team/kalender?woche=${addDays(start, -7)}${focus ? `&person=${focus}` : ""}`}
               className="btn btn-outline py-2 px-3.5"
@@ -154,6 +165,11 @@ export default async function KalenderPage({
             >
               Nächste
             </Link>
+            {manages && (
+              <Link href="/team/kalender/erfassen" className="btn btn-primary py-2 px-3.5">
+                + Termin erfassen
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -285,7 +301,17 @@ export default async function KalenderPage({
                         {entry.customerNote && (
                           <p className="text-[0.72rem] text-slate mt-1">{entry.customerNote}</p>
                         )}
-                        {manages && !cancelled && <CancelBookingButton bookingId={entry.id} />}
+                        {manages && !cancelled && (
+                          <div className="flex flex-wrap gap-3 items-center">
+                            <Link
+                              href={`/team/kalender/verschieben?id=${entry.id}`}
+                              className="text-[0.72rem] font-semibold text-slate hover:text-signal-ink underline underline-offset-2 mt-1.5"
+                            >
+                              Verschieben
+                            </Link>
+                            <CancelBookingButton bookingId={entry.id} />
+                          </div>
+                        )}
                       </li>
                     );
                   })}

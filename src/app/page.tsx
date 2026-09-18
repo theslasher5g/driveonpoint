@@ -55,7 +55,7 @@ export default function HomePage() {
           etwas Buchbares zu sehen war. */}
       <section className="bg-deep text-paper on-signal overflow-hidden">
         <div className="shell py-10 md:py-16">
-          <div className="lane lane-draws text-paper lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-12 lg:items-start">
+          <div className="lane text-paper lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-12 lg:items-start">
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-5">
                 <h1 className="text-display max-w-[13ch] min-w-0">

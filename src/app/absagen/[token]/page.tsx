@@ -95,7 +95,7 @@ export default async function AbsagenPage({ params }: { params: Params }) {
 function Shell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="shell py-14 md:py-20">
-      <div className="lane lane-draws">
+      <div className="lane">
         <h1 className="text-title max-w-[18ch]">{title}</h1>
         <div className="mt-7">{children}</div>
       </div>

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function AbsageErledigtPage() {
   return (
     <section className="shell py-14 md:py-20">
-      <div className="lane lane-draws">
+      <div className="lane">
         <h1 className="text-title max-w-[16ch]">Termin ist abgesagt.</h1>
         <p className="text-lead text-slate mt-6 max-w-[52ch]">
           Der Platz ist wieder frei und steht anderen zur Verfügung. Wenn du magst, such dir

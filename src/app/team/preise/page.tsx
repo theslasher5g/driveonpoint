@@ -29,10 +29,6 @@ export default async function PreisePage() {
           ))}
         </div>
 
-        <p className="text-fine text-slate mt-12 max-w-[62ch]">
-          Ein neues Angebot anzulegen, ändert auch den Buchungsablauf und die Website-Texte.
-          Melde dich dafür bei der Person, die die Website betreut.
-        </p>
       </div>
     </section>
   );

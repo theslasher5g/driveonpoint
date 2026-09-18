@@ -26,54 +26,73 @@
 }
 
 @theme {
-  /* Markenrot von DriveOnPoint. Trägt jede Hauptaktion.
-     Gegenüber dem Rot der bisherigen Seite (#E24C3A) eine Spur dunkler: mit
-     weisser Schrift kam jenes nur auf 3,9:1 und blieb damit unter der
-     Lesbarkeitsschwelle von 4,5:1. Dieser Wert erreicht 4,6:1 — mit blossem
-     Auge derselbe Farbton, aber auf jedem Knopf und in jedem Hero lesbar. */
-  --color-signal: #d33f2c;
-  /* Dieselbe Farbe eine Stufe dunkler, für rote SCHRIFT auf hellem Grund.
-     Das Füllrot erreicht auf dem grauen Seitengrund nur 4,0:1 — als Fläche
-     mit weisser Schrift genügt es, als Schrift nicht. Zwei Töne, zwei
-     Aufgaben: signal füllt, signal-ink schreibt. */
-  --color-signal-ink: #b3331f;
-  --color-signal-deep: #a02d1b;
-  /* Sehr helle Tönung für ruhige Hinweisflächen. */
-  --color-signal-tint: #fdf1ee;
+  /* --- Fahrtenbuch ------------------------------------------------------
+     Die Seite ist als geführtes Fahrtenbuch gedacht: Papier, Tinte,
+     Linierung, Stempel. Jeder, der in der Schweiz den Ausweis gemacht hat,
+     kennt den papierenen Lernfahrausweis und das Kontrollheft — daher kommt
+     die Farbwelt, nicht aus einem Farbrad.
 
-  --color-deep: #16161a;
-  --color-concrete: #efefee;
-  --color-concrete-dim: #dedede;
-  --color-paper: #ffffff;
-  --color-slate: #6c6c74;
+     Markenrot wird zur Stempelfarbe: gedämpfter und erdiger als das bisherige
+     Digitalrot, wie Stempelkissen auf Papier. Trägt weiterhin jede
+     Hauptaktion und erreicht mit weisser Schrift 5,9:1. */
+  --color-signal: #b0492f;
+  /* Dieselbe Farbe dunkler, für rote SCHRIFT auf Papier: als Fläche genügt
+     der obere Ton, als Schrift nicht. Zwei Töne, zwei Aufgaben. */
+  --color-signal-ink: #8e3520;
+  --color-signal-deep: #8a3722;
+  /* Blasser Stempelabdruck für ruhige Hinweisflächen. */
+  --color-signal-tint: #f2e3dd;
 
-  /* Gelb trägt Information und dekoriert nie: es markiert ausschliesslich
+  /* Tinte statt Schwarz: leicht warm, damit sie auf dem Papierton sitzt und
+     nicht darauf klebt. */
+  --color-deep: #23201a;
+  /* Der Bogen selbst — Packpapier, nicht Creme. */
+  --color-concrete: #eae3d3;
+  --color-concrete-dim: #d8cfb9;
+  /* Das beschriebene Blatt, das darauf liegt. */
+  --color-paper: #fbf8f1;
+  /* Bleistift: warmes Grau, das zum Papier gehört statt dagegen zu stehen.
+     Eine Stufe dunkler als zunächst gesetzt — auf dem Packpapierton kam der
+     hellere Ton nur auf 4,4:1 und lag damit unter der Lesbarkeitsschwelle.
+     Dieser erreicht 5,2:1 auf dem Bogen und 6,2:1 auf dem Blatt. */
+  --color-slate: #645c4c;
+  /* Die Linierung. Hält sich zurück wie das Raster auf Schulpapier. */
+  --color-rule: #c3bba6;
+
+  /* Ocker trägt Information und dekoriert nie: es markiert ausschliesslich
      einen befristeten Zustand, auf den die lesende Person reagieren soll —
-     eine laufende Rabattaktion, eine Absage innert der Frist, ein noch
-     offenes Startpasswort. Bewusst deutlich gelber als das Markenrot, sonst
-     verschwimmen die beiden und die Aussage geht verloren. */
-  --color-amber: #f2b705;
-  /* Für Gelb als SCHRIFT statt Fläche: das Füllgelb kommt auf weissem
-     Papier nur auf rund 1,6:1 — als Ziffer oder Text unlesbar. Dieser Ton
-     erreicht 6,4:1, derselbe Farbcharakter, aber lesbar. */
-  --color-amber-ink: #7a5900;
+     eine laufende Rabattaktion, ein noch offenes Startpasswort. Wie ein
+     Markierstift auf dem Formular. */
+  --color-amber: #c98a1e;
+  /* Für Ocker als SCHRIFT statt Fläche: die Füllfarbe ist als Ziffer zu
+     hell. Dieser Ton erreicht auf Papier 5,6:1. */
+  --color-amber-ink: #7a5312;
 
   /* Rückmeldungen: erledigt und fehlgeschlagen sehen sich bewusst nicht
-     ähnlich. Vorher liefen beide über eine Rot-Variante — eine bestätigte
-     Buchung sah damit fast gleich aus wie ein Fehler. */
-  --color-success: #1f7a4d;
-  --color-success-tint: #eaf5ef;
-  --color-danger: #b3261e;
-  --color-danger-tint: #fdf0ef;
+     ähnlich. Beide sind gegenüber dem Stempelrot verschoben — sonst liesse
+     sich eine bestätigte Buchung mit einem Fehler verwechseln. */
+  --color-success: #2f6b4f;
+  --color-success-tint: #e4eee7;
+  --color-danger: #96231e;
+  --color-danger-tint: #f6e5e3;
 
   --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
+  /* Zahlen im Fahrtenbuch sind eingetragen, nicht gesetzt: Uhrzeiten, Daten,
+     Preise und Referenzen laufen deshalb über eine Schreibmaschinenschrift.
+     Bewusst der Systemstapel — eine zweite Schriftdatei wäre ein weiterer
+     Download, und selbst gehostet werden muss sie ohnehin (siehe
+     Datenschutzerklärung: keine Google Fonts). */
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
 
-  /* Die bestehende Marke arbeitet durchgehend mit weichen Ecken. Drei
-     Stufen, mehr braucht es nicht: Flächen, Bedienelemente, Marken. */
-  --radius-surface: 14px;
-  --radius-control: 8px;
-  --radius-pill: 999px;
+  /* Ein Formular hat keine weichen Ecken. Gerade so viel Rundung, dass es
+     gedruckt wirkt und nicht nach ausgestellter Kantigkeit. */
+  --radius-surface: 3px;
+  --radius-control: 2px;
+  /* Auch Marken und Auszeichnungen sind hier kleine Kästchen auf einem
+     Formular, keine Pillen. */
+  --radius-pill: 2px;
 }
 
 @layer base {
@@ -168,14 +187,15 @@
 }
 
 @layer components {
-  /* --- Die Spur ---------------------------------------------------------
-     Eine gestrichelte Fahrbahnmarkierung an der linken Rasterkante. Sie ist
-     das einzige durchgehende Strukturmittel der Seite: Abschnitte hängen
-     daran, auf dem Ausbildungsweg wird sie zur Zeitachse. Als
-     CSS-Verlauf gezeichnet — kein Bild, keine Ladezeit. */
+  /* --- Der Rand ---------------------------------------------------------
+     Die Randlinie eines linierten Bogens. Vorher lief hier eine gestrichelte
+     Fahrbahnmarkierung — hübsch gemeint, aber sie stellte nur etwas dar,
+     ohne je etwas zu tragen. Als Randlinie ist dieselbe Linie das, wonach
+     sie aussieht: der Rand des Blattes, an dem der Satzspiegel beginnt.
+     Auf dem Ausbildungsweg trägt sie die Schrittnummern. */
   .lane {
     position: relative;
-    padding-left: 1.75rem;
+    padding-left: 1.5rem;
   }
 
   .lane::before {
@@ -184,36 +204,14 @@
     left: 0;
     top: 0;
     bottom: 0;
-    width: 3px;
-    background: repeating-linear-gradient(
-      to bottom,
-      currentColor 0,
-      currentColor 14px,
-      transparent 14px,
-      transparent 26px
-    );
-    opacity: 0.32;
+    width: 1px;
+    background: currentColor;
+    opacity: 0.22;
   }
 
   @media (min-width: 900px) {
     .lane {
-      padding-left: 3rem;
-    }
-  }
-
-  /* Der eine nicht ausgelöste Bewegungsmoment der Seite: die Markierung
-     zeichnet sich beim Laden einmal nach unten. */
-  .lane-draws::before {
-    transform-origin: top;
-    animation: lane-draw 900ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
-  }
-
-  @keyframes lane-draw {
-    from {
-      transform: scaleY(0);
-    }
-    to {
-      transform: scaleY(1);
+      padding-left: 2.5rem;
     }
   }
 
@@ -231,22 +229,17 @@
     padding-bottom: 0;
   }
 
-  /* Der gestrichelte Abschnitt läuft von einer Ziffer zur nächsten. */
+  /* Die Linie läuft von einer Ziffer zur nächsten und hält die Schritte
+     zusammen. */
   .timeline > li::before {
     content: "";
     position: absolute;
-    left: 1.0625rem;
+    left: 1.125rem;
     top: 2.75rem;
     bottom: 0.5rem;
-    width: 3px;
-    background: repeating-linear-gradient(
-      to bottom,
-      currentColor 0,
-      currentColor 10px,
-      transparent 10px,
-      transparent 20px
-    );
-    opacity: 0.3;
+    width: 1px;
+    background: currentColor;
+    opacity: 0.25;
   }
 
   .timeline > li:last-child::before {
@@ -285,9 +278,13 @@
      Trennung entsteht über Flächenwechsel und 1px-Linien, nicht über
      Schatten. Weiche Ecken, weil die bestehende Marke durchgehend so
      arbeitet — harte Kanten wirkten daneben wie ein Fremdkörper. */
+  /* Ein Blatt, das auf dem Bogen liegt: heller Papierton mit einer feinen
+     Kante. Die Kante ist der Grund, warum es als eigenes Blatt liest und
+     nicht als aufgehellter Hintergrund — Schatten braucht es dafür nicht. */
   .surface {
     border-radius: var(--radius-surface);
     overflow: hidden;
+    border: 1px solid var(--color-rule);
   }
 
   .rule {
@@ -423,13 +420,16 @@
     font: inherit;
     color: var(--color-deep);
     background: var(--color-paper);
-    border: 1px solid color-mix(in srgb, var(--color-deep) 25%, transparent);
+    /* Feldkanten sind Bedienelemente, keine Zierlinien: sie brauchen 3:1
+       gegen den Grund, sonst ist nicht erkennbar, wo das Feld beginnt. Bei
+       25 % war das nicht erfüllt. */
+    border: 1px solid color-mix(in srgb, var(--color-deep) 42%, transparent);
     border-radius: var(--radius-control);
     transition: border-color 120ms ease;
   }
 
   .field:hover {
-    border-color: color-mix(in srgb, var(--color-deep) 45%, transparent);
+    border-color: color-mix(in srgb, var(--color-deep) 62%, transparent);
   }
 
   .field:focus {
@@ -439,7 +439,7 @@
   }
 
   .field[aria-invalid="true"] {
-    border-color: #b3261e;
+    border-color: var(--color-danger);
     border-width: 2px;
   }
 
@@ -508,6 +508,8 @@
   }
 
   /* Kleine Auszeichnung wie „Inhaberin“ oder „01 · Voraussetzung“. */
+  /* Kleine Auszeichnung, wie ein angekreuztes Feld auf einem Formular:
+     eckig, mit Kante, nicht als Pille. */
   .chip {
     display: inline-block;
     background: var(--color-signal);
@@ -515,13 +517,50 @@
     font-weight: 700;
     font-size: 0.82rem;
     line-height: 1.2;
-    padding: 0.4rem 0.85rem;
+    padding: 0.35rem 0.7rem;
     border-radius: var(--radius-pill);
   }
 
   .chip-quiet {
-    background: var(--color-signal-tint);
-    color: var(--color-signal-ink);
+    background: transparent;
+    color: var(--color-slate);
+    border: 1px solid var(--color-rule);
+    font-weight: 650;
+  }
+
+  /* --- Der Stempel -------------------------------------------------------
+     Der eine laute Moment der Seite, und er sitzt dort, wo im Papierbetrieb
+     tatsächlich gestempelt würde: auf der bestätigten Buchung. Leicht
+     schief, weil ein Stempel von Hand nie gerade sitzt. Sonst hält sich die
+     Seite überall zurück. */
+  .stamp {
+    display: inline-block;
+    transform: rotate(-3.5deg);
+    border: 3px double var(--color-signal);
+    border-radius: 3px;
+    color: var(--color-signal);
+    padding: 0.55rem 1.1rem 0.45rem;
+    text-align: center;
+    /* Stempelfarbe deckt nie ganz. */
+    opacity: 0.85;
+  }
+
+  .stamp-word {
+    display: block;
+    font-stretch: 118%;
+    font-weight: 800;
+    font-size: 1.35rem;
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+
+  .stamp-line {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    line-height: 1.2;
+    margin-top: 0.3rem;
+    opacity: 0.85;
   }
 
   .skip-link {
@@ -564,11 +603,14 @@
     line-height: 1.55;
   }
 
-  /* Tabellarische Ziffern: Preise und Uhrzeiten stehen damit
-     spaltentreu untereinander. */
+  /* Eingetragene Zahlen: Uhrzeiten, Daten, Preise, Referenzen. Schreib-
+     maschinenschrift, weil sie im Fahrtenbuch eingetragen und nicht gesetzt
+     sind — und tabellarisch, damit sie spaltentreu untereinander stehen. */
   .nums {
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1;
+    letter-spacing: -0.01em;
   }
 
   .stretch-wide {

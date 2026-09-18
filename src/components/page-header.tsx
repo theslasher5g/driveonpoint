@@ -14,7 +14,7 @@ export function PageHeader({
       <div className="shell py-8 md:py-12">
         {/* Titel und Einleitung stehen nebeneinander statt untereinander:
             derselbe Text, ein Band statt zwei. */}
-        <div className="lane lane-draws md:grid md:grid-cols-[minmax(0,21rem)_minmax(0,1fr)] md:gap-10 md:items-start">
+        <div className="lane md:grid md:grid-cols-[minmax(0,21rem)_minmax(0,1fr)] md:gap-10 md:items-start">
           <div>
             <span className="block w-9 h-[3px] bg-signal mb-4" aria-hidden="true" />
             <h1 className="text-title max-w-[20ch]">{title}</h1>

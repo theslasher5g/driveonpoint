@@ -295,14 +295,6 @@ export default async function KalenderPage({
           })}
         </div>
 
-        <p className="text-fine text-slate mt-6 max-w-[62ch]">
-          Freie Zeiten entstehen aus deiner Verfügbarkeit abzüglich der hier eingetragenen
-          Termine. Den Kalender kannst du unter{" "}
-          <Link href="/team/konto" className="font-semibold text-signal-ink underline underline-offset-4">
-            Mein Konto
-          </Link>{" "}
-          in Google oder Apple Kalender abonnieren.
-        </p>
       </div>
     </section>
   );

@@ -83,7 +83,7 @@ function TeamCard({ person }: { person: TeamMember }) {
         person.owner ? "ring-2 ring-signal" : "ring-1 ring-deep/10"
       }`}
     >
-      <div className="relative bg-deep aspect-[4/3]">
+      <div className={`relative aspect-[4/3] ${person.photo ? "bg-deep" : "bg-concrete"}`}>
         {person.photo ? (
           <Image
             src={person.photo}
@@ -93,23 +93,36 @@ function TeamCard({ person }: { person: TeamMember }) {
             sizes="(min-width: 768px) 45vw, 100vw"
           />
         ) : (
-          /* Bis ein Porträt da ist: die Initiale auf dunklem Grund. Ein
-             graues Rechteck mit Kamerasymbol sagt nichts aus. */
-          <span
-            className="absolute inset-0 grid place-items-center stretch-wide font-extrabold text-paper/15 text-[7rem] leading-none select-none"
-            aria-hidden="true"
-          >
-            {person.name.charAt(0)}
+          /* Bis ein Porträt da ist: ein leerer Bildplatz wie im Fotoalbum,
+             mit Ecken und Initiale. Ein schwarzer Kasten sagt nichts aus und
+             passt hier auch farblich nicht mehr. */
+          <span className="absolute inset-4 border border-rule" aria-hidden="true">
+            <span className="absolute inset-0 grid place-items-center stretch-wide font-extrabold text-deep/12 text-[7rem] leading-none select-none">
+              {person.name.charAt(0)}
+            </span>
           </span>
         )}
 
-        {person.owner && <span className="chip absolute top-4 left-4">Inhaberin</span>}
+        {person.owner && <span className="chip absolute top-4 left-4 z-10">Inhaberin</span>}
 
-        {/* Name auf dem Bild, wie in der bestehenden Gestaltung. Der Verlauf
-            darunter hält die Schrift auch auf hellen Fotos lesbar. */}
-        <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black/85 via-black/45 to-transparent">
-          <h2 className="text-section stretch-wide leading-none text-paper">{person.name}</h2>
-          <p className="text-fine text-paper/85 mt-1.5">{person.role}</p>
+        {/* Name auf dem Bild. Auf einem echten Foto braucht es den Verlauf,
+            damit die Schrift auch über hellen Stellen lesbar bleibt; auf dem
+            leeren Platz steht sie einfach in Tinte auf Papier. */}
+        <div
+          className={`absolute inset-x-0 bottom-0 p-5 ${
+            person.photo ? "bg-gradient-to-t from-black/85 via-black/45 to-transparent" : ""
+          }`}
+        >
+          <h2
+            className={`text-section stretch-wide leading-none ${
+              person.photo ? "text-paper" : "text-deep"
+            }`}
+          >
+            {person.name}
+          </h2>
+          <p className={`text-fine mt-1.5 ${person.photo ? "text-paper/85" : "text-slate"}`}>
+            {person.role}
+          </p>
         </div>
       </div>
 

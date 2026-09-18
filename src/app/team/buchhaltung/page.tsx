@@ -19,7 +19,9 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
 
   const report = await accountingReport(year, month);
   const label = month ? `${monthName(month)} ${year}` : String(year);
-  const exportHref = `/team/buchhaltung/export?jahr=${year}${month ? `&monat=${month}` : ""}`;
+  const query = `jahr=${year}${month ? `&monat=${month}` : ""}`;
+  const csvHref = `/team/buchhaltung/export?${query}`;
+  const pdfHref = `/team/buchhaltung/export/pdf?${query}`;
 
   return (
     <section className="shell py-10 md:py-14">
@@ -61,7 +63,10 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
           <button type="submit" className="btn btn-outline">
             Anzeigen
           </button>
-          <a href={exportHref} className="btn btn-primary" download>
+          <a href={pdfHref} className="btn btn-primary" download>
+            Als PDF herunterladen
+          </a>
+          <a href={csvHref} className="btn btn-outline" download>
             Als CSV herunterladen
           </a>
         </form>

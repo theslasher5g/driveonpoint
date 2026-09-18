@@ -25,7 +25,7 @@ const team: TeamMember[] = [
     name: "Christina",
     role: "Sozialpädagogin HF & Fahrlehrerin",
     owner: true,
-    body: "Ich bin Sozialpädagogin HF, Fahrlehrerin sowie Nothelferinstruktorin und BLS-AED Instruktorin. Durch meine pädagogische Erfahrung lege ich grossen Wert auf eine klare, ruhige und verständliche Kommunikation. Mir ist wichtig, dass du dich in jeder Fahrsituation wohl und sicher fühlst.",
+    body: "Ich bin Sozialpädagogin HF und seit einigen Jahren auch Fahrlehrerin, dazu Nothelfer- und BLS-AED-Instruktorin. Aus der Sozialpädagogik habe ich gelernt, wie man etwas erklärt, ohne jemanden zu überfordern — das hilft auch auf der Autobahn.",
     tags: ["Fahrlehrerin", "Sozialpädagogin HF", "BLS-AED Instruktorin"],
     photo: "",
   },
@@ -33,7 +33,7 @@ const team: TeamMember[] = [
     name: "Jolanda",
     role: "Nothelferinstruktorin & FaBe",
     owner: false,
-    body: "Ich bin Fachfrau Betreuung mit Herz und Leidenschaft. Als sozialer, selbstbewusster und lebensfroher Mensch bringe ich viel Humor und positive Energie in meinen Alltag. Neben meiner Tätigkeit als FaBe bin ich auch Nothelferinstruktorin. Es bereitet mir grosse Freude, Menschen für das Thema Erste Hilfe zu begeistern – in Notfällen richtig zu handeln ist für mich eine Herzenssache.",
+    body: "Hauptberuflich bin ich Fachfrau Betreuung, daneben unterrichte ich den Nothilfekurs. Erste Hilfe ist mir wichtig, weil ich weiss, wie schnell man im Ernstfall überfordert ist — genau dann soll der Kurs greifen, ganz automatisch.",
     tags: ["Nothelferinstruktorin", "FaBe"],
     photo: "",
   },
@@ -69,13 +69,13 @@ export const site = {
 
   hero: {
     headline: ["Fahren lernen,", "ohne Druck."],
-    lead: "Herzlich willkommen bei DriveOnPoint — deiner Fahrschule mit Herz, Leidenschaft und Professionalität. Wir begleiten dich auf deinem Weg zum Führerausweis kompetent, empathisch und mit Freude am Fahren.",
+    lead: "Zwei Fahrlehrerinnen, dein Tempo. Wir sagen dir ehrlich, wo du stehst — und melden dich erst zur Prüfung an, wenn du wirklich bereit bist.",
   },
 
   philosophy: {
     title: "Unsere Philosophie",
-    body: "Bei DriveOnPoint steht dein persönlicher Lernstand im Mittelpunkt. Wir arbeiten mit dir individuell und in deinem eigenen Lerntempo – ganz ohne Druck. Leidenschaft, Professionalität und Menschlichkeit bilden dabei die Grundlage unserer Arbeit.",
-    tags: ["Individuell", "Professionell", "Mit Herz"],
+    body: "Wie schnell du vorankommst, bestimmst du. Die einen brauchen zehn Fahrstunden, die anderen vierzig — beides ist normal, und es gibt keinen Lehrplan, der dich in ein festes Tempo zwingt.",
+    tags: ["Gleiche Fahrlehrerin", "Kein Standardtempo", "Ehrliche Rückmeldung"],
   },
 
   /** Kurzbeschreibungen der drei Stufen, wie sie auf der Startseite stehen. */
@@ -93,7 +93,7 @@ export const site = {
       title: "Verkehrskundeunterricht",
       lead: "Der VKU bereitet dich auf die Verantwortung im Strassenverkehr vor – mit Themen wie Gefahrenwahrnehmung, physikalische Grundlagen, Reaktionszeit und sicheres Verhalten.",
       topics: ["Gefahrenwahrnehmung", "Physikalische Grundlagen", "Sicheres Verhalten"],
-      note: "Investiere in deine Sicherheit und die der anderen Verkehrsteilnehmer",
+      note: "Pflicht vor der praktischen Prüfung, egal bei welcher Fahrschule du fährst",
     },
     fahrstunden: {
       step: "Praxis",

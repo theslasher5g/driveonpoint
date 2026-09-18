@@ -45,7 +45,7 @@ const CLAUSES = [
   },
   {
     title: "Preise und Zahlung",
-    body: "Es gelten die zum Zeitpunkt der Buchung auf der Website ausgewiesenen Preise in Schweizer Franken inklusive Mehrwertsteuer. Fahrstunden sind nach der Lektion oder gesammelt auf Rechnung innert 30 Tagen zu bezahlen. Kurse sind vor Kursbeginn zu bezahlen; der Platz ist erst mit der Zahlung verbindlich reserviert.",
+    body: "Es gelten die zum Zeitpunkt der Buchung auf der Website ausgewiesenen Preise in Schweizer Franken. Als Kleinunternehmen ohne Eintrag im Mehrwertsteuerregister wird keine Mehrwertsteuer ausgewiesen. Fahrstunden sind nach der Lektion oder gesammelt auf Rechnung innert 30 Tagen zu bezahlen. Kurse sind vor Kursbeginn zu bezahlen; der Platz ist erst mit der Zahlung verbindlich reserviert.",
   },
   {
     title: "Rabattaktionen",

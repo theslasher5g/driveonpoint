@@ -64,7 +64,7 @@ export async function cancelByStaffAction(formData: FormData): Promise<void> {
           `<p style="margin:0 0 16px;">Hallo ${escapeHtml(entry.customerName ?? "")}</p>
 <p style="margin:0 0 16px;"><strong>${escapeHtml(entry.lessonName ?? "Termin")}</strong><br>${escapeHtml(when)}</p>
 <p style="margin:0 0 16px;">Es entstehen dir keine Kosten. Melde dich bei uns, dann finden wir rasch einen Ersatztermin.</p>
-<p style="margin:0;color:#6C6C74;font-size:14px;">${escapeHtml(site.contact.phone)}</p>`,
+<p style="margin:0;color:#4A5F68;font-size:14px;">${escapeHtml(site.contact.phone)}</p>`,
         ),
       });
     } catch (error) {

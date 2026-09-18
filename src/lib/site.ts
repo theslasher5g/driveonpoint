@@ -50,10 +50,10 @@ export const site = {
 
   contact: {
     street: "Musterstrasse 12", // ###
-    zip: "8050", // ###
-    city: "Zürich", // ###
-    phone: "+41 44 000 00 00", // ###
-    phoneHref: "+41440000000", // ###
+    zip: "4051", // ###
+    city: "Basel", // ###
+    phone: "+41 61 000 00 00", // ###
+    phoneHref: "+41610000000", // ###
     email: "info@driveonpoint.com", // ###
   },
 
@@ -63,7 +63,7 @@ export const site = {
     { days: "Sonntag", time: "geschlossen" },
   ],
 
-  region: ["Zürich", "Oerlikon", "Wallisellen", "Dübendorf", "Kloten", "Opfikon"], // ###
+  region: ["Basel", "Allschwil", "Binningen", "Muttenz", "Pratteln", "Liestal"], // ###
 
   languages: ["Deutsch", "Englisch"], // ###
 

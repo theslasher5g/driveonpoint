@@ -57,7 +57,8 @@ export default async function PreisePage() {
         <div className="max-w-3xl">
           <PriceTable />
           <p className="text-fine text-slate mt-6">
-            Alle Beträge in Schweizer Franken, inklusive Mehrwertsteuer.
+            Alle Beträge in Schweizer Franken. Als Kleinunternehmen weisen wir keine
+            Mehrwertsteuer aus.
           </p>
         </div>
       </Section>

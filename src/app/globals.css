@@ -26,55 +26,60 @@
 }
 
 @theme {
-  /* --- Fahrtenbuch ------------------------------------------------------
-     Die Seite ist als geführtes Fahrtenbuch gedacht: Papier, Tinte,
-     Linierung, Stempel. Jeder, der in der Schweiz den Ausweis gemacht hat,
-     kennt den papierenen Lernfahrausweis und das Kontrollheft — daher kommt
-     die Farbwelt, nicht aus einem Farbrad.
+  /* --- Fahrtenbuch, Farbwelt Basel-rot -----------------------------------
+     Das Fahrtenbuch-Konzept (Papier, Tinte, Linierung, Stempel) bleibt —
+     nur die Farbwerte sind ausgetauscht, auf Wunsch nach der Palette
+     780000 / c1121f / fdf0d5 / 003049 / 669bbc. Alle fünf Werte kommen vor;
+     einzig für „erledigt" fehlt in dieser Palette eine eigene Farbe, dazu
+     mehr unten.
 
-     Markenrot wird zur Stempelfarbe: gedämpfter und erdiger als das bisherige
-     Digitalrot, wie Stempelkissen auf Papier. Trägt weiterhin jede
-     Hauptaktion und erreicht mit weisser Schrift 5,9:1. */
-  --color-signal: #b0492f;
-  /* Dieselbe Farbe dunkler, für rote SCHRIFT auf Papier: als Fläche genügt
-     der obere Ton, als Schrift nicht. Zwei Töne, zwei Aufgaben. */
-  --color-signal-ink: #8e3520;
-  --color-signal-deep: #8a3722;
-  /* Blasser Stempelabdruck für ruhige Hinweisflächen. */
-  --color-signal-tint: #f2e3dd;
+     Markenrot ist jetzt Plakatrot statt Stempelfarbe. Trägt weiterhin jede
+     Hauptaktion und erreicht mit weisser Schrift 6,2:1. */
+  --color-signal: #c1121f;
+  /* Der dunklere Rotton derselben Palette, für rote SCHRIFT auf hellem
+     Grund: als Fläche genügt das Plakatrot, als Text ist es zu hell.
+     Erreicht 10,3:1 auf dem Bogen. */
+  --color-signal-ink: #780000;
+  /* Eigens abgedunkelt fürs Gedrückt-Aussehen von Knöpfen — dunkler als
+     beide Rottöne der Palette, damit der Zustandswechsel beim Klicken
+     sichtbar bleibt. */
+  --color-signal-deep: #8b0d16;
+  /* Blasser Abdruck für ruhige Hinweisflächen. */
+  --color-signal-tint: #f6d5bf;
 
-  /* Tinte statt Schwarz: leicht warm, damit sie auf dem Papierton sitzt und
-     nicht darauf klebt. */
-  --color-deep: #23201a;
-  /* Der Bogen selbst — Packpapier, nicht Creme. */
-  --color-concrete: #eae3d3;
-  --color-concrete-dim: #d8cfb9;
-  /* Das beschriebene Blatt, das darauf liegt. */
-  --color-paper: #fbf8f1;
-  /* Bleistift: warmes Grau, das zum Papier gehört statt dagegen zu stehen.
-     Eine Stufe dunkler als zunächst gesetzt — auf dem Packpapierton kam der
-     hellere Ton nur auf 4,4:1 und lag damit unter der Lesbarkeitsschwelle.
-     Dieser erreicht 5,2:1 auf dem Bogen und 6,2:1 auf dem Blatt. */
-  --color-slate: #645c4c;
-  /* Die Linierung. Hält sich zurück wie das Raster auf Schulpapier. */
-  --color-rule: #c3bba6;
+  /* Tinte: das Navy der Palette statt Schwarz. */
+  --color-deep: #003049;
+  /* Der Bogen — das namensgebende Creme der Palette. */
+  --color-concrete: #fdf0d5;
+  --color-concrete-dim: #f2e0b6;
+  /* Das beschriebene Blatt, das darauf liegt: wärmeres Weiss als reines
+     Papierweiss, damit es nicht steril gegen das Creme wirkt. */
+  --color-paper: #fffbf2;
+  /* Bleistift: ein gedämpftes Navy-Grau statt eines neutralen Grau, damit
+     der Fliesstext zur Tinte gehört. Erreicht 6,0:1 auf dem Bogen. */
+  --color-slate: #4a5f68;
+  /* Die Linierung, aus dem hellblauen Fünften der Palette gemischt — sonst
+     bliebe dieser Ton ungenutzt. */
+  --color-rule: #b9cdd6;
 
-  /* Ocker trägt Information und dekoriert nie: es markiert ausschliesslich
-     einen befristeten Zustand, auf den die lesende Person reagieren soll —
-     eine laufende Rabattaktion, ein noch offenes Startpasswort. Wie ein
-     Markierstift auf dem Formular. */
+  /* Ocker bleibt ausserhalb der fünf Palettenfarben: Weder Navy noch Blau
+     eignen sich als Warnfarbe (beide lesen als „ruhig", nicht als
+     „reagier jetzt"), und die Palette bringt selbst kein Gelb mit. Markiert
+     ausschliesslich einen befristeten Zustand, auf den reagiert werden
+     soll — eine laufende Rabattaktion, ein noch offenes Startpasswort. */
   --color-amber: #c98a1e;
-  /* Für Ocker als SCHRIFT statt Fläche: die Füllfarbe ist als Ziffer zu
-     hell. Dieser Ton erreicht auf Papier 5,6:1. */
   --color-amber-ink: #7a5312;
 
   /* Rückmeldungen: erledigt und fehlgeschlagen sehen sich bewusst nicht
-     ähnlich. Beide sind gegenüber dem Stempelrot verschoben — sonst liesse
-     sich eine bestätigte Buchung mit einem Fehler verwechseln. */
-  --color-success: #2f6b4f;
-  --color-success-tint: #e4eee7;
-  --color-danger: #96231e;
-  --color-danger-tint: #f6e5e3;
+     ähnlich, sonst sähe eine bestätigte Buchung wie ein Fehler aus. Die
+     Palette bringt kein Grün mit — hier ergänzt, mit einem leichten
+     Blaustich, damit es neben dem Palettenblau nicht fremd wirkt. Fehler
+     laufen über das dunkle Rot der Palette (signal-ink), das sich vom
+     Plakatrot der Knöpfe klar genug unterscheidet. */
+  --color-success: #2f7a5c;
+  --color-success-tint: #e8e4c9;
+  --color-danger: #780000;
+  --color-danger-tint: #edd3bb;
 
   --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
@@ -391,7 +396,7 @@
     color: var(--color-paper);
   }
   .btn-deep:hover:not(:disabled) {
-    background: #061630;
+    background: #001f30;
   }
 
   .btn-invert {

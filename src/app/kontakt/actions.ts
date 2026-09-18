@@ -91,11 +91,11 @@ export async function sendContactAction(
       html: mailLayout(
         "Anfrage über die Website",
         `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin:0 0 20px;">
-  <tr><td style="padding:8px 0;border-bottom:1px solid #EDE0C2;font-size:14px;color:#4A5F68;width:32%;">Name</td>
-      <td style="padding:8px 0;border-bottom:1px solid #EDE0C2;font-weight:700;">${escapeHtml(input.name)}</td></tr>
-  <tr><td style="padding:8px 0;border-bottom:1px solid #EDE0C2;font-size:14px;color:#4A5F68;">Mail</td>
-      <td style="padding:8px 0;border-bottom:1px solid #EDE0C2;">${escapeHtml(input.email)}</td></tr>
-  <tr><td style="padding:8px 0;font-size:14px;color:#4A5F68;">Telefon</td>
+  <tr><td style="padding:8px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;width:32%;">Name</td>
+      <td style="padding:8px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${escapeHtml(input.name)}</td></tr>
+  <tr><td style="padding:8px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Mail</td>
+      <td style="padding:8px 0;border-bottom:1px solid #D6D6D2;">${escapeHtml(input.email)}</td></tr>
+  <tr><td style="padding:8px 0;font-size:14px;color:#515052;">Telefon</td>
       <td style="padding:8px 0;">${escapeHtml(input.telefon || "keine Angabe")}</td></tr>
 </table>
 <p style="margin:0;white-space:pre-wrap;">${escapeHtml(input.nachricht)}</p>`,
@@ -129,7 +129,7 @@ export async function sendContactAction(
         `<p style="margin:0 0 16px;">Hallo ${escapeHtml(input.name)}</p>
 <p style="margin:0 0 16px;">Wir haben deine Nachricht erhalten und melden uns innert eines Werktags.</p>
 <p style="margin:0 0 8px;font-weight:700;">Deine Nachricht</p>
-<p style="margin:0;white-space:pre-wrap;color:#4A5F68;">${escapeHtml(input.nachricht)}</p>`,
+<p style="margin:0;white-space:pre-wrap;color:#515052;">${escapeHtml(input.nachricht)}</p>`,
       ),
     });
   } catch (error) {

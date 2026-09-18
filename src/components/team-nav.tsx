@@ -52,7 +52,7 @@ export function TeamNav({
                     href={link.href}
                     aria-current={active ? "page" : undefined}
                     className={`block px-3 py-1.5 text-fine font-semibold whitespace-nowrap transition-colors ${
-                      active ? "bg-signal text-paper" : "text-paper/70 hover:text-paper"
+                      active ? "bg-signal text-deep" : "text-paper/70 hover:text-paper"
                     }`}
                   >
                     {link.label}

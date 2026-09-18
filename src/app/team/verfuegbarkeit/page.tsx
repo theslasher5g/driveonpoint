@@ -98,7 +98,7 @@ export default async function VerfuegbarkeitPage({
                   href={`/team/verfuegbarkeit?person=${person.id}`}
                   className={`block px-3.5 py-2 text-fine font-semibold border ${
                     person.id === targetId
-                      ? "border-signal bg-signal text-paper"
+                      ? "border-signal bg-signal text-deep"
                       : "border-deep/20 bg-paper"
                   }`}
                 >

@@ -146,7 +146,7 @@ function SlotList({
               <li key={slot.time}>
                 <Link
                   href={`/buchen?angebot=${slug}&tag=${slot.day}&zeit=${slot.time}`}
-                  className="nums block bg-paper border border-deep/20 px-4 py-2.5 font-bold hover:bg-signal hover:text-paper hover:border-signal transition-colors"
+                  className="nums block bg-paper border border-deep/20 px-4 py-2.5 font-bold hover:bg-signal hover:text-deep hover:border-signal transition-colors"
                 >
                   {slot.time}
                   {isCourse && (

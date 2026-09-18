@@ -163,7 +163,7 @@ export default async function KalenderPage({
               <Link
                 href={`/team/kalender?woche=${start}`}
                 className={`block px-3.5 py-2 text-fine font-semibold border ${
-                  focus ? "border-deep/20 bg-paper" : "border-signal bg-signal text-paper"
+                  focus ? "border-deep/20 bg-paper" : "border-signal bg-signal text-deep"
                 }`}
               >
                 Alle
@@ -175,7 +175,7 @@ export default async function KalenderPage({
                   href={`/team/kalender?woche=${start}&person=${person.id}`}
                   className={`block px-3.5 py-2 text-fine font-semibold border ${
                     focus === person.id
-                      ? "border-signal bg-signal text-paper"
+                      ? "border-signal bg-signal text-deep"
                       : "border-deep/20 bg-paper"
                   }`}
                 >

@@ -26,68 +26,62 @@
 }
 
 @theme {
-  /* --- Fahrtenbuch, Farbwelt Basel-rot -----------------------------------
-     Das Fahrtenbuch-Konzept (Papier, Tinte, Linierung, Stempel) bleibt —
-     nur die Farbwerte sind ausgetauscht, auf Wunsch nach der Palette
-     780000 / c1121f / fdf0d5 / 003049 / 669bbc. Alle fünf Werte kommen vor;
-     einzig für „erledigt" fehlt in dieser Palette eine eigene Farbe, dazu
-     mehr unten.
+  /* --- Amtliches Formular, Farbwelt Schwarz/Weiss/Rot --------------------
+     Die Papiermetapher (Linierung, Stempel, Schreibmaschinenziffern, kaum
+     gerundete Ecken) bleibt — Creme ist raus, auf Wunsch. Palette:
+     fffffa / 515052 / 000103 / 333138 / ff312e. Statt warmem Kraftpapier
+     jetzt: reines Weiss, zwei neutrale Grautöne, Tinte fast schwarz, ein
+     einziges grelles Rot als Signalfarbe — liest weniger nach Logbuch,
+     mehr nach amtlichem Formular. Dieselben Linien, dieselbe Kante. */
+  --color-signal: #ff312e;
+  /* Das Signalrot selbst kommt auf Weiss nur auf 3,7:1 — als Fläche für
+     Knöpfe genügt das (Text darauf ist dunkel, nicht weiss, siehe unten),
+     als SCHRIFT reicht es nicht. Dieser abgedunkelte Ton erreicht 6,0:1. */
+  --color-signal-ink: #bf2523;
+  /* Nochmals dunkler, fürs Gedrückt-Aussehen von Knöpfen. */
+  --color-signal-deep: #a6201e;
+  /* Blasse Tönung für ruhige Hinweisflächen. */
+  --color-signal-tint: #ffece8;
 
-     Markenrot ist jetzt Plakatrot statt Stempelfarbe. Trägt weiterhin jede
-     Hauptaktion und erreicht mit weisser Schrift 6,2:1. */
-  --color-signal: #c1121f;
-  /* Der dunklere Rotton derselben Palette, für rote SCHRIFT auf hellem
-     Grund: als Fläche genügt das Plakatrot, als Text ist es zu hell.
-     Erreicht 10,3:1 auf dem Bogen. */
-  --color-signal-ink: #780000;
-  /* Eigens abgedunkelt fürs Gedrückt-Aussehen von Knöpfen — dunkler als
-     beide Rottöne der Palette, damit der Zustandswechsel beim Klicken
-     sichtbar bleibt. */
-  --color-signal-deep: #8b0d16;
-  /* Blasser Abdruck für ruhige Hinweisflächen. */
-  --color-signal-tint: #f6d5bf;
+  /* Tinte: fast Schwarz statt Navy. */
+  --color-deep: #000103;
+  /* Das Blatt: reines, kühles Weiss statt Creme. */
+  --color-paper: #fffffa;
+  /* Der Bogen darunter, eine Spur grau abgesetzt vom Blatt — beide bewusst
+     neutral, kein Gelbstich, der wieder nach Creme läge. */
+  --color-concrete: #f5f5f1;
+  --color-concrete-dim: #e8e8e4;
+  /* Der mittlere Grauton der Palette, direkt für den Fliesstext — erreicht
+     8,0:1 auf Weiss, mehr als genug Spielraum. */
+  --color-slate: #515052;
+  /* Die Linierung, aus demselben Grau gegen das Blatt gemischt. */
+  --color-rule: #cbcbc8;
 
-  /* Tinte: das Navy der Palette statt Schwarz. */
-  --color-deep: #003049;
-  /* Der Bogen — das namensgebende Creme der Palette. */
-  --color-concrete: #fdf0d5;
-  --color-concrete-dim: #f2e0b6;
-  /* Das beschriebene Blatt, das darauf liegt: wärmeres Weiss als reines
-     Papierweiss, damit es nicht steril gegen das Creme wirkt. */
-  --color-paper: #fffbf2;
-  /* Bleistift: ein gedämpftes Navy-Grau statt eines neutralen Grau, damit
-     der Fliesstext zur Tinte gehört. Erreicht 6,0:1 auf dem Bogen. */
-  --color-slate: #4a5f68;
-  /* Die Linierung, aus dem hellblauen Fünften der Palette gemischt — sonst
-     bliebe dieser Ton ungenutzt. */
-  --color-rule: #b9cdd6;
-
-  /* Ocker bleibt ausserhalb der fünf Palettenfarben: Weder Navy noch Blau
-     eignen sich als Warnfarbe (beide lesen als „ruhig", nicht als
-     „reagier jetzt"), und die Palette bringt selbst kein Gelb mit. Markiert
-     ausschliesslich einen befristeten Zustand, auf den reagiert werden
-     soll — eine laufende Rabattaktion, ein noch offenes Startpasswort. */
+  /* Ocker bleibt ausserhalb der fünf Palettenfarben: Schwarz, Weiss und
+     Grau eignen sich nicht als Warnfarbe, und die Palette bringt selbst
+     kein Gelb mit. Markiert ausschliesslich einen befristeten Zustand, auf
+     den reagiert werden soll — eine laufende Rabattaktion, ein noch
+     offenes Startpasswort. */
   --color-amber: #c98a1e;
   --color-amber-ink: #7a5312;
 
   /* Rückmeldungen: erledigt und fehlgeschlagen sehen sich bewusst nicht
      ähnlich, sonst sähe eine bestätigte Buchung wie ein Fehler aus. Die
-     Palette bringt kein Grün mit — hier ergänzt, mit einem leichten
-     Blaustich, damit es neben dem Palettenblau nicht fremd wirkt. Fehler
-     laufen über das dunkle Rot der Palette (signal-ink), das sich vom
-     Plakatrot der Knöpfe klar genug unterscheidet. */
-  --color-success: #2f7a5c;
-  --color-success-tint: #e8e4c9;
-  --color-danger: #780000;
-  --color-danger-tint: #edd3bb;
+     Palette bringt kein Grün mit — hier ergänzt. Fehler laufen über das
+     abgedunkelte Rot (signal-ink), das sich vom grellen Knopfrot klar
+     genug unterscheidet. */
+  --color-success: #2f6b52;
+  --color-success-tint: #eaf0e9;
+  --color-danger: #bf2523;
+  --color-danger-tint: #f9ebe7;
 
   --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
-  /* Zahlen im Fahrtenbuch sind eingetragen, nicht gesetzt: Uhrzeiten, Daten,
-     Preise und Referenzen laufen deshalb über eine Schreibmaschinenschrift.
-     Bewusst der Systemstapel — eine zweite Schriftdatei wäre ein weiterer
-     Download, und selbst gehostet werden muss sie ohnehin (siehe
-     Datenschutzerklärung: keine Google Fonts). */
+  /* Zahlen sind eingetragen, nicht gesetzt: Uhrzeiten, Daten, Preise und
+     Referenzen laufen deshalb über eine Schreibmaschinenschrift. Bewusst
+     der Systemstapel — eine zweite Schriftdatei wäre ein weiterer Download,
+     und selbst gehostet werden muss sie ohnehin (siehe Datenschutz-
+     erklärung: keine Google Fonts). */
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
 
@@ -174,14 +168,15 @@
     outline-offset: 3px;
   }
 
-  /* Auf blauem Grund wäre das blaue Rechteck unsichtbar. */
+  /* Auf dunklem Grund oder einem roten Knopf wäre ein roter Fokusring
+     unsichtbar — hier deshalb weiss statt im Signalrot. */
   .on-signal :focus-visible {
     outline-color: var(--color-paper);
   }
 
   ::selection {
     background: var(--color-signal);
-    color: var(--color-paper);
+    color: var(--color-deep);
   }
 
   img,
@@ -381,12 +376,16 @@
     opacity: 0.55;
   }
 
+  /* Das Signalrot selbst ist zu hell für weisse Schrift (3,7:1). Dunkle
+     Schrift auf grellem Rot statt eines gedämpften Rottons — so bleibt der
+     Knopf im exakten angefragten Ton und ist trotzdem lesbar. */
   .btn-primary {
     background: var(--color-signal);
-    color: var(--color-paper);
+    color: var(--color-deep);
   }
   .btn-primary:hover:not(:disabled) {
     background: var(--color-signal-deep);
+    color: var(--color-paper);
   }
 
   /* Für die Hauptaktion direkt auf blauem Grund: der blaue Knopf hätte dort
@@ -395,8 +394,10 @@
     background: var(--color-deep);
     color: var(--color-paper);
   }
+  /* Dunkler als fast Schwarz geht nicht mehr — der Knopf hellt beim Zeigen
+     stattdessen einen Schritt auf, zum vierten Grauton der Palette. */
   .btn-deep:hover:not(:disabled) {
-    background: #001f30;
+    background: #333138;
   }
 
   .btn-invert {
@@ -512,13 +513,14 @@
     border-radius: var(--radius-pill);
   }
 
-  /* Kleine Auszeichnung wie „Inhaberin“ oder „01 · Voraussetzung“. */
-  /* Kleine Auszeichnung, wie ein angekreuztes Feld auf einem Formular:
-     eckig, mit Kante, nicht als Pille. */
+  /* Kleine Auszeichnung wie „Inhaberin“ oder „01 · Voraussetzung“, wie ein
+     angekreuztes Feld auf einem Formular: eckig, mit Kante, nicht als
+     Pille. Dunkle statt weisser Schrift, aus demselben Grund wie beim
+     Hauptknopf. */
   .chip {
     display: inline-block;
     background: var(--color-signal);
-    color: var(--color-paper);
+    color: var(--color-deep);
     font-weight: 700;
     font-size: 0.82rem;
     line-height: 1.2;
@@ -543,7 +545,9 @@
     transform: rotate(-3.5deg);
     border: 3px double var(--color-signal);
     border-radius: 3px;
-    color: var(--color-signal);
+    /* Der dunklere Rotton, nicht das grelle Knopfrot: als Schrift braucht
+       auch der Stempel 4,5:1, das grelle Rot liefert nur 3,7:1. */
+    color: var(--color-signal-ink);
     padding: 0.55rem 1.1rem 0.45rem;
     text-align: center;
     /* Stempelfarbe deckt nie ganz. */
@@ -565,7 +569,6 @@
     font-size: 0.72rem;
     line-height: 1.2;
     margin-top: 0.3rem;
-    opacity: 0.85;
   }
 
   .skip-link {

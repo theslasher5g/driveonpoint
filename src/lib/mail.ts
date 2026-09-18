@@ -67,16 +67,16 @@ export function mailLayout(heading: string, bodyHtml: string): string {
   return `<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>${escapeHtml(heading)}</title></head>
-<body style="margin:0;padding:24px;background:#FDF0D5;font-family:Helvetica,Arial,sans-serif;color:#003049;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFBF2;">
-<tr><td style="background:#C1121F;padding:22px 26px;">
-<span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-0.01em;">${escapeHtml(site.name)}</span>
+<body style="margin:0;padding:24px;background:#F5F5F1;font-family:Helvetica,Arial,sans-serif;color:#000103;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFFFA;">
+<tr><td style="background:#FF312E;padding:22px 26px;">
+<span style="color:#000103;font-size:18px;font-weight:700;letter-spacing:-0.01em;">${escapeHtml(site.name)}</span>
 </td></tr>
 <tr><td style="padding:26px;">
 <h1 style="margin:0 0 16px;font-size:21px;line-height:1.25;font-weight:700;">${escapeHtml(heading)}</h1>
 ${bodyHtml}
 </td></tr>
-<tr><td style="padding:18px 26px;border-top:1px solid #EDE0C2;font-size:12px;line-height:1.6;color:#4A5F68;">
+<tr><td style="padding:18px 26px;border-top:1px solid #D6D6D2;font-size:12px;line-height:1.6;color:#515052;">
 Diese Nachricht wurde automatisch versendet. Antworten auf diese Adresse werden nicht gelesen.
 </td></tr>
 </table></body></html>`;

@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { and, asc, eq, gte, inArray, lte, ne, or, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, lt, lte, ne, or, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
   availabilityExceptions,
@@ -175,8 +175,13 @@ export async function findSlots(options: {
         startsAt: bookings.startsAt,
         endsAt: bookings.endsAt,
         lessonTypeId: bookings.lessonTypeId,
+        // Die Pause gehört zum bereits gebuchten Termin, nicht zum gesuchten:
+        // nach einer Fahrstunde braucht es die Fahrzeit zum Kursraum auch
+        // dann, wenn das gesuchte Angebot selbst ohne Pause auskommt.
+        bufferMinutes: lessonTypes.bufferMinutes,
       })
       .from(bookings)
+      .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
       .where(
         and(
           inArray(bookings.staffId, staffIds),
@@ -230,11 +235,19 @@ export async function findSlots(options: {
         });
       }
 
-      // Bei Gruppenkursen zählen bestehende Anmeldungen als belegte Plätze,
-      // nicht als Sperre — mehrere Personen teilen sich denselben Termin.
-      if (!isGroupCourse) {
-        cuts.push(...bookingCutsFor(id, day, taken, lessonType.bufferMinutes));
-      }
+      // Bei Gruppenkursen zählen die Anmeldungen zum selben Kurs als belegte
+      // Plätze, nicht als Sperre — mehrere Personen teilen sich denselben
+      // Termin. Ein Termin eines anderen Angebots blockiert die Person aber
+      // sehr wohl, sonst stünde sie zur selben Zeit im Kursraum und im Auto.
+      cuts.push(
+        ...bookingCutsFor(
+          id,
+          day,
+          taken,
+          lessonType.bufferMinutes,
+          isGroupCourse ? lessonType.id : undefined,
+        ),
+      );
 
       const free = subtract(blocks, cuts);
 
@@ -261,21 +274,38 @@ export async function findSlots(options: {
   return mergeByStart(result);
 }
 
-/** Belegte Zeiten einer Person an einem Tag, inklusive Pause davor und danach. */
+/**
+ * Belegte Zeiten einer Person an einem Tag, inklusive Pause davor und danach.
+ *
+ * `sharedLessonTypeId` nimmt die Anmeldungen zu genau diesem Angebot aus:
+ * bei einem Gruppenkurs sind das die Mitfahrenden desselben Kurses, die
+ * keinen zweiten Block belegen. Ihre Kapazität wird in `pushSlot` gezählt.
+ */
 function bookingCutsFor(
   staffId: string,
   day: string,
-  taken: { staffId: string | null; startsAt: Date; endsAt: Date }[],
+  taken: {
+    staffId: string | null;
+    startsAt: Date;
+    endsAt: Date;
+    lessonTypeId: string | null;
+    bufferMinutes: number | null;
+  }[],
   bufferMinutes: number,
+  sharedLessonTypeId?: string,
 ): Interval[] {
   const cuts: Interval[] = [];
   for (const booking of taken) {
     if (booking.staffId !== staffId) continue;
     if (zurichDay(booking.startsAt) !== day) continue;
+    if (sharedLessonTypeId && booking.lessonTypeId === sharedLessonTypeId) continue;
 
+    // Die grössere der beiden Pausen gewinnt: die des bestehenden Termins
+    // und die des gesuchten Angebots.
+    const pause = Math.max(bufferMinutes, booking.bufferMinutes ?? 0);
     const start = minutesSinceMidnight(localTime(booking.startsAt));
     const end = minutesSinceMidnight(localTime(booking.endsAt));
-    cuts.push({ start: start - bufferMinutes, end: end + bufferMinutes });
+    cuts.push({ start: start - pause, end: end + pause });
   }
   return cuts;
 }
@@ -296,7 +326,12 @@ function pushSlot(
   startMinutes: number,
   lessonType: LessonType,
   staffIds: string[],
-  taken: { staffId: string | null; startsAt: Date; lessonTypeId: string | null }[],
+  taken: {
+    staffId: string | null;
+    startsAt: Date;
+    endsAt: Date;
+    lessonTypeId: string | null;
+  }[],
   earliest: Date,
 ): void {
   const time = fromMinutes(startMinutes);
@@ -305,11 +340,19 @@ function pushSlot(
 
   const endsAt = new Date(startsAt.getTime() + lessonType.durationMinutes * 60_000);
 
-  const alreadyBooked = taken.filter(
-    (b) =>
-      b.lessonTypeId === lessonType.id &&
-      staffIds.includes(b.staffId ?? "") &&
-      b.startsAt.getTime() === startsAt.getTime(),
+  const sameOffering = taken.filter(
+    (b) => b.lessonTypeId === lessonType.id && staffIds.includes(b.staffId ?? ""),
+  );
+
+  // Ein Kurs desselben Angebots zu einer anderen Zeit ist kein belegter Platz,
+  // sondern ein überschneidender Termin — etwa ein zweiter VKU am selben Abend.
+  const collides = sameOffering.some(
+    (b) => b.startsAt.getTime() !== startsAt.getTime() && b.startsAt < endsAt && b.endsAt > startsAt,
+  );
+  if (collides) return;
+
+  const alreadyBooked = sameOffering.filter(
+    (b) => b.startsAt.getTime() === startsAt.getTime(),
   ).length;
 
   const seatsLeft = lessonType.capacity - alreadyBooked;
@@ -399,26 +442,37 @@ export async function createBooking(input: {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.staffId}))`);
 
       const clash = await tx
-        .select({ id: bookings.id, startsAt: bookings.startsAt })
+        .select({
+          id: bookings.id,
+          startsAt: bookings.startsAt,
+          lessonTypeId: bookings.lessonTypeId,
+        })
         .from(bookings)
         .where(
           and(
             eq(bookings.staffId, input.staffId),
             ne(bookings.status, "abgesagt"),
-            lte(bookings.startsAt, endsAt),
-            gte(bookings.endsAt, input.startsAt),
+            // Echte Überschneidung: ein Termin, der genau dann endet, wenn
+            // dieser beginnt, ist keine — sonst liessen sich zwei Kurse nicht
+            // hintereinander legen.
+            lt(bookings.startsAt, endsAt),
+            gt(bookings.endsAt, input.startsAt),
           ),
         );
 
       if (input.lessonType.capacity <= 1) {
         if (clash.length > 0) return null;
       } else {
-        const sameStart = clash.filter(
-          (row) => row.startsAt.getTime() === input.startsAt.getTime(),
+        // Als Mitanmeldung zählt nur, wer denselben Kurs zur selben Zeit
+        // besucht. Ein Termin eines anderen Angebots ist eine Überschneidung,
+        // auch wenn er zufällig zur selben Minute beginnt.
+        const sameCourse = clash.filter(
+          (row) =>
+            row.lessonTypeId === input.lessonType.id &&
+            row.startsAt.getTime() === input.startsAt.getTime(),
         );
-        // Überschneidung mit einem anderen Termin, nicht bloss volle Plätze.
-        if (clash.length > sameStart.length) return null;
-        if (sameStart.length >= input.lessonType.capacity) return null;
+        if (clash.length > sameCourse.length) return null;
+        if (sameCourse.length >= input.lessonType.capacity) return null;
       }
 
       await tx.insert(bookings).values({

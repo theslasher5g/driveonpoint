@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "pruefen:buchung": "tsx --tsconfig tsconfig.test.json test/buchungslogik.ts",
     "db:generate": "drizzle-kit generate",
     "db:setup": "tsx src/lib/db/setup.ts"
   },

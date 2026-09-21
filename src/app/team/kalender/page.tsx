@@ -197,7 +197,13 @@ export default async function KalenderPage({
 
         <div className="mt-8">
           {view === "monat" ? (
-            <MonthView yearMonth={yearMonth} visibleIds={visibleIds} focus={focus} />
+            <MonthView
+              yearMonth={yearMonth}
+              visibleIds={visibleIds}
+              focus={focus}
+              seesEveryone={seesEveryone}
+              manages={manages}
+            />
           ) : (
             <WeekView
               start={weekStart}

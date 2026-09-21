@@ -1,20 +1,25 @@
 import Link from "next/link";
 import { and, asc, eq, gte, inArray, lte, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { availabilityExceptions, bookings, lessonTypes } from "@/lib/db/schema";
+import { availabilityExceptions, bookings, lessonTypes, staff } from "@/lib/db/schema";
 import { monthName, todayInZurich, weekdayName, zurichDay, zurichTime, zurichToInstant, zurichWeekday } from "@/lib/time";
+import { DayBookings, type DayBookingEntry } from "./day-bookings";
 import { monthGridDays, yearMonthOf } from "./dates";
 
-const MAX_CHIPS_PER_DAY = 3;
+const MAX_CHIPS_PER_DAY = 4;
 
 export async function MonthView({
   yearMonth,
   visibleIds,
   focus,
+  seesEveryone,
+  manages,
 }: {
   yearMonth: string;
   visibleIds: string[];
   focus?: string;
+  seesEveryone: boolean;
+  manages: boolean;
 }) {
   const days = monthGridDays(yearMonth);
   const gridStart = days[0];
@@ -26,12 +31,17 @@ export async function MonthView({
       .select({
         id: bookings.id,
         startsAt: bookings.startsAt,
+        endsAt: bookings.endsAt,
         customerName: bookings.customerName,
+        customerPhone: bookings.customerPhone,
+        customerNote: bookings.customerNote,
         staffId: bookings.staffId,
+        staffName: staff.name,
         lessonName: lessonTypes.name,
       })
       .from(bookings)
       .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
+      .leftJoin(staff, eq(staff.id, bookings.staffId))
       .where(
         and(
           inArray(bookings.staffId, visibleIds),
@@ -78,6 +88,16 @@ export async function MonthView({
           const isAbsent = absentDays.has(day);
           const dayHref = `/team/kalender?ansicht=woche&woche=${day}${focus ? `&person=${focus}` : ""}`;
 
+          const shownEntries: DayBookingEntry[] = shown.map((entry) => ({
+            id: entry.id,
+            timeLabel: `${zurichTime(entry.startsAt)}–${zurichTime(entry.endsAt)}`,
+            customerName: entry.customerName ?? "Angaben gelöscht",
+            customerPhone: entry.customerPhone,
+            customerNote: entry.customerNote,
+            lessonName: entry.lessonName,
+            staffName: seesEveryone && !focus ? entry.staffName : null,
+          }));
+
           return (
             <div
               key={day}
@@ -102,21 +122,7 @@ export async function MonthView({
                 <span className="text-[0.65rem] sm:text-[0.72rem] text-slate mt-1">Abwesend</span>
               )}
 
-              <ul className="mt-1 space-y-1 flex-1">
-                {shown.map((entry) => (
-                  <li key={entry.id}>
-                    <Link
-                      href={dayHref}
-                      className="block bg-deep/5 hover:bg-signal-tint border-l-2 border-deep px-1.5 py-1 text-[0.65rem] sm:text-[0.72rem] leading-tight transition-colors"
-                    >
-                      <span className="nums font-bold">{zurichTime(entry.startsAt)}</span>{" "}
-                      <span className="hidden sm:inline">
-                        {entry.customerName ?? "Angaben gelöscht"}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <DayBookings entries={shownEntries} manages={manages} />
 
               {overflow > 0 && (
                 <Link

@@ -40,7 +40,7 @@ export default async function VerfuegbarkeitPage({
 
   const [offerings, rules, exceptions] = await Promise.all([
     db
-      .select({ id: lessonTypes.id, name: lessonTypes.name })
+      .select({ id: lessonTypes.id, name: lessonTypes.name, durationMinutes: lessonTypes.durationMinutes })
       .from(staffLessonTypes)
       .innerJoin(lessonTypes, eq(lessonTypes.id, staffLessonTypes.lessonTypeId))
       .where(and(eq(staffLessonTypes.staffId, targetId), eq(lessonTypes.active, true)))
@@ -171,6 +171,7 @@ export default async function VerfuegbarkeitPage({
                       person={targetId}
                       lessonTypeId={offering.id}
                       lessonTypeName={offering.name}
+                      durationMinutes={offering.durationMinutes}
                     />
                   </div>
                 </div>
@@ -182,8 +183,9 @@ export default async function VerfuegbarkeitPage({
         <div className="mt-10 pt-6 border-t-2 border-deep">
           <h2 className="text-section">Einzelne Tage</h2>
           <p className="text-slate text-fine mt-1.5 mb-5 max-w-[60ch]">
-            Ferien, Arzttermine oder ein zusätzlicher Termin. Gilt standardmässig für alle
-            Angebote von {target.name} — lässt sich beim Eintragen auf ein Angebot eingrenzen.
+            Ferien, Arzttermine oder ein zusätzlicher Termin — auch über mehrere Tage am Stück,
+            mit dem Feld „Bis". Gilt standardmässig für alle Angebote von {target.name} — lässt
+            sich beim Eintragen auf ein Angebot eingrenzen.
           </p>
 
           {exceptions.length === 0 ? (

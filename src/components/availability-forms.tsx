@@ -7,20 +7,27 @@ import {
   addRuleAction,
   type AvailabilityState,
 } from "@/app/team/verfuegbarkeit/actions";
-import { weekdayName } from "@/lib/time";
+import { fromMinutes, minutesSinceMidnight, weekdayName } from "@/lib/time";
 
 const EMPTY: AvailabilityState = {};
+const DEFAULT_START = "08:00";
 
 export function AvailabilityForms({
   person,
   lessonTypeId,
   lessonTypeName,
+  durationMinutes,
 }: {
   person: string;
   lessonTypeId: string;
   lessonTypeName: string;
+  durationMinutes: number;
 }) {
   const [ruleState, ruleAction] = useActionState(addRuleAction, EMPTY);
+  // Ein Zeitfenster kürzer als die Termindauer zeigt nie einen buchbaren
+  // Slot — der Vorschlag passt sich darum je Angebot an (Nothilfekurs
+  // braucht 5 Stunden, eine Fahrstunde nur 45 Minuten).
+  const defaultEnd = fromMinutes(minutesSinceMidnight(DEFAULT_START) + durationMinutes);
 
   return (
     // Die vier Felder passen nebeneinander in eine Zeile. Untereinander
@@ -51,7 +58,7 @@ export function AvailabilityForms({
           </select>
         </div>
 
-        <TimePair idPrefix={`regel-${lessonTypeId}`} defaultFrom="08:00" defaultTo="12:00" />
+        <TimePair idPrefix={`regel-${lessonTypeId}`} defaultFrom={DEFAULT_START} defaultTo={defaultEnd} />
         <Submit label="Eintragen" busy="…" />
       </div>
     </form>
@@ -102,9 +109,16 @@ export function AvailabilityExceptionForm({
 
         <div className="min-w-[9rem]">
           <label className="field-label text-fine" htmlFor="tag">
-            Datum
+            Von (Datum)
           </label>
           <input id="tag" name="tag" type="date" className="field nums py-2" required />
+        </div>
+
+        <div className="min-w-[9rem]">
+          <label className="field-label text-fine" htmlFor="tagBis">
+            Bis <span className="font-normal text-slate">(freiwillig, z. B. Ferien)</span>
+          </label>
+          <input id="tagBis" name="tagBis" type="date" className="field nums py-2" />
         </div>
 
         <TimePair idPrefix="ausnahme" defaultFrom="08:00" defaultTo="17:00" />

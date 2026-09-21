@@ -7,8 +7,47 @@ import { record } from "@/lib/audit";
 import { assertPermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
-import { availabilityExceptions, availabilityRules, staffLessonTypes } from "@/lib/db/schema";
-import { minutesSinceMidnight } from "@/lib/time";
+import { availabilityExceptions, availabilityRules, lessonTypes, staffLessonTypes } from "@/lib/db/schema";
+import { addDays, minutesSinceMidnight } from "@/lib/time";
+
+/** Höchstens rund zwei Monate am Stück, damit ein Tippfehler beim Enddatum
+ * keine tausend Zeilen erzeugt. */
+const MAX_RANGE_DAYS = 62;
+
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (rest === 0) return `${hours} Stunde${hours === 1 ? "" : "n"}`;
+  if (hours === 0) return `${rest} Minuten`;
+  return `${hours} Stunde${hours === 1 ? "" : "n"} ${rest} Minuten`;
+}
+
+/**
+ * Ein Zeitfenster, das kürzer ist als ein einzelner Termin des Angebots,
+ * erzeugt nie einen buchbaren Slot — `findSlots` verwirft es kommentarlos
+ * (src/lib/booking.ts). Ohne diese Prüfung trägt man z. B. für den
+ * Nothilfekurs (5 Stunden) ein 4-stündiges Fenster ein und wundert sich,
+ * warum nichts angezeigt wird.
+ */
+async function assertWindowFitsOffering(
+  lessonTypeId: string,
+  von: string,
+  bis: string,
+): Promise<string | null> {
+  const [offering] = await db
+    .select({ durationMinutes: lessonTypes.durationMinutes })
+    .from(lessonTypes)
+    .where(eq(lessonTypes.id, lessonTypeId))
+    .limit(1);
+
+  if (!offering) return "Dieses Angebot gibt es nicht mehr.";
+
+  const windowMinutes = minutesSinceMidnight(bis) - minutesSinceMidnight(von);
+  if (windowMinutes < offering.durationMinutes) {
+    return `Ein Termin dieses Angebots dauert ${formatDuration(offering.durationMinutes)} — das Zeitfenster ist zu kurz, damit einer hineinpasst.`;
+  }
+  return null;
+}
 
 const timeRange = z
   .object({
@@ -86,6 +125,13 @@ export async function addRuleAction(
     return { error: "Dieses Angebot gehört nicht zu dieser Person." };
   }
 
+  const fitError = await assertWindowFitsOffering(
+    parsed.data.lessonTypeId,
+    parsed.data.von,
+    parsed.data.bis,
+  );
+  if (fitError) return { error: fitError };
+
   await db.insert(availabilityRules).values({
     staffId,
     lessonTypeId: parsed.data.lessonTypeId,
@@ -130,6 +176,11 @@ export async function addExceptionAction(
   const parsed = z
     .object({
       tag: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Datum."),
+      // Für Ferien & Co.: optionales Enddatum, sonst gilt nur `tag` selbst.
+      tagBis: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Enddatum.")
+        .optional(),
       von: z.string(),
       bis: z.string(),
       art: z.enum(["frei", "abwesend"]),
@@ -138,6 +189,7 @@ export async function addExceptionAction(
     })
     .safeParse({
       tag: formData.get("tag"),
+      tagBis: formData.get("tagBis") || undefined,
       von: formData.get("von"),
       bis: formData.get("bis"),
       art: formData.get("art"),
@@ -154,27 +206,58 @@ export async function addExceptionAction(
     return { error: "Dieses Angebot gehört nicht zu dieser Person." };
   }
 
-  await db.insert(availabilityExceptions).values({
-    staffId,
-    lessonTypeId: parsed.data.lessonTypeId ?? null,
-    day: parsed.data.tag,
-    startTime: parsed.data.von,
-    endTime: parsed.data.bis,
-    available: parsed.data.art === "frei",
-    note: parsed.data.notiz ?? null,
-  });
+  // Nur "zusätzlich frei" für ein bestimmtes Angebot muss ins Zeitfenster
+  // dieses Angebots passen. "Abwesend" blockiert einfach eine Zeit, egal
+  // wie kurz — und "alle Angebote" hat keine einzelne Dauer zu prüfen.
+  if (parsed.data.art === "frei" && parsed.data.lessonTypeId) {
+    const fitError = await assertWindowFitsOffering(
+      parsed.data.lessonTypeId,
+      parsed.data.von,
+      parsed.data.bis,
+    );
+    if (fitError) return { error: fitError };
+  }
+
+  const endDay = parsed.data.tagBis ?? parsed.data.tag;
+  if (endDay < parsed.data.tag) {
+    return { error: "Das Enddatum darf nicht vor dem Startdatum liegen." };
+  }
+
+  const days: string[] = [];
+  for (let day = parsed.data.tag; day <= endDay; day = addDays(day, 1)) {
+    days.push(day);
+    if (days.length > MAX_RANGE_DAYS) {
+      return { error: `Bitte höchstens ${MAX_RANGE_DAYS} Tage auf einmal eintragen.` };
+    }
+  }
+
+  await db.insert(availabilityExceptions).values(
+    days.map((day) => ({
+      staffId,
+      lessonTypeId: parsed.data.lessonTypeId ?? null,
+      day,
+      startTime: parsed.data.von,
+      endTime: parsed.data.bis,
+      available: parsed.data.art === "frei",
+      note: parsed.data.notiz ?? null,
+    })),
+  );
 
   await record("verfuegbarkeit.ausnahme-erstellt", { id: user.id, label: user.name }, {
     fuer: staffId,
     tag: parsed.data.tag,
+    bis: endDay !== parsed.data.tag ? endDay : undefined,
     art: parsed.data.art,
     lektionsart: parsed.data.lessonTypeId ?? "alle",
   });
 
   revalidatePath("/team/verfuegbarkeit");
   revalidatePath("/team/kalender");
+  const tage = days.length > 1 ? ` (${days.length} Tage)` : "";
   return {
-    ok: parsed.data.art === "frei" ? "Zusätzliche Zeit eingetragen." : "Abwesenheit eingetragen.",
+    ok:
+      (parsed.data.art === "frei" ? "Zusätzliche Zeit eingetragen." : "Abwesenheit eingetragen.") +
+      tage,
   };
 }
 

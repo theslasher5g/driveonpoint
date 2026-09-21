@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, eq, gte, lte, ne } from "drizzle-orm";
+import { and, asc, count, eq, gte, lte, ne } from "drizzle-orm";
 import { requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
@@ -27,7 +27,16 @@ export default async function TeamDashboard({
   const weekEnd = addDays(today, 6);
   const seesEveryone = can(user.role, "verfuegbarkeit.alle");
 
-  const [upcoming, ownOfferings, coveredOfferingIds] = await Promise.all([
+  // Dieselbe Bedingung für Liste und Zähler — die Liste ist begrenzt, damit
+  // eine volle Woche die Seite nicht sprengt; gezählt wird trotzdem alles.
+  const weekFilter = and(
+    ne(bookings.status, "abgesagt"),
+    gte(bookings.startsAt, zurichToInstant(today, "00:00")),
+    lte(bookings.startsAt, zurichToInstant(weekEnd, "23:59")),
+    seesEveryone ? undefined : eq(bookings.staffId, user.id),
+  );
+
+  const [upcoming, weekTotal, ownOfferings, coveredOfferingIds] = await Promise.all([
     db
       .select({
         id: bookings.id,
@@ -43,16 +52,14 @@ export default async function TeamDashboard({
       .from(bookings)
       .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
       .leftJoin(staff, eq(staff.id, bookings.staffId))
-      .where(
-        and(
-          ne(bookings.status, "abgesagt"),
-          gte(bookings.startsAt, zurichToInstant(today, "00:00")),
-          lte(bookings.startsAt, zurichToInstant(weekEnd, "23:59")),
-          seesEveryone ? undefined : eq(bookings.staffId, user.id),
-        ),
-      )
+      .where(weekFilter)
       .orderBy(asc(bookings.startsAt))
       .limit(60),
+    db
+      .select({ total: count() })
+      .from(bookings)
+      .where(weekFilter)
+      .then((rows) => rows[0]?.total ?? 0),
     // Die eigenen Angebote, um sie gegen die eingetragene Verfügbarkeit
     // abzugleichen — ohne Zeiten kann dort niemand buchen.
     db
@@ -70,7 +77,6 @@ export default async function TeamDashboard({
   const uncovered = ownOfferings.filter((offering) => !coveredOfferingIds.includes(offering.id));
 
   const todays = upcoming.filter((entry) => zurichDay(entry.startsAt) === today);
-  const thisWeek = upcoming.length;
 
   return (
     <section className="shell band">
@@ -93,13 +99,11 @@ export default async function TeamDashboard({
           )}
         </div>
 
-        {/* Drei Kennzahlen statt eines Satzes Fliesstext: was heute und
-            diese Woche ansteht, und ob irgendwo die Verfügbarkeit fehlt —
-            der einzige der drei Werte, der wirklich Handeln verlangt, daher
-            in Gelb statt in der neutralen Kopf-Farbe. */}
+        {/* Gelb trägt hier Bedeutung: nur die Kachel, die eine Reaktion
+            braucht, ist eingefärbt. */}
         <dl className="grid gap-px bg-deep/12 border border-deep/12 grid-cols-2 sm:grid-cols-3 mt-7">
           <StatTile label="Heute" value={todays.length} />
-          <StatTile label={seesEveryone ? "Diese Woche, alle" : "Diese Woche"} value={thisWeek} />
+          <StatTile label={seesEveryone ? "Diese Woche, alle" : "Diese Woche"} value={weekTotal} />
           <StatTile
             label="Ohne Verfügbarkeit"
             value={uncovered.length}
@@ -110,29 +114,27 @@ export default async function TeamDashboard({
 
         {uncovered.length > 0 && (
           <p className="notice notice-warn mt-5 max-w-[62ch]">
-            Für {uncovered.map((offering) => offering.name).join(", ")} ist noch keine
-            wöchentliche Zeit eingetragen — dort kann dich niemand buchen.{" "}
+            Für {uncovered.map((offering) => offering.name).join(", ")} fehlt deine Zeit — da
+            kann dich niemand buchen.{" "}
             <Link href="/team/verfuegbarkeit" className="underline underline-offset-2">
-              Jetzt eintragen
+              Eintragen
             </Link>
-            .
           </p>
         )}
 
         <h2 className="text-section mt-10 mb-4">
-          {seesEveryone ? "Nächste sieben Tage, alle" : "Deine nächsten sieben Tage"}
+          {seesEveryone ? "Kommende Termine, alle" : "Deine kommenden Termine"}
         </h2>
 
         {upcoming.length === 0 ? (
-          <p className="text-slate text-fine max-w-[54ch]">
-            Keine Termine eingetragen. Prüf deine{" "}
+          <p className="text-slate text-fine">
+            Diese Woche ist nichts gebucht.{" "}
             <Link
               href="/team/verfuegbarkeit"
               className="font-semibold text-signal-ink underline underline-offset-4"
             >
-              Verfügbarkeit
-            </Link>{" "}
-            — ohne eingetragene Zeiten kann niemand bei dir buchen.
+              Verfügbarkeit prüfen
+            </Link>
           </p>
         ) : (
           <div className="border-t border-deep/15">
@@ -172,6 +174,15 @@ export default async function TeamDashboard({
               </article>
             ))}
           </div>
+        )}
+
+        {weekTotal > upcoming.length && (
+          <p className="text-slate text-fine mt-4">
+            Noch {weekTotal - upcoming.length} weitere diese Woche —{" "}
+            <Link href="/team/kalender" className="font-semibold underline underline-offset-4">
+              im Kalender
+            </Link>
+          </p>
         )}
 
         <div className="flex flex-wrap gap-3 mt-8">

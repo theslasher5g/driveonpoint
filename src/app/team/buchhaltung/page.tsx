@@ -28,9 +28,7 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
       <div className="lane">
         <h1 className="text-title">Buchhaltung</h1>
         <p className="text-slate text-lead mt-4 max-w-[62ch]">
-          Auszüge für die Steuererklärung. Gezeigt wird, was tatsächlich stattgefunden hat —
-          Datum, Angebot und Betrag. Namen, Mailadressen und Telefonnummern bleiben aussen vor,
-          auch für frische Termine.
+          Auszüge für die Steuererklärung: Datum, Angebot, Betrag. Ohne Personendaten.
         </p>
 
         {/* Zeitraum wählen */}
@@ -198,9 +196,8 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
           <div className="mt-12">
             <h2 className="text-section mb-2">Kurzfristige Absagen</h2>
             <p className="text-slate text-fine mb-4 max-w-[62ch]">
-              Innert 24 Stunden vor Beginn abgesagt und laut AGB verrechenbar, oben aber nicht
-              mitgezählt. Absagen, die von uns ausgingen, stehen hier ebenfalls — die Anwendung
-              kennt den Grund einer Absage nicht.
+              Innert 24 Stunden abgesagt, laut AGB verrechenbar — oben nicht mitgezählt. Eigene
+              Absagen stehen hier ebenfalls.
             </p>
             <div className="border-t border-deep/15">
               {report.lateCancellations.map((row) => (

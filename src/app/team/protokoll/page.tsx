@@ -74,8 +74,7 @@ export default async function ProtokollPage({ searchParams }: { searchParams: Pa
       <div className="lane">
         <h1 className="text-title">Protokoll</h1>
         <p className="text-slate text-lead mt-4 max-w-[62ch]">
-          Wer was geändert hat — Anmeldungen, Preise, Termine, Konten. Der einzige Weg,
-          nachzuvollziehen, was bei einem Vorfall passiert ist.
+          Wer was geändert hat — Anmeldungen, Preise, Termine, Konten.
         </p>
 
         <form method="get" className="mt-8 flex flex-wrap items-end gap-4">

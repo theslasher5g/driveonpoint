@@ -3,7 +3,7 @@ import { and, asc, eq, gte, inArray, lte, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { availabilityExceptions, bookings, lessonTypes, staff } from "@/lib/db/schema";
 import { monthName, todayInZurich, weekdayName, zurichDay, zurichTime, zurichToInstant, zurichWeekday } from "@/lib/time";
-import { DayBookings, type DayBookingEntry } from "./day-bookings";
+import { DayEntries, type DayAbsence, type DayBooking } from "./day-entries";
 import { monthGridDays, yearMonthOf } from "./dates";
 
 const MAX_CHIPS_PER_DAY = 4;
@@ -14,12 +14,14 @@ export async function MonthView({
   focus,
   seesEveryone,
   manages,
+  mayEditAvailability,
 }: {
   yearMonth: string;
   visibleIds: string[];
   focus?: string;
   seesEveryone: boolean;
   manages: boolean;
+  mayEditAvailability: boolean;
 }) {
   const days = monthGridDays(yearMonth);
   const gridStart = days[0];
@@ -52,8 +54,19 @@ export async function MonthView({
       )
       .orderBy(asc(bookings.startsAt)),
     db
-      .select({ day: availabilityExceptions.day, staffId: availabilityExceptions.staffId })
+      .select({
+        id: availabilityExceptions.id,
+        day: availabilityExceptions.day,
+        staffId: availabilityExceptions.staffId,
+        startTime: availabilityExceptions.startTime,
+        endTime: availabilityExceptions.endTime,
+        note: availabilityExceptions.note,
+        staffName: staff.name,
+        lessonName: lessonTypes.name,
+      })
       .from(availabilityExceptions)
+      .leftJoin(staff, eq(staff.id, availabilityExceptions.staffId))
+      .leftJoin(lessonTypes, eq(lessonTypes.id, availabilityExceptions.lessonTypeId))
       .where(
         and(
           inArray(availabilityExceptions.staffId, visibleIds),
@@ -61,10 +74,9 @@ export async function MonthView({
           gte(availabilityExceptions.day, gridStart),
           lte(availabilityExceptions.day, gridEnd),
         ),
-      ),
+      )
+      .orderBy(asc(availabilityExceptions.startTime)),
   ]);
-
-  const absentDays = new Set(absenceRows.map((row) => row.day));
 
   return (
     <div className="border border-deep/15 bg-deep/15" style={{ display: "grid", gap: "1px" }}>
@@ -85,10 +97,9 @@ export async function MonthView({
           const dayEntries = entries.filter((entry) => zurichDay(entry.startsAt) === day);
           const shown = dayEntries.slice(0, MAX_CHIPS_PER_DAY);
           const overflow = dayEntries.length - shown.length;
-          const isAbsent = absentDays.has(day);
           const dayHref = `/team/kalender?ansicht=woche&woche=${day}${focus ? `&person=${focus}` : ""}`;
 
-          const shownEntries: DayBookingEntry[] = shown.map((entry) => ({
+          const shownEntries: DayBooking[] = shown.map((entry) => ({
             id: entry.id,
             timeLabel: `${zurichTime(entry.startsAt)}–${zurichTime(entry.endsAt)}`,
             customerName: entry.customerName ?? "Angaben gelöscht",
@@ -97,6 +108,17 @@ export async function MonthView({
             lessonName: entry.lessonName,
             staffName: seesEveryone && !focus ? entry.staffName : null,
           }));
+
+          const dayAbsences: DayAbsence[] = absenceRows
+            .filter((row) => row.day === day)
+            .map((row) => ({
+              id: row.id,
+              staffId: row.staffId,
+              timeLabel: `${row.startTime.slice(0, 5)}–${row.endTime.slice(0, 5)}`,
+              note: row.note,
+              lessonName: row.lessonName,
+              staffName: seesEveryone && !focus ? row.staffName : null,
+            }));
 
           return (
             <div
@@ -118,11 +140,12 @@ export async function MonthView({
                 {Number(day.slice(8))}
               </Link>
 
-              {isAbsent && (
-                <span className="text-[0.65rem] sm:text-[0.72rem] text-slate mt-1">Abwesend</span>
-              )}
-
-              <DayBookings entries={shownEntries} manages={manages} />
+              <DayEntries
+                bookings={shownEntries}
+                absences={dayAbsences}
+                manages={manages}
+                mayEditAvailability={mayEditAvailability}
+              />
 
               {overflow > 0 && (
                 <Link

@@ -13,6 +13,7 @@ import {
   zurichWeekday,
 } from "@/lib/time";
 import { CancelBookingButton } from "@/components/cancel-booking-button";
+import { DeleteExceptionButton } from "@/components/availability-delete";
 
 export async function WeekView({
   start,
@@ -20,12 +21,14 @@ export async function WeekView({
   focus,
   seesEveryone,
   manages,
+  mayEditAvailability,
 }: {
   start: string;
   visibleIds: string[];
   focus?: string;
   seesEveryone: boolean;
   manages: boolean;
+  mayEditAvailability: boolean;
 }) {
   const end = addDays(start, 6);
   const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
@@ -148,10 +151,15 @@ export async function WeekView({
             )}
 
             {absences.map((absence) => (
-              <p key={absence.id} className="nums text-fine bg-concrete-dim px-2 py-1.5 mt-2">
-                Abwesend {absence.startTime.slice(0, 5)}–{absence.endTime.slice(0, 5)}
-                {absence.note ? ` · ${absence.note}` : ""}
-              </p>
+              <div key={absence.id} className="bg-concrete-dim px-2 py-1.5 mt-2">
+                <p className="nums text-fine">
+                  Abwesend {absence.startTime.slice(0, 5)}–{absence.endTime.slice(0, 5)}
+                  {absence.note ? ` · ${absence.note}` : ""}
+                </p>
+                {mayEditAvailability && (
+                  <DeleteExceptionButton id={absence.id} person={absence.staffId} />
+                )}
+              </div>
             ))}
 
             <ul className="mt-3 space-y-2">

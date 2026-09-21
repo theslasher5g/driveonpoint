@@ -30,6 +30,9 @@ export default async function KalenderPage({
 
   const seesEveryone = can(user.role, "verfuegbarkeit.alle");
   const manages = can(user.role, "kalender.verwalten");
+  // Wer nicht alle Kalender sieht, bekommt ohnehin nur die eigenen Einträge
+  // zu sehen — für die reicht `verfuegbarkeit.eigene`.
+  const mayEditAvailability = can(user.role, "verfuegbarkeit.eigene");
 
   const view = params.ansicht === "woche" ? "woche" : "monat";
   const today = todayInZurich();
@@ -203,6 +206,7 @@ export default async function KalenderPage({
               focus={focus}
               seesEveryone={seesEveryone}
               manages={manages}
+              mayEditAvailability={mayEditAvailability}
             />
           ) : (
             <WeekView
@@ -211,6 +215,7 @@ export default async function KalenderPage({
               focus={focus}
               seesEveryone={seesEveryone}
               manages={manages}
+              mayEditAvailability={mayEditAvailability}
             />
           )}
         </div>

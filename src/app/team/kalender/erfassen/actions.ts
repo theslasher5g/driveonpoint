@@ -136,5 +136,9 @@ export async function createManualBookingAction(
     }
   }
 
-  redirect(`/team/kalender?woche=${input.tag}&erfasst=${encodeURIComponent(result.reference)}`);
+  // Ausdrücklich in die Wochenansicht: dort steht der neue Termin mit allen
+  // Angaben. Ohne `ansicht` landet man im Monat, der den Tag nicht anspringt.
+  redirect(
+    `/team/kalender?ansicht=woche&woche=${input.tag}&erfasst=${encodeURIComponent(result.reference)}`,
+  );
 }

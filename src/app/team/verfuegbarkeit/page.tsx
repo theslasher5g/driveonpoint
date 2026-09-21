@@ -85,9 +85,8 @@ export default async function VerfuegbarkeitPage({
       <div className="lane">
         <h1 className="text-title">Verfügbarkeit</h1>
         <p className="text-slate text-lead mt-4 max-w-[58ch]">
-          Was hier steht, sehen Kundinnen und Kunden als buchbare Termine. Ohne eingetragene
-          Zeiten kann niemand buchen. Jedes Angebot — Fahrstunde, VKU, Nothilfekurs — hat seinen
-          eigenen Plan, denn die Zeiten unterscheiden sich stark (VKU zum Beispiel meist abends).
+          Diese Zeiten sieht deine Kundschaft als buchbare Termine. Jedes Angebot hat seinen
+          eigenen Plan.
         </p>
 
         {managesOthers && team.length > 1 && (
@@ -183,9 +182,8 @@ export default async function VerfuegbarkeitPage({
         <div className="mt-10 pt-6 border-t-2 border-deep">
           <h2 className="text-section">Einzelne Tage</h2>
           <p className="text-slate text-fine mt-1.5 mb-5 max-w-[60ch]">
-            Ferien, Arzttermine oder ein zusätzlicher Termin — auch über mehrere Tage am Stück,
-            mit dem Feld „Bis". Gilt standardmässig für alle Angebote von {target.name} — lässt
-            sich beim Eintragen auf ein Angebot eingrenzen.
+            Ferien, Arzttermin oder eine Zeit extra. Für mehrere Tage am Stück das Feld „Bis"
+            ausfüllen.
           </p>
 
           {exceptions.length === 0 ? (

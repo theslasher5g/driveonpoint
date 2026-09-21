@@ -189,5 +189,7 @@ export async function rescheduleBookingAction(
 
   revalidatePath("/team/kalender");
   revalidatePath("/team");
-  redirect(`/team/kalender?woche=${tag}&verschoben=${encodeURIComponent(entry.reference)}`);
+  redirect(
+    `/team/kalender?ansicht=woche&woche=${tag}&verschoben=${encodeURIComponent(entry.reference)}`,
+  );
 }

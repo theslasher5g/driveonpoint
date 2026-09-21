@@ -52,8 +52,8 @@ export const site = {
     street: "Musterstrasse 12", // ###
     zip: "4051", // ###
     city: "Basel", // ###
-    phone: "+41 61 000 00 00", // ###
-    phoneHref: "+41610000000", // ###
+    phone: "+41 77 536 63 59",
+    phoneHref: "+41775366359",
     email: "info@driveonpoint.com", // ###
   },
 

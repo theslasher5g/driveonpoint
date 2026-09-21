@@ -73,6 +73,11 @@ export function addDays(day: string, count: number): string {
   return next.toISOString().slice(0, 10);
 }
 
+/** Anzahl Tage zwischen zwei "YYYY-MM-DD"-Daten, `to` minus `from`. */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
+}
+
 export function minutesSinceMidnight(timeOfDay: string): number {
   const [hour, minute] = timeOfDay.split(":").map(Number);
   return hour * 60 + minute;

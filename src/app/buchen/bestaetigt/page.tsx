@@ -11,14 +11,20 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-type Params = Promise<{ ref?: string }>;
+type Params = Promise<{ ref?: string | string[]; fehlgeschlagen?: string }>;
 
 export default async function BestaetigtPage({ searchParams }: { searchParams: Params }) {
-  const { ref } = await searchParams;
+  const { ref, fehlgeschlagen } = await searchParams;
 
-  // Die Referenz wird nur angezeigt, nicht nachgeschlagen. Sonst liesse sich
-  // durch Raten von Kürzeln fremden Terminen die Anzeige entlocken.
-  const reference = typeof ref === "string" ? ref.replace(/[^A-Z0-9-]/gi, "").slice(0, 12) : "";
+  // Die Referenzen werden nur angezeigt, nicht nachgeschlagen. Sonst liesse
+  // sich durch Raten von Kürzeln fremden Terminen die Anzeige entlocken.
+  const refs = (Array.isArray(ref) ? ref : ref ? [ref] : [])
+    .map((value) => value.replace(/[^A-Z0-9-]/gi, "").slice(0, 12))
+    .filter(Boolean)
+    .slice(0, 10);
+
+  const failedCount = Math.max(0, Math.min(10, Number(fehlgeschlagen) || 0));
+  const multiple = refs.length > 1;
 
   return (
     <>
@@ -26,18 +32,31 @@ export default async function BestaetigtPage({ searchParams }: { searchParams: P
         <div className="shell py-10 md:py-14">
           <div className="lane sm:flex sm:items-start sm:justify-between sm:gap-10">
             <div>
-              <h1 className="text-title max-w-[16ch]">Der Termin gehört dir.</h1>
+              <h1 className="text-title max-w-[18ch]">
+                {multiple ? "Die Termine gehören dir." : "Der Termin gehört dir."}
+              </h1>
               <p className="text-lead text-slate mt-4 max-w-[54ch]">
-                Wir haben dir eine Bestätigung geschickt. Darin steht auch der Link, mit dem du
-                bis 24 Stunden vorher kostenlos absagen kannst.
+                Wir haben dir eine Bestätigung geschickt. Darin stehen auch die Links, mit denen
+                du bis 24 Stunden vorher kostenlos absagen kannst.
               </p>
+              {failedCount > 0 && (
+                <p className="notice notice-warn mt-4 max-w-[54ch]">
+                  {failedCount} {failedCount === 1 ? "der gewählten Termine war" : "der gewählten Termine waren"} leider
+                  nicht mehr frei und {failedCount === 1 ? "ist" : "sind"} nicht dabei.
+                </p>
+              )}
             </div>
 
-            {/* Der gestempelte Beleg. Die Referenz steht darin, nicht daneben —
-                im Papierbetrieb stempelt man auf den Vorgang, nicht neben ihn. */}
+            {/* Der gestempelte Beleg. Die Referenz(en) stehen darin, nicht
+                daneben — im Papierbetrieb stempelt man auf den Vorgang, nicht
+                neben ihn. */}
             <p className="stamp shrink-0 mt-7 sm:mt-1">
               <span className="stamp-word">Bestätigt</span>
-              {reference && <span className="stamp-line">{reference}</span>}
+              {refs.map((reference) => (
+                <span key={reference} className="stamp-line">
+                  {reference}
+                </span>
+              ))}
             </p>
           </div>
         </div>

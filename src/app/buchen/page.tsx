@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingForm } from "@/components/booking-form";
+import { FahrstundeSlotSelector } from "@/components/fahrstunde-slot-selector";
+import { MultiBookingForm } from "@/components/multi-booking-form";
 import { PageHeader } from "@/components/page-header";
 import {
   activePromotions,
@@ -22,7 +24,12 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-type Params = Promise<{ angebot?: string; tag?: string; zeit?: string }>;
+type Params = Promise<{
+  angebot?: string;
+  tag?: string;
+  zeit?: string;
+  termin?: string | string[];
+}>;
 
 export default async function BuchenPage({ searchParams }: { searchParams: Params }) {
   const params = await searchParams;
@@ -36,7 +43,76 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
   const priced = applyPromotions(lessonType, promotions);
   const slots = await findSlots({ lessonType, fromDay: todayInZurich(), days: 28 });
 
-  // Dritter Schritt: Termin steht, jetzt die Angaben.
+  // Mehrere Fahrstunden auf einmal: eine eigene Auswahl statt eines
+  // einzelnen Termins, siehe FahrstundeSlotSelector. Nur für Fahrstunden —
+  // bei Kursen bucht man ohnehin nur einen Kursstart, bei der Schnupperstunde
+  // ist "mehrere auf einmal" dem Zweck der ersten Kennenlern-Lektion fremd.
+  const allowsMulti = lessonType.slug === "fahrstunde";
+
+  if (allowsMulti && params.termin) {
+    const termine = Array.isArray(params.termin) ? params.termin : [params.termin];
+    const chosen = [...new Set(termine)]
+      .map((value) => {
+        const [day, time] = value.split("T");
+        return slots.find((slot) => slot.day === day && slot.time === time);
+      })
+      .filter((slot): slot is Slot => slot !== undefined);
+
+    if (chosen.length > 0) {
+      const sorted = [...chosen].sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
+      const totalRappen = priced.finalRappen * sorted.length;
+
+      return (
+        <>
+          <PageHeader
+            title="Deine Angaben"
+            lead={`${sorted.length} ${sorted.length === 1 ? "Fahrstunde" : "Fahrstunden"}. Noch drei Felder, dann sind die Termine dir.`}
+          />
+          <section className="shell band">
+            <div className="lane max-w-2xl">
+              <div className="bg-paper border border-deep/15 p-5 mb-8">
+                <ul className="divide-y divide-deep/12">
+                  {sorted.map((slot) => (
+                    <li
+                      key={`${slot.day}T${slot.time}`}
+                      className="py-2.5 first:pt-0 last:pb-0 flex items-baseline justify-between gap-4"
+                    >
+                      <p className="nums font-bold">
+                        {formatDayLong(slot.day)}, {slot.time} Uhr
+                      </p>
+                      <p className="nums text-slate text-fine shrink-0">
+                        {lessonType.durationMinutes} Minuten
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-baseline justify-between gap-4 mt-4 pt-4 border-t border-deep/12">
+                  <p className="font-bold">Gesamtpreis</p>
+                  <p className="nums stretch-wide font-extrabold text-xl">
+                    CHF {formatPrice(totalRappen)}
+                  </p>
+                </div>
+                {priced.promotion && <p className="promo-tag mt-3">{priced.promotion.label}</p>}
+                <Link
+                  href={`/buchen?angebot=${lessonType.slug}`}
+                  className="inline-block text-fine font-bold text-signal-ink underline underline-offset-4 mt-4"
+                >
+                  Andere Termine wählen
+                </Link>
+              </div>
+
+              <MultiBookingForm
+                slug={lessonType.slug}
+                termine={sorted.map((slot) => `${slot.day}T${slot.time}`)}
+              />
+            </div>
+          </section>
+        </>
+      );
+    }
+  }
+
+  // Dritter Schritt (alle anderen Angebote): Termin steht, jetzt die Angaben.
   if (params.tag && params.zeit) {
     const chosen = slots.find((slot) => slot.day === params.tag && slot.time === params.zeit);
 
@@ -86,7 +162,9 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
         title={lessonType.name}
         lead={
           slots.length > 0
-            ? `Wähle einen Termin. Alles, was hier steht, ist tatsächlich frei — die Liste kommt direkt aus dem Kalender der Fahrlehrerinnen und Fahrlehrer.`
+            ? allowsMulti
+              ? "Wähle einen oder mehrere Termine — heute gleich drei hintereinander, oder verteilt auf mehrere Tage. Alles, was hier steht, ist tatsächlich frei."
+              : `Wähle einen Termin. Alles, was hier steht, ist tatsächlich frei — die Liste kommt direkt aus dem Kalender der Fahrlehrerinnen und Fahrlehrer.`
             : "Für die nächsten vier Wochen ist gerade nichts frei. Ruf uns an, oft lässt sich trotzdem etwas einrichten."
         }
       />
@@ -105,7 +183,11 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
             </Link>
           </div>
 
-          <SlotList slots={slots} slug={lessonType.slug} isCourse={lessonType.capacity > 1} />
+          {allowsMulti ? (
+            <FahrstundeSlotSelector slots={slots} slug={lessonType.slug} />
+          ) : (
+            <SlotList slots={slots} slug={lessonType.slug} isCourse={lessonType.capacity > 1} />
+          )}
         </div>
       </section>
     </>

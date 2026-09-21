@@ -10,11 +10,17 @@ import {
   findSlots,
   lessonTypeBySlug,
 } from "@/lib/booking";
-import { sendBookingConfirmation, sendNewBookingNotification } from "@/lib/booking-mail";
+import {
+  sendBookingConfirmation,
+  sendMultiBookingConfirmation,
+  sendNewBookingNotification,
+  sendNewBookingsNotification,
+} from "@/lib/booking-mail";
 import { verifySolution } from "@/lib/captcha";
 import { env } from "@/lib/env";
-import { blockIp, blockedUntil, consume } from "@/lib/rate-limit";
+import { blockIp, blockedUntil, consume, hit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
+import { daysBetween } from "@/lib/time";
 
 export type BookingState = { error?: string; fieldErrors?: Record<string, string> };
 
@@ -25,10 +31,7 @@ export type BookingState = { error?: string; fieldErrors?: Record<string, string
  * was hier durchkommt — die Datenbankschicht arbeitet mit gebundenen
  * Parametern, sodass Inhalte nie als Befehl gelesen werden können.
  */
-const schema = z.object({
-  angebot: z.string().min(1).max(60),
-  tag: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Datum."),
-  zeit: z.string().regex(/^\d{2}:\d{2}$/, "Ungültige Uhrzeit."),
+const personFields = {
   name: z.string().trim().min(2, "Bitte gib deinen Namen an.").max(120, "Der Name ist zu lang."),
   email: z
     .string()
@@ -44,6 +47,27 @@ const schema = z.object({
     .regex(/^[0-9+().\s/-]+$/, "Die Nummer enthält unerlaubte Zeichen."),
   bemerkung: z.string().trim().max(500, "Die Bemerkung ist zu lang.").optional(),
   agb: z.literal("ja", { errorMap: () => ({ message: "Bitte bestätige die Bedingungen." }) }),
+};
+
+const schema = z.object({
+  angebot: z.string().min(1).max(60),
+  tag: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Datum."),
+  zeit: z.string().regex(/^\d{2}:\d{2}$/, "Ungültige Uhrzeit."),
+  ...personFields,
+});
+
+/** Höchstens so viele Fahrstunden auf einmal — genug für "heute 8, 9 und
+ * 10 Uhr" oder verteilt auf mehrere Tage, ohne dass sich das Limit für
+ * Buchungen je Stunde und IP durch wenige, sehr grosse Anfragen umgehen liesse. */
+const MAX_TERMINE = 6;
+
+const multiSchema = z.object({
+  angebot: z.string().min(1).max(60),
+  termine: z
+    .array(z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Ungültiger Termin."))
+    .min(1, "Bitte wähle mindestens einen Termin.")
+    .max(MAX_TERMINE, `Bitte wähle höchstens ${MAX_TERMINE} Termine auf einmal.`),
+  ...personFields,
 });
 
 export async function createBookingAction(
@@ -168,4 +192,162 @@ export async function createBookingAction(
   }
 
   redirect(`/buchen/bestaetigt?ref=${encodeURIComponent(result.reference)}`);
+}
+
+/**
+ * Mehrere Fahrstunden auf einmal buchen — heute um 8, 9 und 10 Uhr
+ * hintereinander, oder verteilt auf mehrere Tage. Die eigenen Angaben und
+ * die Sicherheitsprüfung laufen nur einmal für die ganze Auswahl; jeder
+ * Termin wird trotzdem einzeln wie bei einer normalen Buchung geprüft und
+ * angelegt — dieselbe Prüfung, nur mehrfach statt einmal aufgerufen. Ist ein
+ * Termin inzwischen weg (jemand anders war schneller), fällt nur der aus,
+ * nicht die ganze Anfrage.
+ */
+export async function createMultiBookingAction(
+  _previous: BookingState,
+  formData: FormData,
+): Promise<BookingState> {
+  const ip = await clientIp();
+
+  if (await blockedUntil(ip)) {
+    return { error: "Von dieser Verbindung kamen zu viele Anfragen. Bitte später erneut." };
+  }
+
+  if ((formData.get("website") as string | null)?.length) {
+    await blockIp(ip, 60, "Formularfalle bei Buchung ausgelöst");
+    return { error: "Die Anfrage konnte nicht verarbeitet werden." };
+  }
+
+  const verdict = await consume(`buchung:${ip}`, 5, 3600);
+  if (!verdict.ok) {
+    await record("buchung.begrenzt", { label: "System" }, { ip });
+    return {
+      error: "Zu viele Buchungen von dieser Verbindung. Bitte versuche es in einer Stunde.",
+    };
+  }
+
+  if (!verifySolution("buchung", formData.get("captcha") as string | null)) {
+    return { error: "Die Sicherheitsprüfung ist nicht durchgelaufen. Bitte lade die Seite neu." };
+  }
+
+  const parsed = multiSchema.safeParse({
+    angebot: formData.get("angebot"),
+    termine: formData.getAll("termin"),
+    name: formData.get("name"),
+    email: formData.get("email"),
+    telefon: formData.get("telefon"),
+    bemerkung: formData.get("bemerkung") || undefined,
+    agb: formData.get("agb"),
+  });
+
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const key = String(issue.path[0]);
+      fieldErrors[key] ??= issue.message;
+    }
+    return { error: "Bitte prüfe die markierten Felder.", fieldErrors };
+  }
+
+  const input = parsed.data;
+  const lessonType = await lessonTypeBySlug(input.angebot);
+  if (!lessonType || !lessonType.active) {
+    return { error: "Dieses Angebot gibt es nicht mehr." };
+  }
+
+  // Doppelt angehakte Zeiten nur einmal zählen, dann nach Tag/Zeit aufteilen.
+  const requested = [...new Set(input.termine)].map((value) => {
+    const [day, time] = value.split("T");
+    return { day, time };
+  });
+
+  const days = requested.map((entry) => entry.day).sort();
+  const fromDay = days[0];
+  const span = daysBetween(fromDay, days[days.length - 1]) + 1;
+
+  const slots = await findSlots({ lessonType, fromDay, days: span });
+  const priced = applyPromotions(lessonType, await activePromotions());
+
+  const booked: { day: string; time: string; reference: string; cancelToken: string }[] = [];
+  let failedCount = 0;
+
+  for (const { day, time } of requested) {
+    const slot = slots.find((entry) => entry.day === day && entry.time === time);
+    if (!slot) {
+      failedCount += 1;
+      continue;
+    }
+
+    const result = await createBooking({
+      lessonType,
+      staffId: slot.staffIds[0],
+      startsAt: slot.startsAt,
+      customerName: input.name,
+      customerEmail: input.email,
+      customerPhone: input.telefon,
+      customerNote: input.bemerkung,
+      priceRappen: priced.finalRappen,
+      promotionLabel: priced.promotion?.label ?? null,
+      retentionDays: env.retentionDays,
+    });
+
+    if ("error" in result) {
+      failedCount += 1;
+      continue;
+    }
+
+    booked.push({ day, time, reference: result.reference, cancelToken: result.cancelToken });
+  }
+
+  if (booked.length === 0) {
+    return {
+      error:
+        requested.length === 1
+          ? "Dieser Termin ist nicht mehr frei. Bitte wähle einen anderen."
+          : "Keiner der gewählten Termine ist mehr frei. Bitte wähle andere.",
+    };
+  }
+
+  // Jeder zusätzlich gebuchte Termin zählt fürs Stundenlimit — sonst liesse
+  // sich die Begrenzung über wenige, aber sehr grosse Buchungen umgehen.
+  for (let extra = 1; extra < booked.length; extra += 1) {
+    await hit(`buchung:${ip}`);
+  }
+
+  await record(
+    "buchung.erstellt",
+    { label: "Website" },
+    { referenzen: booked.map((entry) => entry.reference).join(", "), angebot: lessonType.slug },
+  );
+
+  try {
+    await sendMultiBookingConfirmation({
+      to: input.email,
+      name: input.name,
+      lessonName: lessonType.name,
+      durationMinutes: lessonType.durationMinutes,
+      priceRappen: priced.finalRappen,
+      booked,
+      failedCount,
+    });
+  } catch (error) {
+    console.error("Bestätigungsmail konnte nicht versendet werden:", error);
+  }
+
+  try {
+    await sendNewBookingsNotification({
+      lessonName: lessonType.name,
+      customerName: input.name,
+      customerEmail: input.email,
+      customerPhone: input.telefon,
+      customerNote: input.bemerkung,
+      booked,
+    });
+  } catch (error) {
+    console.error("Benachrichtigung ans Postfach konnte nicht versendet werden:", error);
+  }
+
+  const refQuery = booked.map((entry) => `ref=${encodeURIComponent(entry.reference)}`).join("&");
+  const failedQuery = failedCount > 0 ? `&fehlgeschlagen=${failedCount}` : "";
+  redirect(`/buchen/bestaetigt?${refQuery}${failedQuery}`);
 }

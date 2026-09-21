@@ -55,9 +55,11 @@ export async function sendMail(mail: Mail): Promise<void> {
     text: mail.text,
     html: mail.html,
     headers: {
+      // Hält automatische Abwesenheitsantworten fern, ohne wie Massenmail
+      // auszusehen — "Precedence: bulk" ohne List-Unsubscribe ist bei
+      // strengen Spamfiltern (z. B. Protons rspamd) ein Minuspunkt, gerade
+      // bei einer noch jungen Absenderdomain ohne Versandreputation.
       "Auto-Submitted": "auto-generated",
-      // Hält automatische Abwesenheitsantworten von der noreply-Adresse fern.
-      Precedence: "bulk",
     },
   });
 }

@@ -27,19 +27,12 @@ export default function FahrstundenPage() {
       <Section title="Wie eine Lektion abläuft">
         <div className="prose-column space-y-4 text-slate">
           <p>
-            Eine Lektion dauert 45 Minuten. Wir holen dich dort ab, wo du gerade bist — zuhause,
-            an der Schule oder am Arbeitsplatz, solange es im Einzugsgebiet liegt. Die Zeit für
-            die Anfahrt zählt nicht zur Lektion.
+            45 Minuten, wir holen dich ab — zuhause, Schule oder Arbeitsplatz, im Einzugsgebiet.
+            Die Anfahrt zählt nicht zur Lektion. Von ruhigem Gelände bis zu den Strecken im
+            Prüfungsgebiet: wir steigern Schritt für Schritt, in deinem Tempo.
           </p>
           <p>
-            Die erste Stunde beginnt auf ruhigem Gelände: sitzen, kuppeln, anfahren. Danach
-            steigern wir Schritt für Schritt — Quartierstrassen, Hauptachsen, Kreisel, Autobahn,
-            Nachtfahrt. Vor der Prüfung fahren wir die Strecken, die im Prüfungsgebiet
-            tatsächlich vorkommen.
-          </p>
-          <p>
-            Nach jeder Lektion sagen wir dir, woran du arbeiten musst und wo du stehst. Wie
-            schnell das geht, bestimmst du — wir arbeiten in deinem Lerntempo, ganz ohne Druck.
+            Nach jeder Lektion weisst du, woran du arbeitest und wo du stehst.
           </p>
         </div>
       </Section>

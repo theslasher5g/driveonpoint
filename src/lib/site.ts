@@ -142,15 +142,9 @@ export const site = {
     },
   ],
 
+  // Ergänzen die drei Chips oben mit echten Zusatzinfos statt sie zu
+  // wiederholen — "eigenes Tempo" und "gleiche Person" stehen schon dort.
   reasons: [
-    {
-      title: "Dein Lerntempo bestimmt den Takt",
-      body: "Wir arbeiten individuell mit dir, ganz ohne Druck. Niemand wird durch einen Lehrplan gehetzt, der nicht zu ihm passt.",
-    },
-    {
-      title: "Du fährst immer bei derselben Person",
-      body: "Kein Wechsel zwischen Fahrlehrern, kein Erklären von vorne. Wer dich anlernt, meldet dich auch zur Prüfung an.",
-    },
     {
       title: "Kurse und Fahrstunden aus einer Hand",
       body: "Nothilfekurs, Verkehrskunde und Praxis bei denselben Leuten — du musst nichts zweimal organisieren.",

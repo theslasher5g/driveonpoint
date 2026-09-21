@@ -111,9 +111,10 @@ export default function DatenschutzPage() {
             <p className="text-slate">
               Diese Website setzt keine Cookies zu Werbe- oder Statistikzwecken und bindet keine
               Analysedienste ein. Ein technisch notwendiges Cookie wird ausschliesslich für die
-              Anmeldung im internen Team-Bereich gesetzt. Schriften werden von unserem eigenen
-              Server geladen, nicht von Google Fonts — beim Besuch dieser Seite wird deine
-              IP-Adresse also an keinen fremden Dienst übertragen.
+              Anmeldung im internen Team-Bereich gesetzt. Die Schrift ist eine Systemschrift
+              deines Geräts, keine von Google Fonts oder einem anderen Anbieter nachgeladene
+              Datei — beim Besuch dieser Seite wird deine IP-Adresse also an keinen fremden
+              Dienst übertragen.
             </p>
           </div>
 

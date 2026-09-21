@@ -60,13 +60,13 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
               ))}
             </select>
           </div>
-          <button type="submit" className="btn btn-outline">
+          <button type="submit" className="btn btn-outline sm:min-w-60">
             Anzeigen
           </button>
-          <a href={pdfHref} className="btn btn-primary" download>
+          <a href={pdfHref} className="btn btn-primary sm:min-w-60" download>
             Als PDF herunterladen
           </a>
-          <a href={csvHref} className="btn btn-outline" download>
+          <a href={csvHref} className="btn btn-outline sm:min-w-60" download>
             Als CSV herunterladen
           </a>
         </form>

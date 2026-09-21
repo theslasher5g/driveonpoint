@@ -175,10 +175,10 @@ export default async function TeamDashboard({
         )}
 
         <div className="flex flex-wrap gap-3 mt-8">
-          <Link href="/team/kalender" className="btn btn-primary">
+          <Link href="/team/kalender" className="btn btn-primary sm:min-w-60">
             Zum Kalender
           </Link>
-          <Link href="/team/verfuegbarkeit" className="btn btn-outline">
+          <Link href="/team/verfuegbarkeit" className="btn btn-outline sm:min-w-60">
             Verfügbarkeit eintragen
           </Link>
         </div>

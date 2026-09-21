@@ -77,7 +77,7 @@ export function mailLayout(heading: string, bodyHtml: string): string {
 ${bodyHtml}
 </td></tr>
 <tr><td style="padding:18px 26px;border-top:1px solid #D6D6D2;font-size:12px;line-height:1.6;color:#515052;">
-Diese Nachricht wurde automatisch versendet. Antworten auf diese Adresse werden nicht gelesen.
+Diese Nachricht wurde automatisch versendet. Antworten kommen direkt bei uns an.
 </td></tr>
 </table></body></html>`;
 }

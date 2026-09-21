@@ -10,7 +10,7 @@ import {
   findSlots,
   lessonTypeBySlug,
 } from "@/lib/booking";
-import { sendBookingConfirmation } from "@/lib/booking-mail";
+import { sendBookingConfirmation, sendNewBookingNotification } from "@/lib/booking-mail";
 import { verifySolution } from "@/lib/captcha";
 import { env } from "@/lib/env";
 import { blockIp, blockedUntil, consume } from "@/lib/rate-limit";
@@ -150,6 +150,21 @@ export async function createBookingAction(
     // Der Termin steht bereits. Ein Mailproblem darf ihn nicht zurücknehmen —
     // die Bestätigungsseite zeigt die Angaben ohnehin an.
     console.error("Bestätigungsmail konnte nicht versendet werden:", error);
+  }
+
+  try {
+    await sendNewBookingNotification({
+      reference: result.reference,
+      lessonName: lessonType.name,
+      day: input.tag,
+      time: input.zeit,
+      customerName: input.name,
+      customerEmail: input.email,
+      customerPhone: input.telefon,
+      customerNote: input.bemerkung,
+    });
+  } catch (error) {
+    console.error("Benachrichtigung ans Postfach konnte nicht versendet werden:", error);
   }
 
   redirect(`/buchen/bestaetigt?ref=${encodeURIComponent(result.reference)}`);

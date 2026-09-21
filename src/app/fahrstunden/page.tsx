@@ -45,10 +45,7 @@ export default function FahrstundenPage() {
               Eine einzelne Lektion zum Kennenlernen. Danach weisst du, ob es zwischen euch
               passt — ohne dass du dich auf irgendetwas festgelegt hast.
             </p>
-            <Link
-              href="/buchen?angebot=schnupperstunde"
-              className="inline-block font-bold text-signal-ink mt-4 underline-offset-4 hover:underline"
-            >
+            <Link href="/buchen?angebot=schnupperstunde" className="btn btn-outline mt-4">
               Schnupperstunde buchen
             </Link>
           </div>
@@ -58,10 +55,7 @@ export default function FahrstundenPage() {
               Wer regelmässig fährt, fährt mit einem Abo günstiger. Bezahlt wird einmal, die
               einzelnen Lektionen buchst du danach ganz normal im Kalender.
             </p>
-            <Link
-              href="/kontakt"
-              className="inline-block font-bold text-signal-ink mt-4 underline-offset-4 hover:underline"
-            >
+            <Link href="/kontakt" className="btn btn-outline mt-4">
               Abo anfragen
             </Link>
           </div>

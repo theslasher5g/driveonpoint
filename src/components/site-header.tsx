@@ -37,7 +37,7 @@ export function SiteHeader() {
       <div className="shell flex items-center gap-4 h-16 md:h-20">
         <Link
           href="/"
-          className="flex items-center gap-3 shrink-0"
+          className="flex items-center gap-3 shrink-0 self-stretch"
           aria-label={`${site.name} — zur Startseite`}
         >
           <BrandMark className="w-9 md:w-10" />
@@ -79,7 +79,7 @@ export function SiteHeader() {
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
           aria-controls="hauptmenue"
-          className="lg:hidden -mr-2 p-2 text-deep"
+          className="lg:hidden -mr-2 p-2.5 text-deep shrink-0"
         >
           <span className="sr-only">{open ? "Menü schliessen" : "Menü öffnen"}</span>
           <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" fill="none">

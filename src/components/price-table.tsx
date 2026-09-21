@@ -65,7 +65,7 @@ export async function PriceTable({
         return (
           <div
             key={lessonType.id}
-            className="border-b border-deep/12 py-5 flex flex-wrap gap-x-6 gap-y-2 items-baseline"
+            className="border-b border-deep/12 py-5 flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-2 sm:items-baseline"
           >
             <div className="min-w-0 flex-1">
               <h3 className="text-lg">{lessonType.name}</h3>
@@ -77,7 +77,12 @@ export async function PriceTable({
               )}
             </div>
 
-            <div className="shrink-0 text-right">
+            {/* Auf dem Telefon reicht die Breite für Titel und Betrag
+                nebeneinander oft nicht — bei einem langen Namen wie
+                "Verkehrskundeunterricht" brach das sonst mitten im Wort um,
+                weil der Betrag daneben Platz beanspruchte. Gestapelt bleibt
+                dem Titel die volle Breite. */}
+            <div className="shrink-0 text-left sm:text-right">
               <p className="nums stretch-wide font-extrabold text-2xl leading-none">
                 {onOffer && (
                   <span className="text-slate font-semibold text-base line-through mr-2.5">
@@ -109,7 +114,7 @@ export async function PriceTable({
             {bundles.map((bundle) => (
               <li
                 key={bundle.id}
-                className="border-b border-deep/12 py-4 flex flex-wrap gap-x-6 gap-y-1 items-baseline"
+                className="border-b border-deep/12 py-4 flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-1 sm:items-baseline"
               >
                 <div className="min-w-0 flex-1">
                   <p className="font-bold">{bundle.label}</p>

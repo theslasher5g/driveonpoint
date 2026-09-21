@@ -80,7 +80,7 @@ export function SiteFooter() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-fine text-paper/70 hover:text-paper underline-offset-4 hover:underline"
+                className="py-3 -my-3 text-fine text-paper/70 hover:text-paper underline-offset-4 hover:underline"
               >
                 {item.label}
               </Link>
@@ -94,7 +94,7 @@ export function SiteFooter() {
             */}
             <Link
               href="/team"
-              className="text-fine text-paper/35 hover:text-paper/80 underline-offset-4 hover:underline"
+              className="py-3 -my-3 text-fine text-paper/35 hover:text-paper/80 underline-offset-4 hover:underline"
             >
               Team-Login
             </Link>
@@ -120,7 +120,7 @@ function FooterColumn({
           <li key={item.href}>
             <Link
               href={item.href}
-              className="text-fine text-paper/70 hover:text-paper underline-offset-4 hover:underline"
+              className="block py-3 -my-3 text-fine text-paper/70 hover:text-paper underline-offset-4 hover:underline"
             >
               {item.label}
             </Link>

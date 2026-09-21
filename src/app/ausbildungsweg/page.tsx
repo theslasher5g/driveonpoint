@@ -29,8 +29,12 @@ export default function AusbildungswegPage() {
           Linie wie überall, nur trägt sie jetzt die Schrittnummern.
           Nummeriert ist das, weil es tatsächlich eine Reihenfolge ist.
 
-          Dauer und Ort stehen rechts auf der Höhe des Titels statt auf einer
-          eigenen Zeile darunter — wie in der Kurzfassung auf der Startseite.
+          Dauer und Ort stehen ab 640px rechts auf der Höhe des Titels statt
+          auf einer eigenen Zeile darunter — wie in der Kurzfassung auf der
+          Startseite. Auf dem Telefon bleibt dafür kein Platz: "Verkehrs-
+          kundeunterricht" neben "8 Lektionen an 4 Abenden" brach mitten im
+          Wort um, weil beide sich eine viel zu schmale Zeile teilen mussten
+          — nicht nur bei diesem Titel, sondern bei praktisch jedem.
         */}
         <ol className="timeline">
           {site.path.map((step, index) => (
@@ -39,12 +43,12 @@ export default function AusbildungswegPage() {
                 {index + 1}
               </span>
               <div className="max-w-3xl">
-                <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
-                  <h2 className="text-section stretch-wide leading-tight flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-x-5 gap-y-1 sm:items-baseline">
+                  <h2 className="text-section stretch-wide leading-tight sm:flex-1 sm:min-w-0">
                     <span className="sr-only">Schritt {index + 1}: </span>
                     {step.title}
                   </h2>
-                  <p className="nums text-fine text-slate shrink-0 break-normal">{step.meta}</p>
+                  <p className="nums text-fine text-slate sm:shrink-0 break-normal">{step.meta}</p>
                 </div>
                 <p className="text-slate text-fine mt-1.5 max-w-[62ch]">{step.body}</p>
               </div>

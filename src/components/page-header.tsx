@@ -17,7 +17,11 @@ export function PageHeader({
         <div className="lane md:grid md:grid-cols-[minmax(0,21rem)_minmax(0,1fr)] md:gap-10 md:items-start">
           <div>
             <span className="block w-9 h-[3px] bg-signal mb-4" aria-hidden="true" />
-            <h1 className="text-title max-w-[20ch]">{title}</h1>
+            {/* Die Zeichenbreite bremst nur ab dem Punkt, an dem Titel und
+                Einleitung nebeneinander stehen (md:) — vorher, auf dem
+                Telefon, hat ein langes Wort wie "Verkehrskundeunterricht"
+                sonst schon bei voller Bildschirmbreite unnötig umgebrochen. */}
+            <h1 className="text-title md:max-w-[20ch]">{title}</h1>
           </div>
           <div className="mt-4 md:mt-0">
             <p className="text-lead text-slate max-w-[56ch]">{lead}</p>
@@ -58,8 +62,10 @@ export function Section({
           {title ? (
             <div className="split">
               <div className="split-head-sticky">
-                <h2 className="text-section max-w-[18ch]">{title}</h2>
-                {lead && <p className="text-slate text-fine mt-2 max-w-[40ch]">{lead}</p>}
+                {/* Gleicher Grund wie beim Seitentitel: die Begrenzung
+                    gehört erst zur zweispaltigen Ansicht ab 900px. */}
+                <h2 className="text-section min-[900px]:max-w-[18ch]">{title}</h2>
+                {lead && <p className="text-slate text-fine mt-2 min-[900px]:max-w-[40ch]">{lead}</p>}
               </div>
               <div className="min-w-0">{children}</div>
             </div>

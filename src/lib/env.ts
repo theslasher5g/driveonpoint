@@ -67,7 +67,7 @@ export const env = {
     };
   },
   get mailFrom(): string {
-    return process.env.MAIL_FROM ?? "DriveOnPoint <noreply@driveonpoint.com>";
+    return process.env.MAIL_FROM ?? "DriveOnPoint <inbox@driveonpoint.ch>";
   },
   get mailReplyTo(): string | undefined {
     return process.env.MAIL_REPLY_TO || undefined;

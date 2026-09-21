@@ -46,7 +46,7 @@ export const site = {
   // ### Vor- und Nachname der Inhaberin eintragen.
   legalName: "Christina Vorname Nachname", // ###
   claim: "Fahrschule",
-  domain: "driveonpoint.com",
+  domain: "driveonpoint.ch",
 
   contact: {
     street: "Musterstrasse 12", // ###
@@ -54,7 +54,7 @@ export const site = {
     city: "Basel", // ###
     phone: "+41 77 536 63 59",
     phoneHref: "+41775366359",
-    email: "info@driveonpoint.com", // ###
+    email: "inbox@driveonpoint.ch",
   },
 
   hours: [

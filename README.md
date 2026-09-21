@@ -89,13 +89,28 @@ sonst würde der Browser es über reines HTTP gar nicht erst annehmen. Sobald
 `APP_URL` auf eine `https://`-Adresse zeigt, greift der Schutz automatisch
 wieder.
 
+### Domain auf den Server zeigen lassen
+
+Bei Infomaniak (oder jedem anderen Registrar) in der DNS-Verwaltung der
+Domain einen `A`-Eintrag setzen: Name `@` (oder leer, je nach Oberfläche),
+Wert die öffentliche IPv4-Adresse des Servers, auf dem `docker compose`
+läuft. Für `www.driveonpoint.ch` zusätzlich einen `CNAME` auf
+`driveonpoint.ch`, falls diese Adresse ebenfalls erreichbar sein soll. Die
+Änderung braucht meist einige Minuten bis wenige Stunden, bis sie überall
+gilt.
+
+Das setzt einen Server mit öffentlicher IP voraus, auf dem diese Anwendung
+bereits läuft (siehe [Erste Inbetriebnahme](#erste-inbetriebnahme)) — ein
+reiner Domain-Kauf bei Infomaniak allein reicht nicht, die Domain muss auf
+einen laufenden Server zeigen.
+
 ### Reverse Proxy
 
 Sobald die Domain steht: Die Anwendung hört nur auf `127.0.0.1:3000`. Davor
 gehört ein Proxy, der TLS beendet. Mit Caddy genügt:
 
 ```
-driveonpoint.com {
+driveonpoint.ch {
     reverse_proxy 127.0.0.1:3000
 }
 ```
@@ -103,7 +118,7 @@ driveonpoint.com {
 Danach in der `.env`:
 
 ```
-APP_URL=https://driveonpoint.com
+APP_URL=https://driveonpoint.ch
 ```
 
 und `docker compose up -d` erneut ausführen — das Sitzungs-Cookie bekommt ab
@@ -120,7 +135,7 @@ Löscht Kundendaten nach Ablauf der Frist, entfernt abgelaufene Sitzungen und
 alte Zähler. Als Cron-Eintrag auf dem Server:
 
 ```cron
-17 3 * * * curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://driveonpoint.com/api/cron/aufraeumen
+17 3 * * * curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://driveonpoint.ch/api/cron/aufraeumen
 ```
 
 ---
@@ -132,7 +147,26 @@ zustellen, und die Anwendung läuft bis dahin problemlos ohne. Bucht jemand
 einen Termin, wird er trotzdem angelegt; es geht nur keine Bestätigungsmail
 raus (im Serverprotokoll erscheint dazu eine Zeile, mehr passiert nicht).
 
-Sobald die Domain und ihre DNS-Einträge stehen:
+Zwei Wege dahin — den mitgelieferten Postfix-Container selbst betreiben, oder
+ein bestehendes Postfach bei einem Anbieter wie Infomaniak als Versandweg
+benutzen. Für eine einzelne Fahrschule ist der zweite Weg deutlich weniger
+Aufwand: kein eigener Mailserver, keine PTR-Einrichtung, und die
+Zustellbarkeit hängt am Ruf des Anbieters statt am eigenen Server.
+
+**Externes Postfach (z. B. Infomaniak kSuite) — empfohlen:**
+
+1. In der `.env` `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` und `SMTP_PASS`
+   eintragen — bei Infomaniak `SMTP_HOST=mail.infomaniak.com`,
+   `SMTP_PORT=587`, `SMTP_SECURE=false`, `SMTP_USER`/`SMTP_PASS` wie im
+   kSuite-Postfach eingerichtet (genauen Hostnamen in den
+   kSuite-Mail-Einstellungen prüfen). `MAIL_FROM` und `MAIL_REPLY_TO` auf
+   dasselbe Postfach setzen, etwa `DriveOnPoint <inbox@driveonpoint.ch>` —
+   dann landet eine Antwort der Kundschaft direkt im selben Postfach, das
+   ohnehin täglich geprüft wird.
+2. `docker compose up -d --build` genügt — der mail-Container und
+   `--profile mail` werden dann nicht gebraucht.
+
+**Mitgelieferter Postfix-Container:**
 
 1. In der `.env` `MAIL_DOMAIN`, `MAIL_HOSTNAME`, `MAIL_FROM` und
    `MAIL_REPLY_TO` eintragen.
@@ -143,26 +177,23 @@ Sobald die Domain und ihre DNS-Einträge stehen:
    (Jeder künftige Neustart braucht ebenfalls `--profile mail`, sonst bleibt
    der Mail-Container aus.)
 
-Mitgeliefert ist ein Postfix-Container, der ausschliesslich sendet und nur im
-internen Docker-Netz erreichbar ist. Damit die Mails nicht im Spam landen,
-braucht die Domain drei DNS-Einträge:
+Dieser Container sendet ausschliesslich und ist nur im internen Docker-Netz
+erreichbar. Damit die Mails nicht im Spam landen, braucht die Domain drei
+DNS-Einträge:
 
 ```bash
 # DKIM-Schlüssel auslesen, nachdem der Container einmal gelaufen ist:
-docker compose exec mail cat /etc/opendkim/keys/driveonpoint.com/mail.txt
+docker compose exec mail cat /etc/opendkim/keys/driveonpoint.ch/mail.txt
 ```
 
 | Typ | Name | Wert |
 |---|---|---|
 | TXT | `@` | `v=spf1 ip4:<Server-IP> -all` |
 | TXT | `mail._domainkey` | aus dem Befehl oben |
-| TXT | `_dmarc` | `v=DMARC1; p=quarantine; rua=mailto:postmaster@driveonpoint.com` |
-| PTR | Server-IP | `mail.driveonpoint.com` (beim Hoster setzen) |
+| TXT | `_dmarc` | `v=DMARC1; p=quarantine; rua=mailto:postmaster@driveonpoint.ch` |
+| PTR | Server-IP | `mail.driveonpoint.ch` (beim Hoster setzen) |
 
-Ohne PTR-Eintrag lehnen viele Anbieter die Mails ab. Wer sich das nicht antun
-will, trägt in der `.env` stattdessen einen externen SMTP-Zugang ein
-(`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`) — der Postfix-Container
-wird dann nicht benutzt.
+Ohne PTR-Eintrag lehnen viele Anbieter die Mails ab.
 
 Zum Entwickeln fängt Mailpit alles ab, Weboberfläche auf
 `http://localhost:8025`:

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
+  deleteStaffAction,
   resetMfaAction,
   resetPasswordAction,
   setLessonTypesAction,
@@ -161,6 +162,21 @@ export function StaffRow({
                   busy="Ändert …"
                   danger={person.active}
                 />
+              </form>
+            )}
+
+            {!isSelf && (
+              <form
+                action={deleteStaffAction}
+                onSubmit={(event) => {
+                  const confirmed = window.confirm(
+                    `Konto von ${person.name} endgültig löschen? Künftige Termine werden nach Möglichkeit an eine andere Person übergeben, sonst abgesagt und die Kundschaft um einen neuen Termin gebeten. Das lässt sich nicht rückgängig machen.`,
+                  );
+                  if (!confirmed) event.preventDefault();
+                }}
+              >
+                <input type="hidden" name="id" value={person.id} />
+                <MiniSubmit idle="Konto löschen" busy="Löscht …" danger />
               </form>
             )}
           </div>

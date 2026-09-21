@@ -1,14 +1,18 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, gt, inArray, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { record } from "@/lib/audit";
 import { assertPermission } from "@/lib/auth/guard";
 import { destroyAllSessions, hashPassword, newCalendarToken } from "@/lib/auth/session";
+import { findSlots } from "@/lib/booking";
+import { sendRebookRequest } from "@/lib/booking-mail";
 import { db } from "@/lib/db";
-import { staff, staffLessonTypes, staffRole } from "@/lib/db/schema";
+import { bookings, lessonTypes, staff, staffLessonTypes, staffRole } from "@/lib/db/schema";
+import { zurichDay, zurichTime } from "@/lib/time";
 
 export type StaffState = { error?: string; ok?: string; password?: string };
 
@@ -230,4 +234,154 @@ export async function resetMfaAction(formData: FormData): Promise<void> {
   await destroyAllSessions(id);
   await record("mitarbeiter.mfa-zurueckgesetzt", { id: admin.id, label: admin.name }, { id });
   revalidatePath("/team/mitarbeiter");
+}
+
+/**
+ * Sucht unter den verbleibenden aktiven Mitarbeitenden jemanden, der eine
+ * bestimmte Lektion zur bestimmten Zeit übernehmen kann — dieselbe Prüfung
+ * wie beim Verschieben eines Termins, nur über alle in Frage kommenden
+ * Personen statt einer einzigen.
+ */
+async function findReplacementStaff(
+  lessonType: typeof lessonTypes.$inferSelect,
+  day: string,
+  time: string,
+  neededSeats: number,
+): Promise<string | null> {
+  const broad = await findSlots({ lessonType, fromDay: day, days: 1 });
+  const candidateIds = broad.find((slot) => slot.day === day && slot.time === time)?.staffIds ?? [];
+
+  for (const candidateId of candidateIds) {
+    const specific = await findSlots({ lessonType, fromDay: day, days: 1, staffId: candidateId });
+    const slot = specific.find((entry) => entry.day === day && entry.time === time);
+    if (slot && slot.seatsLeft >= neededSeats) return candidateId;
+  }
+
+  return null;
+}
+
+/**
+ * Löscht ein Konto endgültig. Anders als "Zugang abschalten" lässt sich das
+ * nicht rückgängig machen — wer die Fahrschule tatsächlich verlässt, statt
+ * nur vorübergehend pausiert, gehört hier hinein.
+ *
+ * Künftige Termine dieser Person werden zuerst an eine andere, zur selben
+ * Zeit freie und für das Angebot freigeschaltete Person übergeben. Bei einem
+ * Gruppenkurs wandert die ganze Sitzung gemeinsam, nie nur einzelne
+ * Anmeldungen — sonst stünde dieselbe Kursstunde bei zwei Lehrpersonen
+ * gleichzeitig. Findet sich niemand, wird der Termin abgesagt und die
+ * Kundschaft per Mail um einen neuen Termin gebeten.
+ */
+export async function deleteStaffAction(formData: FormData): Promise<void> {
+  const admin = await assertPermission("mitarbeiter.verwalten");
+
+  const id = String(formData.get("id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) redirect("/team/mitarbeiter?fehler=unbekanntes-konto");
+  if (id === admin.id) redirect("/team/mitarbeiter?fehler=eigenes-konto");
+
+  const [person] = await db.select().from(staff).where(eq(staff.id, id)).limit(1);
+  if (!person) redirect("/team/mitarbeiter?fehler=unbekanntes-konto");
+
+  // Die letzte aktive Administration darf nicht verschwinden, sonst kommt
+  // niemand mehr an die Mitarbeiterverwaltung heran.
+  const [remaining] = await db
+    .select({ anzahl: count() })
+    .from(staff)
+    .where(and(eq(staff.role, "admin"), eq(staff.active, true), ne(staff.id, id)));
+  if (person.role === "admin" && (remaining?.anzahl ?? 0) === 0) {
+    redirect("/team/mitarbeiter?fehler=letzte-administration");
+  }
+
+  // Sofort abschalten, damit die Suche nach Ersatz diese Person nicht mehr
+  // selbst als Kandidatin findet und sich niemand mehr anmelden kann,
+  // während die Termine umgehängt werden.
+  await db.update(staff).set({ active: false, updatedAt: new Date() }).where(eq(staff.id, id));
+  await destroyAllSessions(id);
+
+  const now = new Date();
+  const [openBookings, offerRows] = await Promise.all([
+    db
+      .select({
+        id: bookings.id,
+        reference: bookings.reference,
+        startsAt: bookings.startsAt,
+        lessonTypeId: bookings.lessonTypeId,
+        customerName: bookings.customerName,
+        customerEmail: bookings.customerEmail,
+      })
+      .from(bookings)
+      .where(and(eq(bookings.staffId, id), ne(bookings.status, "abgesagt"), gt(bookings.startsAt, now))),
+    db.select().from(lessonTypes),
+  ]);
+
+  const offerById = new Map(offerRows.map((offer) => [offer.id, offer]));
+
+  // Nach Angebot und exakter Startzeit gruppiert: Das fasst die Anmeldungen
+  // eines Gruppenkurses zu einer Sitzung zusammen.
+  const sessions = new Map<string, typeof openBookings>();
+  for (const entry of openBookings) {
+    const key = `${entry.lessonTypeId}@${entry.startsAt.toISOString()}`;
+    const group = sessions.get(key) ?? [];
+    group.push(entry);
+    sessions.set(key, group);
+  }
+
+  let uebergeben = 0;
+  let abgesagt = 0;
+
+  for (const group of sessions.values()) {
+    const lessonType = group[0].lessonTypeId ? offerById.get(group[0].lessonTypeId) : undefined;
+    const day = zurichDay(group[0].startsAt);
+    const time = zurichTime(group[0].startsAt);
+
+    const replacementId =
+      lessonType && (await findReplacementStaff(lessonType, day, time, group.length));
+
+    if (replacementId) {
+      await db
+        .update(bookings)
+        .set({ staffId: replacementId, updatedAt: now })
+        .where(inArray(bookings.id, group.map((entry) => entry.id)));
+      uebergeben += group.length;
+      continue;
+    }
+
+    await db
+      .update(bookings)
+      .set({ status: "abgesagt", cancelledAt: now, updatedAt: now })
+      .where(inArray(bookings.id, group.map((entry) => entry.id)));
+    abgesagt += group.length;
+
+    for (const entry of group) {
+      if (!entry.customerEmail) continue;
+      try {
+        await sendRebookRequest({
+          to: entry.customerEmail,
+          name: entry.customerName ?? "",
+          reference: entry.reference,
+          lessonName: lessonType?.name ?? "Termin",
+          day,
+          time,
+        });
+      } catch (error) {
+        console.error("Mail zum ausgefallenen Termin konnte nicht versendet werden:", error);
+      }
+    }
+  }
+
+  await db.delete(staff).where(eq(staff.id, id));
+
+  await record("mitarbeiter.geloescht", { id: admin.id, label: admin.name }, {
+    geloescht: person.name,
+    uebergeben,
+    abgesagt,
+  });
+
+  revalidatePath("/team/mitarbeiter");
+  revalidatePath("/team/kalender");
+  revalidatePath("/team");
+
+  redirect(
+    `/team/mitarbeiter?geloescht=${encodeURIComponent(person.name)}&uebergeben=${uebergeben}&abgesagt=${abgesagt}`,
+  );
 }

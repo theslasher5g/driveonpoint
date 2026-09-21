@@ -8,8 +8,22 @@ import { StaffRow } from "@/components/staff-row";
 
 export const dynamic = "force-dynamic";
 
-export default async function MitarbeiterPage() {
+const FEHLER: Record<string, string> = {
+  "unbekanntes-konto": "Dieses Konto gibt es nicht mehr.",
+  "eigenes-konto": "Das eigene Konto lässt sich nicht löschen.",
+  "letzte-administration": "Das letzte Administrationskonto lässt sich nicht löschen.",
+};
+
+type Params = Promise<{
+  geloescht?: string;
+  uebergeben?: string;
+  abgesagt?: string;
+  fehler?: string;
+}>;
+
+export default async function MitarbeiterPage({ searchParams }: { searchParams: Params }) {
   const admin = await requirePermission("mitarbeiter.verwalten");
+  const params = await searchParams;
 
   const [people, offers, assignments] = await Promise.all([
     db
@@ -50,6 +64,21 @@ export default async function MitarbeiterPage() {
             </div>
           ))}
         </dl>
+
+        {params.geloescht && (
+          <p role="status" className="notice notice-success mt-9">
+            Konto von {params.geloescht} gelöscht.
+            {Number(params.uebergeben) > 0 &&
+              ` ${params.uebergeben} Termin(e) übergeben.`}
+            {Number(params.abgesagt) > 0 &&
+              ` ${params.abgesagt} Termin(e) abgesagt, Kundschaft benachrichtigt.`}
+          </p>
+        )}
+        {params.fehler && (
+          <p role="alert" className="notice notice-error mt-9">
+            {FEHLER[params.fehler] ?? "Das hat nicht geklappt."}
+          </p>
+        )}
 
         <h2 className="text-section mt-14 mb-6">Konten</h2>
         <div className="space-y-5">

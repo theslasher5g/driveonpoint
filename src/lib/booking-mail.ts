@@ -141,6 +141,60 @@ export async function sendNewBookingNotification(details: {
   });
 }
 
+/**
+ * Meldet der Kundschaft, dass ein Termin ausfällt, weil die zuständige
+ * Fahrlehrperson die Fahrschule verlassen hat und sich niemand anders
+ * Verfügbares fand. Anders als bei einer normalen Absage gibt es hier keinen
+ * Ersatztermin, den wir automatisch anbieten könnten — die Person muss
+ * selbst neu buchen.
+ */
+export async function sendRebookRequest(details: {
+  to: string;
+  name: string;
+  reference: string;
+  lessonName: string;
+  day: string;
+  time: string;
+}): Promise<void> {
+  const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
+  const bookUrl = `${env.appUrl}/buchen`;
+
+  const text = [
+    `Hallo ${details.name}`,
+    "",
+    `Dein Termin bei ${site.name} fällt leider aus:`,
+    "",
+    details.lessonName,
+    when,
+    `Referenz: ${details.reference}`,
+    "",
+    "Die zuständige Fahrlehrperson ist nicht mehr bei uns, und wir konnten dafür niemanden mit",
+    "freier Zeit zu genau diesem Termin finden. Es entstehen dir keine Kosten. Bitte vereinbare",
+    "einen neuen Termin:",
+    bookUrl,
+    "",
+    `Fragen? ${site.contact.phone}`,
+  ].join("\n");
+
+  const html = mailLayout(
+    "Dein Termin fällt leider aus",
+    `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
+<p style="margin:0 0 16px;"><strong>${escapeHtml(details.lessonName)}</strong><br>${escapeHtml(when)}<br>Referenz: ${escapeHtml(details.reference)}</p>
+<p style="margin:0 0 16px;">Die zuständige Fahrlehrperson ist nicht mehr bei uns, und wir konnten dafür niemanden mit freier Zeit zu genau diesem Termin finden. Es entstehen dir keine Kosten.</p>
+<p style="margin:0 0 20px;">
+  <a href="${escapeHtml(bookUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;">Neuen Termin wählen</a>
+</p>
+<p style="margin:0;color:#515052;font-size:14px;">Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
+  );
+
+  await sendMail({
+    to: details.to,
+    subject: `Termin fällt aus — ${details.reference}`,
+    text,
+    html,
+  });
+}
+
 export type BookedAppointment = { day: string; time: string; reference: string; cancelToken: string };
 
 /**

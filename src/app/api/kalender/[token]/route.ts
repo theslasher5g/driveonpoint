@@ -15,9 +15,11 @@ export const dynamic = "force-dynamic";
  * bringen keine Cookies mit. Der lange Zufallstoken im Pfad ist deshalb der
  * einzige Nachweis; er lässt sich im Team-Bereich jederzeit erneuern.
  *
- * Personendaten der Kundschaft bleiben bewusst aussen vor: im Kalender steht
- * die Lektionsart mit Kürzel, nicht Name und Telefonnummer. Sonst lägen diese
- * Daten bei Google.
+ * Personendaten der Kundschaft bleiben absichtlich knapp: im Kalender steht
+ * nur der Vorname und die Telefonnummer, nicht der volle Name oder die
+ * Mailadresse — für unterwegs reicht das, um die Person zuzuordnen und
+ * anzurufen. Diese Angaben landen damit trotzdem im Kalenderdienst der
+ * Fahrlehrperson (Google, Outlook, Apple); siehe Datenschutzerklärung.
  */
 export async function GET(
   _request: Request,
@@ -62,20 +64,29 @@ export async function GET(
       status: bookings.status,
       updatedAt: bookings.updatedAt,
       lessonName: lessonTypes.name,
+      customerName: bookings.customerName,
+      customerPhone: bookings.customerPhone,
     })
     .from(bookings)
     .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
     .where(and(eq(bookings.staffId, owner.id), gte(bookings.startsAt, since)));
 
-  const entries: CalendarEntry[] = rows.map((row) => ({
-    uid: `${row.id}@${site.domain}`,
-    startsAt: row.startsAt,
-    endsAt: row.endsAt,
-    title: `${row.lessonName ?? "Termin"} — ${row.reference}`,
-    description: `Details und Kontaktangaben im Team-Bereich von ${site.name}.`,
-    cancelled: row.status === "abgesagt",
-    updatedAt: row.updatedAt,
-  }));
+  const entries: CalendarEntry[] = rows.map((row) => {
+    const firstName = row.customerName?.trim().split(/\s+/)[0];
+    const contact = [firstName, row.customerPhone].filter(Boolean).join(" · ");
+
+    return {
+      uid: `${row.id}@${site.domain}`,
+      startsAt: row.startsAt,
+      endsAt: row.endsAt,
+      title: `${row.lessonName ?? "Termin"} — ${row.reference}`,
+      description: contact
+        ? `${contact}\nWeitere Details im Team-Bereich von ${site.name}.`
+        : `Details im Team-Bereich von ${site.name}.`,
+      cancelled: row.status === "abgesagt",
+      updatedAt: row.updatedAt,
+    };
+  });
 
   return new Response(buildCalendar(`${site.name} — ${owner.name}`, entries), {
     headers: {

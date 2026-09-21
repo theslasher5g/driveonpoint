@@ -90,8 +90,9 @@ export default function DatenschutzPage() {
             <p className="text-slate">
               Deine Daten liegen auf einem Server in der Schweiz und werden nicht an Dritte
               verkauft oder für Werbung genutzt. Mailversand und Datenbank laufen auf derselben,
-              von uns betriebenen Infrastruktur. Als Besucherin oder Besucher dieser Website und
-              als buchende Kundschaft wird nichts an Dritte übermittelt.
+              von uns betriebenen Infrastruktur. Als Besucherin oder Besucher dieser Website wird
+              nichts an Dritte übermittelt. Einzige Ausnahme ist der Kalenderabgleich unserer
+              Fahrlehrpersonen, siehe unten.
             </p>
           </div>
 
@@ -103,6 +104,19 @@ export default function DatenschutzPage() {
               unserem Server und der App auf dem eigenen Gerät ab — es wird nichts an einen
               fremden Dienst übermittelt und keine Personendaten verlassen unsere
               Infrastruktur. Betroffen sind ausschliesslich Mitarbeitende, nicht die Kundschaft.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-lg mb-2">Kalenderabgleich der Fahrlehrpersonen</h2>
+            <p className="text-slate">
+              Mitarbeitende können ihren eigenen Terminkalender über einen persönlichen Link in
+              Google, Outlook oder Apple Kalender einbinden. Dieser Kalender enthält zu jedem
+              Termin Vorname und Telefonnummer der Kundschaft, damit die Fahrlehrperson unterwegs
+              erreichbar bleibt — nicht den vollen Namen und keine Mailadresse. Diese Angaben
+              werden dadurch an den vom jeweiligen Mitarbeitenden gewählten Kalenderdienst
+              übermittelt und unterliegen dort dessen eigener Löschfrist, nicht der 30-Tage-Frist
+              dieser Website.
             </p>
           </div>
 

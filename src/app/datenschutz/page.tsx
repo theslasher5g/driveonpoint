@@ -97,17 +97,6 @@ export default function DatenschutzPage() {
           </div>
 
           <div>
-            <h2 className="text-lg mb-2">Zwei-Faktor-Anmeldung unserer Mitarbeitenden</h2>
-            <p className="text-slate">
-              Mitarbeitende können ihr Konto zusätzlich mit einer Authenticator-App (zum Beispiel
-              Google Authenticator) absichern. Dieses Verfahren läuft vollständig zwischen
-              unserem Server und der App auf dem eigenen Gerät ab — es wird nichts an einen
-              fremden Dienst übermittelt und keine Personendaten verlassen unsere
-              Infrastruktur. Betroffen sind ausschliesslich Mitarbeitende, nicht die Kundschaft.
-            </p>
-          </div>
-
-          <div>
             <h2 className="text-lg mb-2">Kalenderabgleich der Fahrlehrpersonen</h2>
             <p className="text-slate">
               Mitarbeitende können ihren eigenen Terminkalender über einen persönlichen Link in

@@ -1,40 +1,29 @@
 import Link from "next/link";
-import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { requirePermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
-import {
-  availabilityExceptions,
-  availabilityRules,
-  bookings,
-  lessonTypes,
-  staff,
-} from "@/lib/db/schema";
-import {
-  addDays,
-  formatDayShort,
-  minutesSinceMidnight,
-  todayInZurich,
-  weekdayName,
-  zurichDay,
-  zurichTime,
-  zurichToInstant,
-  zurichWeekday,
-} from "@/lib/time";
-import { CancelBookingButton } from "@/components/cancel-booking-button";
+import { staff } from "@/lib/db/schema";
+import { addDays, formatDayShort, todayInZurich } from "@/lib/time";
+import { mondayOf, shiftMonth, yearMonthOf } from "./dates";
+import { MonthView, monthLabel } from "./month-view";
+import { WeekView } from "./week-view";
 
 export const dynamic = "force-dynamic";
 
-/** Montag der Woche, in der `day` liegt. */
-function mondayOf(day: string): string {
-  const weekday = zurichWeekday(day);
-  return addDays(day, weekday === 0 ? -6 : 1 - weekday);
-}
+type Params = {
+  ansicht?: string;
+  monat?: string;
+  woche?: string;
+  person?: string;
+  erfasst?: string;
+  verschoben?: string;
+};
 
 export default async function KalenderPage({
   searchParams,
 }: {
-  searchParams: Promise<{ woche?: string; person?: string; erfasst?: string; verschoben?: string }>;
+  searchParams: Promise<Params>;
 }) {
   const user = await requirePermission("kalender.ansehen");
   const params = await searchParams;
@@ -42,11 +31,12 @@ export default async function KalenderPage({
   const seesEveryone = can(user.role, "verfuegbarkeit.alle");
   const manages = can(user.role, "kalender.verwalten");
 
-  const start = mondayOf(
-    /^\d{4}-\d{2}-\d{2}$/.test(params.woche ?? "") ? params.woche! : todayInZurich(),
-  );
-  const end = addDays(start, 6);
-  const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
+  const view = params.ansicht === "woche" ? "woche" : "monat";
+  const today = todayInZurich();
+
+  const yearMonth = /^\d{4}-\d{2}$/.test(params.monat ?? "") ? params.monat! : yearMonthOf(today);
+  const weekStart = mondayOf(/^\d{4}-\d{2}-\d{2}$/.test(params.woche ?? "") ? params.woche! : today);
+  const weekEnd = addDays(weekStart, 6);
 
   const team = seesEveryone
     ? await db
@@ -63,66 +53,13 @@ export default async function KalenderPage({
     params.person && allowedIds.includes(params.person) ? params.person : undefined;
   const visibleIds = focus ? [focus] : allowedIds;
 
-  const [entries, rules, exceptions] = await Promise.all([
-    db
-      .select({
-        id: bookings.id,
-        reference: bookings.reference,
-        startsAt: bookings.startsAt,
-        endsAt: bookings.endsAt,
-        status: bookings.status,
-        customerName: bookings.customerName,
-        customerPhone: bookings.customerPhone,
-        customerNote: bookings.customerNote,
-        staffId: bookings.staffId,
-        staffName: staff.name,
-        lessonName: lessonTypes.name,
-      })
-      .from(bookings)
-      .leftJoin(staff, eq(staff.id, bookings.staffId))
-      .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
-      .where(
-        and(
-          inArray(bookings.staffId, visibleIds),
-          gte(bookings.startsAt, zurichToInstant(start, "00:00")),
-          lte(bookings.startsAt, zurichToInstant(end, "23:59")),
-        ),
-      )
-      .orderBy(asc(bookings.startsAt)),
-    db
-      .select({
-        staffId: availabilityRules.staffId,
-        weekday: availabilityRules.weekday,
-        startTime: availabilityRules.startTime,
-        endTime: availabilityRules.endTime,
-        validFrom: availabilityRules.validFrom,
-        validUntil: availabilityRules.validUntil,
-        lessonName: lessonTypes.name,
-      })
-      .from(availabilityRules)
-      .innerJoin(lessonTypes, eq(lessonTypes.id, availabilityRules.lessonTypeId))
-      .where(inArray(availabilityRules.staffId, visibleIds)),
-    db
-      .select({
-        id: availabilityExceptions.id,
-        staffId: availabilityExceptions.staffId,
-        day: availabilityExceptions.day,
-        startTime: availabilityExceptions.startTime,
-        endTime: availabilityExceptions.endTime,
-        available: availabilityExceptions.available,
-        note: availabilityExceptions.note,
-        lessonName: lessonTypes.name,
-      })
-      .from(availabilityExceptions)
-      .leftJoin(lessonTypes, eq(lessonTypes.id, availabilityExceptions.lessonTypeId))
-      .where(
-        and(
-          inArray(availabilityExceptions.staffId, visibleIds),
-          gte(availabilityExceptions.day, start),
-          lte(availabilityExceptions.day, end),
-        ),
-      ),
-  ]);
+  const focusQuery = focus ? `&person=${focus}` : "";
+  // Der jeweils andere Modus bekommt einen sinnvollen Ausgangspunkt statt
+  // stur beim heutigen Tag zu landen: von der Woche in den Monat wechselt
+  // man in den Monat der gerade betrachteten Woche, umgekehrt auf die
+  // aktuelle Woche — die Browsing-Position bleibt so weitgehend erhalten.
+  const monthHref = `/team/kalender?ansicht=monat&monat=${view === "woche" ? yearMonthOf(weekStart) : yearMonth}${focusQuery}`;
+  const weekHref = `/team/kalender?ansicht=woche&woche=${view === "monat" ? today : weekStart}${focusQuery}`;
 
   return (
     <section className="shell py-10 md:py-14">
@@ -142,33 +79,89 @@ export default async function KalenderPage({
           <div>
             <h1 className="text-title">Kalender</h1>
             <p className="nums text-slate mt-2">
-              Woche vom {formatDayShort(start)} bis {formatDayShort(end)}
+              {view === "monat"
+                ? monthLabel(yearMonth)
+                : `Woche vom ${formatDayShort(weekStart)} bis ${formatDayShort(weekEnd)}`}
             </p>
           </div>
 
-          <nav className="flex flex-wrap gap-2" aria-label="Woche wechseln">
+          {manages && (
+            <Link href="/team/kalender/erfassen" className="btn btn-primary py-2.5 px-4">
+              + Termin erfassen
+            </Link>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
+          {/* Monat/Woche — ein Formular, keine zwei Kalender: wer die
+              Übersicht will, bleibt im Monat; wer einen Termin verschieben
+              oder absagen will, wechselt für die Einzelheiten in die Woche. */}
+          <div className="flex border border-deep/20" role="group" aria-label="Ansicht wählen">
             <Link
-              href={`/team/kalender?woche=${addDays(start, -7)}${focus ? `&person=${focus}` : ""}`}
-              className="btn btn-outline py-2 px-3.5"
+              href={monthHref}
+              aria-current={view === "monat" ? "page" : undefined}
+              className={`px-4 py-2 text-fine font-semibold ${
+                view === "monat" ? "bg-signal text-deep" : "bg-paper text-deep/70 hover:text-deep"
+              }`}
             >
-              Vorherige
+              Monat
             </Link>
             <Link
-              href={`/team/kalender${focus ? `?person=${focus}` : ""}`}
-              className="btn btn-outline py-2 px-3.5"
+              href={weekHref}
+              aria-current={view === "woche" ? "page" : undefined}
+              className={`px-4 py-2 text-fine font-semibold border-l border-deep/20 ${
+                view === "woche" ? "bg-signal text-deep" : "bg-paper text-deep/70 hover:text-deep"
+              }`}
             >
-              Diese Woche
+              Woche
             </Link>
-            <Link
-              href={`/team/kalender?woche=${addDays(start, 7)}${focus ? `&person=${focus}` : ""}`}
-              className="btn btn-outline py-2 px-3.5"
-            >
-              Nächste
-            </Link>
-            {manages && (
-              <Link href="/team/kalender/erfassen" className="btn btn-primary py-2 px-3.5">
-                + Termin erfassen
-              </Link>
+          </div>
+
+          <nav className="flex flex-wrap gap-2" aria-label={view === "monat" ? "Monat wechseln" : "Woche wechseln"}>
+            {view === "monat" ? (
+              <>
+                <Link
+                  href={`/team/kalender?ansicht=monat&monat=${shiftMonth(yearMonth, -1)}${focusQuery}`}
+                  className="btn btn-outline py-2 px-3.5"
+                  aria-label="Vorheriger Monat"
+                >
+                  ‹ Vorheriger
+                </Link>
+                <Link
+                  href={`/team/kalender?ansicht=monat${focusQuery}`}
+                  className="btn btn-outline py-2 px-3.5"
+                >
+                  Heute
+                </Link>
+                <Link
+                  href={`/team/kalender?ansicht=monat&monat=${shiftMonth(yearMonth, 1)}${focusQuery}`}
+                  className="btn btn-outline py-2 px-3.5"
+                  aria-label="Nächster Monat"
+                >
+                  Nächster ›
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={`/team/kalender?ansicht=woche&woche=${addDays(weekStart, -7)}${focusQuery}`}
+                  className="btn btn-outline py-2 px-3.5"
+                >
+                  ‹ Vorherige
+                </Link>
+                <Link
+                  href={`/team/kalender?ansicht=woche${focusQuery}`}
+                  className="btn btn-outline py-2 px-3.5"
+                >
+                  Heute
+                </Link>
+                <Link
+                  href={`/team/kalender?ansicht=woche&woche=${addDays(weekStart, 7)}${focusQuery}`}
+                  className="btn btn-outline py-2 px-3.5"
+                >
+                  Nächste ›
+                </Link>
+              </>
             )}
           </nav>
         </div>
@@ -177,7 +170,7 @@ export default async function KalenderPage({
           <ul className="flex flex-wrap gap-2 mt-6" aria-label="Person filtern">
             <li>
               <Link
-                href={`/team/kalender?woche=${start}`}
+                href={`/team/kalender?ansicht=${view}&${view === "monat" ? `monat=${yearMonth}` : `woche=${weekStart}`}`}
                 className={`block px-3.5 py-2 text-fine font-semibold border ${
                   focus ? "border-deep/20 bg-paper" : "border-signal bg-signal text-deep"
                 }`}
@@ -188,7 +181,7 @@ export default async function KalenderPage({
             {team.map((person) => (
               <li key={person.id}>
                 <Link
-                  href={`/team/kalender?woche=${start}&person=${person.id}`}
+                  href={`/team/kalender?ansicht=${view}&${view === "monat" ? `monat=${yearMonth}` : `woche=${weekStart}`}&person=${person.id}`}
                   className={`block px-3.5 py-2 text-fine font-semibold border ${
                     focus === person.id
                       ? "border-signal bg-signal text-deep"
@@ -202,125 +195,19 @@ export default async function KalenderPage({
           </ul>
         )}
 
-        <div className="mt-8 grid gap-px bg-deep/15 border border-deep/15 md:grid-cols-7">
-          {days.map((day) => {
-            const weekday = zurichWeekday(day);
-            const isToday = day === todayInZurich();
-
-            const dayEntries = entries.filter((entry) => zurichDay(entry.startsAt) === day);
-
-            const openBlocks = [
-              ...rules
-                .filter((rule) => {
-                  if (rule.weekday !== weekday) return false;
-                  if (rule.validFrom && day < rule.validFrom) return false;
-                  if (rule.validUntil && day > rule.validUntil) return false;
-                  return true;
-                })
-                .map((rule) => ({
-                  from: rule.startTime.slice(0, 5),
-                  to: rule.endTime.slice(0, 5),
-                  lessonName: rule.lessonName,
-                })),
-              ...exceptions
-                .filter((entry) => entry.day === day && entry.available)
-                .map((entry) => ({
-                  from: entry.startTime.slice(0, 5),
-                  to: entry.endTime.slice(0, 5),
-                  lessonName: entry.lessonName ?? "alle Angebote",
-                })),
-            ].sort((a, b) => minutesSinceMidnight(a.from) - minutesSinceMidnight(b.from));
-
-            const absences = exceptions.filter((entry) => entry.day === day && !entry.available);
-
-            return (
-              // Feste Mindesthöhe nur im Wochenraster. Untereinander gestapelt
-              // würden sieben leere Kästen das Telefon vollständig füllen.
-              <div
-                key={day}
-                className={`p-3 md:min-h-40 ${isToday ? "bg-paper" : "bg-concrete"}`}
-              >
-                <h2 className={`text-fine font-bold ${isToday ? "text-signal-ink" : ""}`}>
-                  {weekdayName(weekday, true)}
-                  <span className="nums font-normal text-slate">
-                    {" "}
-                    {Number(day.slice(8))}.{Number(day.slice(5, 7))}.
-                  </span>
-                </h2>
-
-                {openBlocks.length > 0 && (
-                  <ul className="mt-1.5 space-y-0.5">
-                    {openBlocks.map((block, index) => (
-                      <li key={index} className="nums text-[0.72rem] text-slate">
-                        {block.from}–{block.to} <span className="text-deep/70">{block.lessonName}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {absences.map((absence) => (
-                  <p
-                    key={absence.id}
-                    className="nums text-[0.72rem] bg-concrete-dim px-1.5 py-1 mt-1.5"
-                  >
-                    Abwesend {absence.startTime.slice(0, 5)}–{absence.endTime.slice(0, 5)}
-                    {absence.note ? ` · ${absence.note}` : ""}
-                  </p>
-                ))}
-
-                <ul className="mt-2 space-y-1.5">
-                  {dayEntries.map((entry) => {
-                    const cancelled = entry.status === "abgesagt";
-                    return (
-                      <li
-                        key={entry.id}
-                        className={`px-2 py-1.5 border-l-[3px] ${
-                          cancelled
-                            ? "bg-concrete-dim border-slate text-slate line-through"
-                            : "bg-deep/5 border-deep"
-                        }`}
-                      >
-                        <p className="nums text-fine font-bold">
-                          {zurichTime(entry.startsAt)}–{zurichTime(entry.endsAt)}
-                        </p>
-                        <p className="text-[0.8rem] leading-snug">
-                          {entry.customerName ?? "Angaben gelöscht"}
-                        </p>
-                        <p className="text-[0.72rem] text-slate leading-snug">
-                          {entry.lessonName}
-                          {seesEveryone && !focus && entry.staffName ? ` · ${entry.staffName}` : ""}
-                        </p>
-                        {entry.customerPhone && (
-                          <a
-                            href={`tel:${entry.customerPhone}`}
-                            className="nums text-[0.72rem] text-signal-ink font-semibold block mt-0.5"
-                          >
-                            {entry.customerPhone}
-                          </a>
-                        )}
-                        {entry.customerNote && (
-                          <p className="text-[0.72rem] text-slate mt-1">{entry.customerNote}</p>
-                        )}
-                        {manages && !cancelled && (
-                          <div className="flex flex-wrap gap-3 items-center">
-                            <Link
-                              href={`/team/kalender/verschieben?id=${entry.id}`}
-                              className="text-[0.72rem] font-semibold text-slate hover:text-signal-ink underline underline-offset-2 mt-1.5"
-                            >
-                              Verschieben
-                            </Link>
-                            <CancelBookingButton bookingId={entry.id} />
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })}
+        <div className="mt-8">
+          {view === "monat" ? (
+            <MonthView yearMonth={yearMonth} visibleIds={visibleIds} focus={focus} />
+          ) : (
+            <WeekView
+              start={weekStart}
+              visibleIds={visibleIds}
+              focus={focus}
+              seesEveryone={seesEveryone}
+              manages={manages}
+            />
+          )}
         </div>
-
       </div>
     </section>
   );

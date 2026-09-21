@@ -75,14 +75,39 @@ services:
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     ports:
-      # Nur auf localhost. Davor gehört ein Reverse Proxy mit TLS (Caddy/nginx).
+      # Nur auf localhost — zum Testen per SSH-Tunnel (siehe README). Öffentlich
+      # erreichbar wird die Anwendung ausschliesslich über den proxy-Dienst unten.
       - "127.0.0.1:3000:3000"
+    networks:
+      - internal
+
+  # Reverse Proxy mit automatischem TLS-Zertifikat (Let's Encrypt). Braucht
+  # eine echte Domain, die per DNS bereits auf diesen Server zeigt — ohne
+  # das schlägt die Zertifikatsanfrage fehl. Ohne gesetztes SITE_ADDRESS
+  # (siehe .env) hört Caddy stattdessen auf Port 80 ohne TLS, zum ersten
+  # Testen ohne Domain.
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    ports:
+      - "80:80"
+      - "443:443"
     networks:
       - internal
 
 volumes:
   db-data:
   dkim-keys:
+  caddy-data:
+  caddy-config:
 
 networks:
   internal:

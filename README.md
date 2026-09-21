@@ -106,24 +106,24 @@ einen laufenden Server zeigen.
 
 ### Reverse Proxy
 
-Sobald die Domain steht: Die Anwendung hört nur auf `127.0.0.1:3000`. Davor
-gehört ein Proxy, der TLS beendet. Mit Caddy genügt:
+Der Reverse Proxy (Caddy) ist Teil von `docker-compose.yml` — keine
+zusätzliche Installation auf dem Server nötig. Er holt sein
+TLS-Zertifikat automatisch bei Let's Encrypt, sobald `SITE_ADDRESS` in der
+`.env` auf die echte Domain zeigt und diese per DNS bereits auf den Server
+verweist (siehe oben):
 
 ```
-driveonpoint.ch {
-    reverse_proxy 127.0.0.1:3000
-}
-```
-
-Danach in der `.env`:
-
-```
+SITE_ADDRESS=driveonpoint.ch
 APP_URL=https://driveonpoint.ch
 ```
 
-und `docker compose up -d` erneut ausführen — das Sitzungs-Cookie bekommt ab
-jetzt automatisch das `Secure`-Attribut, ohne dass sonst etwas geändert
-werden muss.
+und `docker compose up -d --build` erneut ausführen. Ohne `SITE_ADDRESS`
+(Standardwert `:80`) hört Caddy nur auf Port 80 ohne TLS — genügt zum
+ersten Testen, siehe [Erster Blick, bevor eine Domain
+steht](#erster-blick-bevor-eine-domain-steht).
+
+Das Sitzungs-Cookie bekommt ab jetzt automatisch das `Secure`-Attribut,
+ohne dass sonst etwas geändert werden muss.
 
 Wichtig: `TRUST_PROXY_HOPS` muss der Anzahl Proxys entsprechen. Bei einem
 einzelnen Caddy oder nginx ist das `1`. Ein zu hoher Wert lässt sich mit einem

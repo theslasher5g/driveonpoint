@@ -29,29 +29,17 @@ export default function UeberUnsPage() {
       </Section>
 
       <Section title={site.philosophy.title} tone="paper">
-        <div className="grid gap-12 lg:grid-cols-[1fr_0.85fr] lg:items-start">
-          <div className="prose-column space-y-4 text-slate">
-            <p>{site.philosophy.body}</p>
-            <p>
-              In der Praxis heisst das: Wir sagen dir ehrlich, wann du bereit bist. Eine
-              Anmeldung zur Prüfung, die absehbar scheitert, kostet dich Geld und Nerven. Und
-              umgekehrt melden wir dich an, sobald es reicht — nicht erst nach einer Wunschzahl
-              an Lektionen.
-            </p>
-            <p>
-              Unterrichtet wird in {site.languages.join(" und ")}. Wir fahren in{" "}
-              {site.region.join(", ")} und Umgebung.
-            </p>
-          </div>
-
-          <Image
-            src={site.images.team.src}
-            alt={site.images.team.alt}
-            width={site.images.team.width}
-            height={site.images.team.height}
-            className="w-full h-auto surface"
-            sizes="(min-width: 1024px) 40vw, 100vw"
-          />
+        <div className="prose-column space-y-4 text-slate max-w-2xl">
+          <p>{site.philosophy.body}</p>
+          <p>
+            In der Praxis heisst das: Wir sagen dir ehrlich, wann du bereit bist. Eine Anmeldung
+            zur Prüfung, die absehbar scheitert, kostet dich Geld und Nerven. Und umgekehrt
+            melden wir dich an, sobald es reicht — nicht erst nach einer Wunschzahl an Lektionen.
+          </p>
+          <p>
+            Unterrichtet wird in {site.languages.join(" und ")}. Wir fahren in{" "}
+            {site.region.join(", ")} und Umgebung.
+          </p>
         </div>
       </Section>
 

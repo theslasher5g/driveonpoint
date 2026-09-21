@@ -169,12 +169,6 @@ export const site = {
       width: 1600,
       height: 1200,
     },
-    team: {
-      src: "/images/platzhalter-team.svg",
-      alt: "Christina und Jolanda von DriveOnPoint",
-      width: 1600,
-      height: 1200,
-    },
     course: {
       src: "/images/platzhalter-kursraum.svg",
       alt: "Kursraum für Verkehrskundeunterricht und Nothilfekurs",

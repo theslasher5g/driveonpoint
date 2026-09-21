@@ -23,27 +23,6 @@ export default function NothilfekursPage() {
         action={{ href: "/buchen?angebot=nothilfekurs", label: "Kursdaten ansehen" }}
       />
 
-      <Section>
-        <div className="flex flex-wrap gap-10 mb-9">
-          <div>
-            <p className="text-fine text-slate">Dauer</p>
-            <p className="nums stretch-wide font-extrabold text-2xl text-signal-ink mt-1">
-              {offer.duration}
-            </p>
-          </div>
-          <div>
-            <p className="text-fine text-slate">Ab Alter</p>
-            <p className="nums stretch-wide font-extrabold text-2xl text-signal-ink mt-1">
-              {offer.minAge}
-            </p>
-          </div>
-        </div>
-
-        <p className="surface bg-signal-tint border-l-4 border-signal px-5 py-4 italic max-w-[62ch]">
-          {offer.note}
-        </p>
-      </Section>
-
       <Section title="Was geübt wird" tone="paper">
         <div className="grid gap-x-10 gap-y-6 sm:grid-cols-2 max-w-4xl">
           {[

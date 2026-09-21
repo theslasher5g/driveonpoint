@@ -43,19 +43,6 @@ export default function VkuPage() {
         action={{ href: "/buchen?angebot=vku", label: "Kursdaten ansehen" }}
       />
 
-      <Section>
-        <ul className="flex flex-wrap gap-2 mb-8">
-          {offer.topics.map((topic) => (
-            <li key={topic} className="chip chip-quiet">
-              {topic}
-            </li>
-          ))}
-        </ul>
-        <p className="surface bg-signal-tint border-l-4 border-signal px-5 py-4 italic max-w-[62ch]">
-          {offer.note}
-        </p>
-      </Section>
-
       <Section title="Die vier Abende" tone="paper">
         <ol className="border-t border-deep/12 max-w-3xl">
           {EVENINGS.map(([title, body], index) => (

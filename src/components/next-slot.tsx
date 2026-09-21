@@ -38,23 +38,21 @@ export async function NextSlotPanel() {
   const { slot, lessonType } = result;
 
   return (
-    <div className="bg-paper text-deep max-w-xl">
-      <div className="p-6 sm:p-7">
-        <p className="text-fine font-semibold text-slate mb-3">Nächster freier Termin</p>
-        <p className="stretch-wide font-extrabold text-2xl sm:text-[1.75rem] leading-[1.05] tracking-tight">
-          {formatDayLong(slot.day)}
-        </p>
-        <p className="nums stretch-wide font-extrabold text-signal-ink text-4xl sm:text-5xl leading-none mt-2">
-          {slot.time}
-        </p>
-        <p className="text-fine text-slate mt-3">
-          {lessonType.name}, {lessonType.durationMinutes} Minuten
-          {slot.staffIds.length > 1 ? ` — ${slot.staffIds.length} Fahrlehrer verfügbar` : ""}
-        </p>
-      </div>
+    <div className="bg-paper text-deep max-w-xl p-6 sm:p-7">
+      <p className="text-fine font-semibold text-slate mb-3">Nächster freier Termin</p>
+      <p className="stretch-wide font-extrabold text-2xl sm:text-[1.75rem] leading-[1.05] tracking-tight">
+        {formatDayLong(slot.day)}
+      </p>
+      <p className="nums stretch-wide font-extrabold text-signal-ink text-4xl sm:text-5xl leading-none mt-2">
+        {slot.time}
+      </p>
+      <p className="text-fine text-slate mt-3">
+        {lessonType.name}, {lessonType.durationMinutes} Minuten
+        {slot.staffIds.length > 1 ? ` — ${slot.staffIds.length} Fahrlehrer verfügbar` : ""}
+      </p>
       <Link
         href={`/buchen?angebot=${lessonType.slug}&tag=${slot.day}&zeit=${slot.time}`}
-        className="btn btn-deep w-full"
+        className="btn btn-primary w-full mt-6"
       >
         Diesen Termin sichern
       </Link>

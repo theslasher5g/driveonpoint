@@ -53,7 +53,21 @@ export default function HomePage() {
           Vorher lagen Schlagzeile, Einleitung, Terminkarte und Telefonzeile
           untereinander — zusammen mehr als ein Bildschirm, bevor überhaupt
           etwas Buchbares zu sehen war. */}
-      <section className="bg-deep text-paper on-signal overflow-hidden">
+      <section
+        className="relative text-paper on-signal overflow-hidden"
+        style={{
+          background:
+            "radial-gradient(120% 140% at 82% 8%, #ff5a4f 0%, #c81e1e 32%, #3a1f1a 62%, #291d1a 100%)",
+        }}
+      >
+        {/* Weicher zweiter Lichtpunkt unten links, rein dekorativ — damit
+            die Glasfläche der Terminkarte etwas zum Brechen hat, auch wenn
+            das Fenster schmal ist und der erste Verlauf dort ausläuft. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full opacity-40 blur-3xl"
+          style={{ background: "#ff847a" }}
+        />
         <div className="shell py-10 md:py-16">
           <div className="lane text-paper lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-12 lg:items-start">
             <div className="min-w-0">

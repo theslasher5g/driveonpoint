@@ -75,7 +75,7 @@ export function TeamNav({
   return (
     <>
       {/* Bis 1024px: Leiste mit Aufklapper */}
-      <div className="lg:hidden bg-deep text-paper on-signal">
+      <div className="lg:hidden glass-deep text-paper on-signal sticky top-0 z-50">
         <div className="shell py-3 flex items-center gap-4">
           {brand}
           <button
@@ -113,7 +113,7 @@ export function TeamNav({
       </div>
 
       {/* Ab 1024px: Spalte links, bleibt beim Blättern stehen */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-56 xl:w-60 shrink-0 bg-deep text-paper on-signal lg:sticky lg:top-0 lg:h-dvh">
+      <aside className="hidden lg:flex lg:flex-col lg:w-56 xl:w-60 shrink-0 glass-deep text-paper on-signal lg:sticky lg:top-0 lg:h-dvh">
         <div className="px-4 py-5">{brand}</div>
 
         <nav aria-label="Team-Bereich" className="flex-1 overflow-y-auto px-2">

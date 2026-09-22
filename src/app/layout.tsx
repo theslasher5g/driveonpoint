@@ -1,9 +1,25 @@
 import type { Metadata, Viewport } from "next";
+import { Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
 import { PublicOnly } from "@/components/public-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/lib/site";
 import "./globals.css";
+
+// Beide Schriften werden beim Bauen als eigene Dateien mit ausgeliefert,
+// nicht zur Laufzeit von Google nachgeladen — es entsteht keine Verbindung
+// zu einem fremden Dienst, siehe Datenschutzerklärung.
+const bodyFont = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans-loaded",
+  display: "swap",
+});
+
+const displayFont = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-display-loaded",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL ?? "https://driveonpoint.ch"),
@@ -29,7 +45,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de-CH">
+    <html lang="de-CH" className={`${bodyFont.variable} ${displayFont.variable}`}>
       <body className="min-h-dvh flex flex-col">
         <a href="#inhalt" className="skip-link">
           Zum Inhalt springen

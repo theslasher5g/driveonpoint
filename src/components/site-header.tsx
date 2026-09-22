@@ -33,7 +33,7 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    <header className="bg-paper border-b border-deep/15 sticky top-0 z-50">
+    <header className="glass !border-0 border-b border-deep/10 sticky top-0 z-50">
       <div className="shell flex items-center gap-4 h-16 md:h-20">
         <Link
           href="/"
@@ -95,7 +95,7 @@ export function SiteHeader() {
       {open && (
         <nav
           id="hauptmenue"
-          className="lg:hidden border-t border-deep/15 bg-paper"
+          className="lg:hidden border-t border-deep/15 glass"
           aria-label="Hauptnavigation"
         >
           <ul className="shell py-2">

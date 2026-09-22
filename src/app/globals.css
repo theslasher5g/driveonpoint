@@ -1,74 +1,57 @@
 @import "tailwindcss";
 
 @theme {
-  /* --- Amtliches Formular, Farbwelt Schwarz/Weiss/Rot --------------------
-     Die Papiermetapher (Linierung, Stempel, Schreibmaschinenziffern, kaum
-     gerundete Ecken) bleibt — Creme ist raus, auf Wunsch. Palette:
-     fffffa / 515052 / 000103 / 333138 / ff312e. Statt warmem Kraftpapier
-     jetzt: reines Weiss, zwei neutrale Grautöne, Tinte fast schwarz, ein
-     einziges grelles Rot als Signalfarbe — liest weniger nach Logbuch,
-     mehr nach amtlichem Formular. Dieselben Linien, dieselbe Kante. */
+  /* --- Warme, runde Fassung, Rot bleibt der Markenanker ------------------
+     Vorherige Fassung war das amtliche Formular: scharfe Kanten, kühles
+     Weiss/Grau/Schwarz, Rot nur als Fläche. Diese Fassung behält das
+     Markenrot als einzigen Akzent, verlässt aber die Formularmetrik dafür
+     bewusst: warme Creme- statt Grautöne, durchgehend grosszügige Rundung
+     bis zur organischen Form, eine markantere Display-Schrift. Rot bleibt
+     exakt derselbe Ton — nur der Rahmen drumherum ist wärmer geworden. */
   --color-signal: #ff312e;
-  /* Das Signalrot selbst kommt auf Weiss nur auf 3,7:1 — als Fläche für
-     Knöpfe genügt das (Text darauf ist dunkel, nicht weiss, siehe unten),
-     als SCHRIFT reicht es nicht. Dieser abgedunkelte Ton erreicht 6,0:1. */
   --color-signal-ink: #bf2523;
-  /* Nochmals dunkler, fürs Gedrückt-Aussehen von Knöpfen. */
   --color-signal-deep: #a6201e;
-  /* Blasse Tönung für ruhige Hinweisflächen. */
-  --color-signal-tint: #ffece8;
+  /* Wärmer als zuvor (war #ffece8), passend zur Cremefläche darunter. */
+  --color-signal-tint: #ffe6df;
 
-  /* Tinte: fast Schwarz statt Navy. */
-  --color-deep: #000103;
-  /* Das Blatt: reines, kühles Weiss statt Creme. */
-  --color-paper: #fffffa;
-  /* Der Bogen darunter, eine Spur grau abgesetzt vom Blatt — beide bewusst
-     neutral, kein Gelbstich, der wieder nach Creme läge. */
-  --color-concrete: #f5f5f1;
-  --color-concrete-dim: #e8e8e4;
-  /* Der mittlere Grauton der Palette, direkt für den Fliesstext — erreicht
-     8,0:1 auf Weiss, mehr als genug Spielraum. */
-  --color-slate: #515052;
-  /* Die Linierung, aus demselben Grau gegen das Blatt gemischt. */
-  --color-rule: #cbcbc8;
+  /* Warmes Fast-Schwarz mit Rotstich statt kühlem Navy-Schwarz — hält die
+     ganze Palette in einer Temperatur zusammen. */
+  --color-deep: #291d1a;
+  /* Das Blatt: warmes Creme statt reinem, kühlem Weiss. */
+  --color-paper: #fffcfa;
+  /* Der Bogen darunter: ein zarter Blush-Ton statt neutralem Grau — dieselbe
+     Rolle (Fläche knapp dunkler als das Blatt), andere Temperatur. */
+  --color-concrete: #fff3ee;
+  --color-concrete-dim: #ffe6df;
+  /* Warmes Taupe statt kühlem Grau, immer noch komfortabel über 7:1 auf Weiss. */
+  --color-slate: #6b5d59;
+  --color-rule: #e8d9d2;
 
-  /* Ocker bleibt ausserhalb der fünf Palettenfarben: Schwarz, Weiss und
-     Grau eignen sich nicht als Warnfarbe, und die Palette bringt selbst
-     kein Gelb mit. Markiert ausschliesslich einen befristeten Zustand, auf
-     den reagiert werden soll — eine laufende Rabattaktion, ein noch
-     offenes Startpasswort. */
   --color-amber: #c98a1e;
   --color-amber-ink: #7a5312;
 
-  /* Rückmeldungen: erledigt und fehlgeschlagen sehen sich bewusst nicht
-     ähnlich, sonst sähe eine bestätigte Buchung wie ein Fehler aus. Die
-     Palette bringt kein Grün mit — hier ergänzt. Fehler laufen über das
-     abgedunkelte Rot (signal-ink), das sich vom grellen Knopfrot klar
-     genug unterscheidet. */
   --color-success: #2f6b52;
   --color-success-tint: #eaf0e9;
   --color-danger: #bf2523;
   --color-danger-tint: #f9ebe7;
 
-  /* Helvetica selbst nur auf macOS/iOS vorinstalliert, Arial praktisch
-     überall sonst — dieselbe Schriftfamilie in Auftritt, Bestätigungsmails
-     (mail.ts) und dem Buchhaltungs-PDF (accounting-pdf.tsx). Systemschrift
-     statt Webfont: kein Download, keine Schriftdatei, die selbst gehostet
-     werden müsste. */
-  --font-sans: Helvetica, "Helvetica Neue", Arial, ui-sans-serif, system-ui,
-    -apple-system, "Segoe UI", sans-serif;
+  /* Beide selbst gehostet über next/font (siehe layout.tsx) — keine
+     Verbindung zu einem fremden Dienst zur Laufzeit. Fallback bleibt
+     system-nah, falls das Laden je scheitert. */
+  --font-sans: var(--font-sans-loaded), "Plus Jakarta Sans", Helvetica, Arial,
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-display-loaded), "Bricolage Grotesque",
+    var(--font-sans);
   /* Zahlen sind eingetragen, nicht gesetzt: Uhrzeiten, Daten, Preise und
      Referenzen laufen deshalb über eine Schreibmaschinenschrift. */
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
 
-  /* Ein Formular hat keine weichen Ecken. Gerade so viel Rundung, dass es
-     gedruckt wirkt und nicht nach ausgestellter Kantigkeit. */
-  --radius-surface: 3px;
-  --radius-control: 2px;
-  /* Auch Marken und Auszeichnungen sind hier kleine Kästchen auf einem
-     Formular, keine Pillen. */
-  --radius-pill: 2px;
+  /* Von der Formularkante zur grosszügigen Rundung — der deutlichste
+     Einzelwechsel dieser Fassung. */
+  --radius-surface: 22px;
+  --radius-control: 14px;
+  --radius-pill: 999px;
 }
 
 @layer base {
@@ -94,15 +77,15 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Das Display spielt über die Breitenachse, nicht über eine zweite
-     Schriftfamilie — ein Kontrast ohne zweiten Download. */
+  /* Das Display trägt jetzt eine eigene, markantere Schriftfamilie statt
+     der früheren synthetischen Streckung derselben Grotesk. */
   h1,
   h2,
   .display {
-    font-stretch: 118%;
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    line-height: 0.96;
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.02;
     text-wrap: balance;
     margin: 0;
   }
@@ -231,7 +214,7 @@
     place-items: center;
     width: 2.375rem;
     height: 2.375rem;
-    border-radius: var(--radius-control);
+    border-radius: 50%;
     background: var(--color-deep);
     color: var(--color-paper);
     font-weight: 800;
@@ -521,7 +504,7 @@
     display: inline-block;
     transform: rotate(-3.5deg);
     border: 3px double var(--color-signal);
-    border-radius: 3px;
+    border-radius: 12px;
     /* Der dunklere Rotton, nicht das grelle Knopfrot: als Schrift braucht
        auch der Stempel 4,5:1, das grelle Rot liefert nur 3,7:1. */
     color: var(--color-signal-ink);
@@ -562,6 +545,36 @@
   .skip-link:focus {
     left: 0.5rem;
     top: 0.5rem;
+  }
+
+  /* --- Glas ---------------------------------------------------------------
+     Gezielt eingesetzt, nicht überall: dort, wo etwas über bewegtem Inhalt
+     schwebt — die feste Kopfzeile beim Scrollen, die Terminkarte über dem
+     Verlaufshintergrund im Aufmacher, die Team-Navigation über dem Kalender.
+     Braucht sichtbaren Inhalt dahinter, sonst ist der Effekt unsichtbar. */
+  .glass {
+    background: color-mix(in srgb, var(--color-paper) 72%, transparent);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid color-mix(in srgb, var(--color-paper) 55%, transparent);
+  }
+
+  .glass-deep {
+    background: color-mix(in srgb, var(--color-deep) 78%, transparent);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid color-mix(in srgb, var(--color-paper) 12%, transparent);
+  }
+
+  /* Fällt ein Browser zurück (kein backdrop-filter), bleibt die Fläche
+     ausreichend deckend statt durchsichtig-unlesbar. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass {
+      background: color-mix(in srgb, var(--color-paper) 96%, transparent);
+    }
+    .glass-deep {
+      background: color-mix(in srgb, var(--color-deep) 96%, transparent);
+    }
   }
 }
 

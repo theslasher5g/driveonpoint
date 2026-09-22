@@ -101,7 +101,7 @@ export default async function TeamDashboard({
 
         {/* Gelb trägt hier Bedeutung: nur die Kachel, die eine Reaktion
             braucht, ist eingefärbt. */}
-        <dl className="grid gap-px bg-deep/12 border border-deep/12 grid-cols-2 sm:grid-cols-3 mt-7">
+        <dl className="grid gap-px bg-deep/12 border border-deep/12 rounded-[var(--radius-surface)] overflow-hidden grid-cols-2 sm:grid-cols-3 mt-7">
           <StatTile label="Heute" value={todays.length} />
           <StatTile label={seesEveryone ? "Diese Woche, alle" : "Diese Woche"} value={weekTotal} />
           <StatTile

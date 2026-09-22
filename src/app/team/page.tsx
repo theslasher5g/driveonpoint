@@ -15,6 +15,57 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Schnellzugriff auf die Bereiche, die am häufigsten gebraucht werden —
+ * direkt nach der Anmeldung, statt sich über die Seitenleiste dorthin zu
+ * klicken. Dieselbe Berechtigungsprüfung wie in der Navigation: wer etwas
+ * nicht darf, sieht die Kachel dafür gar nicht erst.
+ */
+const QUICKLINKS = [
+  {
+    href: "/team/kalender",
+    label: "Kalender",
+    hint: "Termine ansehen und verwalten",
+    permission: "kalender.ansehen" as const,
+    icon: "kalender" as const,
+  },
+  {
+    href: "/team/verfuegbarkeit",
+    label: "Verfügbarkeit",
+    hint: "Eigene Zeiten eintragen",
+    permission: "verfuegbarkeit.eigene" as const,
+    icon: "uhr" as const,
+  },
+  {
+    href: "/team/preise",
+    label: "Preise",
+    hint: "Angebote und Beträge",
+    permission: "preise.verwalten" as const,
+    icon: "preis" as const,
+  },
+  {
+    href: "/team/aktionen",
+    label: "Aktionen",
+    hint: "Befristete Rabatte",
+    permission: "aktionen.verwalten" as const,
+    icon: "prozent" as const,
+  },
+  {
+    href: "/team/mitarbeiter",
+    label: "Mitarbeitende",
+    hint: "Konten und Rollen",
+    permission: "mitarbeiter.verwalten" as const,
+    icon: "personen" as const,
+  },
+  {
+    href: "/team/buchhaltung",
+    label: "Buchhaltung",
+    hint: "Umsatz und Export",
+    permission: "buchhaltung.ansehen" as const,
+    icon: "beleg" as const,
+  },
+];
+
 export default async function TeamDashboard({
   searchParams,
 }: {
@@ -78,6 +129,8 @@ export default async function TeamDashboard({
 
   const todays = upcoming.filter((entry) => zurichDay(entry.startsAt) === today);
 
+  const quicklinks = QUICKLINKS.filter((link) => can(user.role, link.permission));
+
   return (
     <section className="shell band">
       <div className="lane">
@@ -111,6 +164,29 @@ export default async function TeamDashboard({
             className="col-span-2 sm:col-span-1"
           />
         </dl>
+
+        {quicklinks.length > 0 && (
+          <ul className="grid gap-3 grid-cols-2 lg:grid-cols-3 mt-8">
+            {quicklinks.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className="group surface bg-paper hover:border-signal/40 transition-colors p-5 flex flex-col gap-4 h-full"
+                >
+                  <span className="grid place-items-center w-11 h-11 rounded-full bg-concrete text-deep group-hover:bg-signal-tint group-hover:text-signal-ink transition-colors shrink-0">
+                    <QuickIcon name={link.icon} />
+                  </span>
+                  <span>
+                    <span className="block font-display font-bold text-lg leading-tight">
+                      {link.label}
+                    </span>
+                    <span className="block text-fine text-slate mt-0.5">{link.hint}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {uncovered.length > 0 && (
           <p className="notice notice-warn mt-5 max-w-[62ch]">
@@ -185,14 +261,6 @@ export default async function TeamDashboard({
           </p>
         )}
 
-        <div className="flex flex-wrap gap-3 mt-8">
-          <Link href="/team/kalender" className="btn btn-primary sm:min-w-60">
-            Zum Kalender
-          </Link>
-          <Link href="/team/verfuegbarkeit" className="btn btn-outline sm:min-w-60">
-            Verfügbarkeit eintragen
-          </Link>
-        </div>
       </div>
     </section>
   );
@@ -218,11 +286,79 @@ function StatTile({
   className?: string;
 }) {
   return (
-    <div className={`bg-paper p-4 ${className}`}>
+    <div className={`bg-paper p-5 ${className}`}>
       <p className="text-fine text-slate">{label}</p>
-      <p className={`text-3xl font-semibold leading-none mt-2 ${tone === "warn" ? "text-amber-ink" : ""}`}>
+      <p
+        className={`font-display text-4xl font-bold leading-none mt-2 ${tone === "warn" ? "text-amber-ink" : ""}`}
+      >
         {value}
       </p>
     </div>
   );
+}
+
+/** Kleine, einheitliche Strichsymbole für die Schnellzugriff-Kacheln. */
+function QuickIcon({
+  name,
+}: {
+  name: "kalender" | "uhr" | "preis" | "prozent" | "personen" | "beleg";
+}) {
+  const common = {
+    width: 20,
+    height: 20,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.7,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (name) {
+    case "kalender":
+      return (
+        <svg {...common}>
+          <rect x="3.5" y="5" width="17" height="15" rx="3" />
+          <path d="M8 3v4M16 3v4M3.5 10h17" />
+        </svg>
+      );
+    case "uhr":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M12 7.5V12l3 2" />
+        </svg>
+      );
+    case "preis":
+      return (
+        <svg {...common}>
+          <path d="M11 4h6a2 2 0 0 1 2 2v6L10.5 20 4 13.5 11 4Z" />
+          <circle cx="14.5" cy="8.5" r="1.3" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "prozent":
+      return (
+        <svg {...common}>
+          <path d="M6 18 18 6" />
+          <circle cx="7.5" cy="7.5" r="2" />
+          <circle cx="16.5" cy="16.5" r="2" />
+        </svg>
+      );
+    case "personen":
+      return (
+        <svg {...common}>
+          <circle cx="8.5" cy="8" r="3" />
+          <path d="M2.5 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" />
+          <path d="M15.5 5.2c1.4.4 2.4 1.6 2.4 3.1 0 1.4-.9 2.6-2.2 3.1M17.5 13.7c2.2.6 3.8 2.3 4 4.6" />
+        </svg>
+      );
+    case "beleg":
+      return (
+        <svg {...common}>
+          <path d="M6 3.5h12v17l-2.5-1.6L13 20.5l-2.5-1.6L8 20.5l-2-1.6V3.5Z" />
+          <path d="M9 8h6M9 12h6" />
+        </svg>
+      );
+  }
 }

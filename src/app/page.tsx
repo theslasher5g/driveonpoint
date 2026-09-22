@@ -57,7 +57,7 @@ export default function HomePage() {
         className="relative text-paper on-signal overflow-hidden"
         style={{
           background:
-            "radial-gradient(120% 140% at 82% 8%, #ff5a4f 0%, #c81e1e 32%, #3a1f1a 62%, #291d1a 100%)",
+            "radial-gradient(120% 140% at 82% 8%, #ff5a4f 0%, #c81e1e 32%, #341f1d 62%, #1c1a19 100%)",
         }}
       >
         {/* Weicher zweiter Lichtpunkt unten links, rein dekorativ — damit

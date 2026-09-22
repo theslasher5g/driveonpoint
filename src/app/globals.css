@@ -1,31 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  /* --- Warme, runde Fassung, Rot bleibt der Markenanker ------------------
-     Vorherige Fassung war das amtliche Formular: scharfe Kanten, kühles
-     Weiss/Grau/Schwarz, Rot nur als Fläche. Diese Fassung behält das
-     Markenrot als einzigen Akzent, verlässt aber die Formularmetrik dafür
-     bewusst: warme Creme- statt Grautöne, durchgehend grosszügige Rundung
-     bis zur organischen Form, eine markantere Display-Schrift. Rot bleibt
-     exakt derselbe Ton — nur der Rahmen drumherum ist wärmer geworden. */
+  /* --- Neutral und rund, Rot bleibt der einzige Akzent -------------------
+     Die vorherige Fassung färbte Hintergrund und Tinte durchgehend warm
+     ein (Blush-Rosa, Braun-Schwarz) — zusammen mit dem Rot kippte das ins
+     Pink-Braune. Diese Fassung trennt die Rollen wieder sauber: neutrales,
+     nur ganz leicht warmes Grau für Flächen und Tinte, damit Rot der
+     einzige echte Farbton auf der Seite bleibt und nicht mit einer zweiten
+     Farbfamilie konkurriert. Rundung, Display-Schrift und Glas bleiben
+     unverändert. */
   --color-signal: #ff312e;
   --color-signal-ink: #bf2523;
   --color-signal-deep: #a6201e;
-  /* Wärmer als zuvor (war #ffece8), passend zur Cremefläche darunter. */
-  --color-signal-tint: #ffe6df;
+  /* Sehr helle, knapp warme Tönung — bewusst blass genug, um nicht als
+     eigene Farbe (Rosa) wahrgenommen zu werden, nur als helle Variante von
+     Rot. */
+  --color-signal-tint: #fdeceb;
 
-  /* Warmes Fast-Schwarz mit Rotstich statt kühlem Navy-Schwarz — hält die
-     ganze Palette in einer Temperatur zusammen. */
-  --color-deep: #291d1a;
-  /* Das Blatt: warmes Creme statt reinem, kühlem Weiss. */
-  --color-paper: #fffcfa;
-  /* Der Bogen darunter: ein zarter Blush-Ton statt neutralem Grau — dieselbe
-     Rolle (Fläche knapp dunkler als das Blatt), andere Temperatur. */
-  --color-concrete: #fff3ee;
-  --color-concrete-dim: #ffe6df;
-  /* Warmes Taupe statt kühlem Grau, immer noch komfortabel über 7:1 auf Weiss. */
-  --color-slate: #6b5d59;
-  --color-rule: #e8d9d2;
+  /* Neutrales Fast-Schwarz, minim warm statt kühlem Navy oder Braun. */
+  --color-deep: #1c1a19;
+  /* Das Blatt: nahezu reines Weiss. */
+  --color-paper: #fdfdfc;
+  /* Der Bogen darunter: helles neutrales Grau, kein Rosa- oder Cremestich. */
+  --color-concrete: #f4f3f1;
+  --color-concrete-dim: #e8e6e3;
+  /* Neutrales Grau für den Fliesstext, komfortabel über 7:1 auf Weiss. */
+  --color-slate: #615e5b;
+  --color-rule: #e0ddd9;
 
   --color-amber: #c98a1e;
   --color-amber-ink: #7a5312;
@@ -564,18 +565,18 @@
     -webkit-backdrop-filter: blur(28px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.6);
     box-shadow:
-      0 8px 32px -8px rgba(41, 29, 26, 0.35),
+      0 8px 32px -8px rgba(28, 26, 25, 0.35),
       inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
 
   /* Dieselbe Machart, dunkel getönt — für Glas auf hellem Untergrund
      (Team-Navigation über der cremefarbenen Seite). */
   .glass-deep {
-    background: rgba(41, 29, 26, 0.82);
+    background: rgba(28, 26, 25, 0.82);
     backdrop-filter: blur(28px) saturate(180%);
     -webkit-backdrop-filter: blur(28px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 8px 32px -8px rgba(41, 29, 26, 0.45);
+    box-shadow: 0 8px 32px -8px rgba(28, 26, 25, 0.45);
   }
 
   /* Fällt ein Browser zurück (kein backdrop-filter), bleibt die Fläche

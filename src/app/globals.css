@@ -552,27 +552,29 @@
      schwebt — die feste Kopfzeile beim Scrollen, die Terminkarte über dem
      Verlaufshintergrund im Aufmacher, die Team-Navigation über dem Kalender.
      Braucht sichtbaren Inhalt dahinter, sonst ist der Effekt unsichtbar. */
-  /* Echtes Glas: fast durchsichtig, nur leicht angehoben durch Weiss, mit
-     einem weichen Schatten, der die Fläche vom Untergrund abhebt — nicht
-     die deckende, eingefärbte Fläche der ersten Fassung. Für helle Flächen
-     auf farbigem oder dunklem Untergrund (Kapselnavigation, Terminkarte). */
+  /* Echtes Glas, aber lesbar: die erste Fassung war bei 10% Deckkraft so
+     durchsichtig, dass eigener Text und der Text darunter beim Scrollen
+     ineinander liefen. Kräftigerer Blur blendet das Darunterliegende zu
+     einer Farbfläche statt zu lesbaren Buchstaben, höhere Deckkraft trägt
+     den eigenen Text zusätzlich. Für helle Flächen auf farbigem oder
+     dunklem Untergrund (Kapselnavigation, Terminkarte). */
   .glass {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(14px) saturate(180%);
-    -webkit-backdrop-filter: blur(14px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
     box-shadow:
       0 8px 32px -8px rgba(41, 29, 26, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
 
   /* Dieselbe Machart, dunkel getönt — für Glas auf hellem Untergrund
      (Team-Navigation über der cremefarbenen Seite). */
   .glass-deep {
-    background: rgba(41, 29, 26, 0.55);
-    backdrop-filter: blur(14px) saturate(180%);
-    -webkit-backdrop-filter: blur(14px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(41, 29, 26, 0.82);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 8px 32px -8px rgba(41, 29, 26, 0.45);
   }
 

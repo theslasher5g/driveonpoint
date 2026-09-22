@@ -57,70 +57,78 @@ export async function PriceTable({
     : [];
 
   return (
-    <div className="border-t border-deep/12">
-      {visible.map((lessonType) => {
-        const priced = applyPromotions(lessonType, promotions);
-        const onOffer = priced.finalRappen !== lessonType.priceRappen;
+    <div>
+      {/* Karten statt Zeilen: der Preis ist bei jedem Angebot die grösste
+          Zahl auf der Karte, nicht ein Wert neben vielen anderen in einer
+          Tabellenspalte — für eine Handvoll Angebote liest sich das schneller
+          als eine Liste, die man von oben nach unten abgehen muss. */}
+      <ul className={`grid gap-4 ${visible.length > 1 ? "sm:grid-cols-2" : ""}`}>
+        {visible.map((lessonType) => {
+          const priced = applyPromotions(lessonType, promotions);
+          const onOffer = priced.finalRappen !== lessonType.priceRappen;
 
-        return (
-          <div
-            key={lessonType.id}
-            className="border-b border-deep/12 py-5 flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-2 sm:items-baseline"
-          >
-            <div className="min-w-0 flex-1">
-              <h3 className="text-lg">{lessonType.name}</h3>
-              <p className="text-fine text-slate mt-0.5">
-                {lessonType.shortDescription || `${lessonType.durationMinutes} Minuten`}
-              </p>
-              {onOffer && priced.promotion && (
-                <p className="promo-tag mt-2.5">{priced.promotion.label}</p>
-              )}
-            </div>
-
-            {/* Auf dem Telefon reicht die Breite für Titel und Betrag
-                nebeneinander oft nicht — bei einem langen Namen wie
-                "Verkehrskundeunterricht" brach das sonst mitten im Wort um,
-                weil der Betrag daneben Platz beanspruchte. Gestapelt bleibt
-                dem Titel die volle Breite. */}
-            <div className="shrink-0 text-left sm:text-right">
-              <p className="nums stretch-wide font-extrabold text-2xl leading-none">
-                {onOffer && (
-                  <span className="text-slate font-semibold text-base line-through mr-2.5">
-                    {formatPrice(lessonType.priceRappen)}
-                  </span>
+          return (
+            <li
+              key={lessonType.id}
+              className="group surface bg-paper p-6 flex flex-col hover:border-signal/40 transition-colors"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="font-display text-xl font-bold leading-tight">
+                    {lessonType.name}
+                  </h3>
+                  <p className="text-fine text-slate mt-1">
+                    {lessonType.shortDescription || `${lessonType.durationMinutes} Minuten`}
+                  </p>
+                </div>
+                {onOffer && priced.promotion && (
+                  <span className="promo-tag shrink-0">{priced.promotion.label}</span>
                 )}
-                <span className={onOffer ? "text-signal-ink" : ""}>
-                  CHF {formatPrice(priced.finalRappen)}
-                </span>
-              </p>
-              {lessonType.reducedPriceRappen != null && !onOffer && (
-                <p className="nums text-fine text-slate mt-1.5">
-                  CHF {formatPrice(lessonType.reducedPriceRappen)} für{" "}
-                  {lessonType.reducedLabel}
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      })}
+              </div>
+
+              <div className="mt-7 pt-5 border-t border-deep/10 flex items-end justify-between gap-4">
+                <div>
+                  {onOffer && (
+                    <p className="nums text-slate text-fine line-through">
+                      CHF {formatPrice(lessonType.priceRappen)}
+                    </p>
+                  )}
+                  <p
+                    className={`nums font-display text-4xl font-bold leading-none mt-1 ${onOffer ? "text-signal-ink" : ""}`}
+                  >
+                    CHF {formatPrice(priced.finalRappen)}
+                  </p>
+                </div>
+                {lessonType.reducedPriceRappen != null && !onOffer && (
+                  <p className="nums text-fine text-slate text-right">
+                    CHF {formatPrice(lessonType.reducedPriceRappen)}
+                    <br />
+                    für {lessonType.reducedLabel}
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
 
       {bundles.length > 0 && (
-        <div className="pt-7">
+        <div className="mt-10">
           <h3 className="text-lg mb-1">Pakete und Abos</h3>
           <p className="text-fine text-slate mb-4 max-w-[52ch]">
             Einmal bezahlt, danach buchst du die einzelnen Lektionen ganz normal im Kalender.
           </p>
-          <ul className="border-t border-deep/12">
+          <ul className="grid gap-3 sm:grid-cols-2">
             {bundles.map((bundle) => (
               <li
                 key={bundle.id}
-                className="border-b border-deep/12 py-4 flex flex-col sm:flex-row sm:flex-wrap gap-x-6 gap-y-1 sm:items-baseline"
+                className="surface bg-concrete p-5 flex items-baseline justify-between gap-4"
               >
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0">
                   <p className="font-bold">{bundle.label}</p>
                   {bundle.note && <p className="text-fine text-slate mt-0.5">{bundle.note}</p>}
                 </div>
-                <p className="nums stretch-wide font-extrabold text-xl shrink-0">
+                <p className="nums font-display text-xl font-bold shrink-0">
                   CHF {formatPrice(bundle.priceRappen)}
                 </p>
               </li>

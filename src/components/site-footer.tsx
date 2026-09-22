@@ -71,7 +71,7 @@ export function SiteFooter() {
 
         <div className="mt-14 pt-7 border-t border-paper/15 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-fine text-paper/55">
-            © {new Date().getFullYear()} {site.legalName}. Einzugsgebiet{" "}
+            © {new Date().getFullYear()} {site.name}. Einzugsgebiet{" "}
             {site.region.slice(0, 4).join(", ")} und Umgebung.
           </p>
 

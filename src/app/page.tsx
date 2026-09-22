@@ -68,11 +68,11 @@ export default function HomePage() {
           className="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full opacity-40 blur-3xl"
           style={{ background: "#ff847a" }}
         />
-        <div className="shell py-10 md:py-16">
-          <div className="lane text-paper lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-12 lg:items-start">
+        <div className="shell pt-16 pb-14 md:pt-24 md:pb-20 lg:pt-28 lg:pb-24">
+          <div className="lane text-paper lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14 lg:items-center">
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-5">
-                <h1 className="text-display max-w-[13ch] min-w-0">
+                <h1 className="text-display max-w-[15ch] min-w-0">
                   {site.hero.headline[0]}
                   <br />
                   {site.hero.headline[1]}
@@ -83,9 +83,11 @@ export default function HomePage() {
                 <BrandMark className="w-14 md:w-20 lg:hidden" tone="invert" />
               </div>
 
-              <p className="text-lead text-paper/80 max-w-[52ch] mt-5">{site.hero.lead}</p>
+              <p className="text-lead text-paper/80 max-w-[46ch] mt-6 md:mt-8">
+                {site.hero.lead}
+              </p>
 
-              <p className="text-fine text-paper/70 mt-5 max-w-[48ch]">
+              <p className="text-fine text-paper/70 mt-6 max-w-[48ch]">
                 Lieber zuerst reden? {site.contact.phone} — oder{" "}
                 <Link href="/kontakt" className="underline underline-offset-4 hover:text-paper">
                   schreib uns
@@ -94,7 +96,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="mt-8 lg:mt-1">
+            <div className="mt-10 lg:mt-0">
               <Suspense fallback={<NextSlotSkeleton />}>
                 <NextSlotPanel />
               </Suspense>
@@ -103,34 +105,59 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Statt drei gleich grosser Karten nebeneinander: eine Zeile pro
+          Stufe, volle Breite, mit der Zahl riesig und blass im Hintergrund.
+          Das zeigt dieselbe Reihenfolge, aber jede Stufe bekommt für einen
+          Moment die ganze Aufmerksamkeit statt ein Drittel der Zeile. */}
       <section className="shell band">
-        <div className="lane split">
-          <div className="split-head-sticky">
-            <h2 className="text-title max-w-[14ch]">Drei Stufen zum Ausweis.</h2>
-            <p className="text-slate text-fine mt-3 max-w-[38ch]">
-              Sie bauen aufeinander auf, und bei uns bekommst du alle drei aus einer Hand — du
-              musst nichts davon zweimal organisieren.
-            </p>
-          </div>
+        <div className="lane">
+          <h2 className="text-title max-w-[16ch]">Drei Stufen zum Ausweis.</h2>
+          <p className="text-slate text-lead mt-3 max-w-[46ch]">
+            Sie bauen aufeinander auf, und bei uns bekommst du alle drei aus einer Hand — du
+            musst nichts davon zweimal organisieren.
+          </p>
 
-          <ol className="grid gap-3 sm:grid-cols-3 min-w-0">
+          <ol className="mt-10 md:mt-14 border-t border-deep/10">
             {STAGES.map((stage, index) => (
-              <li key={stage.href} className="flex">
+              <li key={stage.href} className="border-b border-deep/10">
                 <Link
                   href={stage.href}
-                  className="group surface bg-paper hover:bg-signal-tint transition-colors p-5 flex flex-col w-full"
+                  className="group relative grid md:grid-cols-[1fr_auto] items-center gap-3 md:gap-8 py-8 md:py-12 overflow-hidden"
                 >
-                  <span className="chip chip-quiet self-start nums">
-                    {String(index + 1).padStart(2, "0")} · {stage.step}
+                  <span
+                    aria-hidden="true"
+                    className="font-display pointer-events-none select-none absolute -top-2 right-0 md:right-4 text-[5.5rem] md:text-[9rem] leading-none font-bold text-signal/[0.08] group-hover:text-signal/[0.14] transition-colors"
+                  >
+                    {String(index + 1).padStart(2, "0")}
                   </span>
-                  <h3 className="text-xl stretch-wide font-extrabold leading-tight mt-3">
-                    {stage.title}
-                  </h3>
-                  <p className="nums text-fine text-slate mt-1.5">{stage.meta}</p>
-                  <p className="text-slate text-fine mt-3 flex-1">{stage.body}</p>
-                  <span className="text-fine font-bold text-signal-ink mt-4 underline-offset-4 group-hover:underline">
-                    Mehr dazu
-                  </span>
+
+                  <div className="relative min-w-0">
+                    <span className="chip chip-quiet">{stage.step}</span>
+                    <h3 className="font-display text-2xl md:text-4xl font-bold leading-tight mt-3">
+                      {stage.title}
+                    </h3>
+                    <p className="text-slate mt-2 max-w-[48ch]">{stage.body}</p>
+                  </div>
+
+                  <div className="relative flex items-center gap-5 md:gap-8 shrink-0">
+                    <span className="nums text-fine text-slate whitespace-nowrap">
+                      {stage.meta}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="grid place-items-center w-11 h-11 rounded-full border border-deep/15 text-deep shrink-0 group-hover:bg-signal group-hover:border-signal group-hover:text-deep transition-colors"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path
+                          d="M4 9h10M9 4l5 5-5 5"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                  </div>
                 </Link>
               </li>
             ))}

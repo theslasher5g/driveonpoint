@@ -33,79 +33,85 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    <header className="glass !border-0 border-b border-deep/10 sticky top-0 z-50">
-      <div className="shell flex items-center gap-4 h-16 md:h-20">
-        <Link
-          href="/"
-          className="flex items-center gap-3 shrink-0 self-stretch"
-          aria-label={`${site.name} — zur Startseite`}
-        >
-          <BrandMark className="w-9 md:w-10" />
-          <span className="stretch-wide font-extrabold text-lg md:text-xl tracking-tight leading-none">
-            {site.name}
-          </span>
-        </Link>
+    // Schwebende Kapsel statt voller Leiste: eigener Wrapper mit Abstand zum
+    // Rand, damit "sticky" nicht die ganze Breite einnimmt. Bleibt beim
+    // Laden an ihrem Platz im Textfluss (kein Überlappen der ersten
+    // Bildschirmhöhe nötig) und hält diesen Abstand auch beim Scrollen.
+    <div className="sticky top-3 md:top-4 z-50 px-3 md:px-6">
+      <header className="glass mx-auto max-w-5xl rounded-full">
+        <div className="flex items-center gap-2 md:gap-3 h-14 md:h-16 pl-4 pr-2 md:pl-6 md:pr-3">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 shrink-0"
+            aria-label={`${site.name} — zur Startseite`}
+          >
+            <BrandMark className="w-8 md:w-9" />
+            <span className="stretch-wide font-extrabold text-base md:text-lg tracking-tight leading-none hidden sm:inline">
+              {site.name}
+            </span>
+          </Link>
 
-        <nav className="hidden lg:flex items-center gap-1 ml-auto" aria-label="Hauptnavigation">
-          {NAV.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={`px-3 py-2 text-[0.95rem] font-semibold transition-colors ${
-                  active ? "text-signal-ink" : "text-deep/75 hover:text-deep"
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+          <nav className="hidden lg:flex items-center gap-0.5 ml-4" aria-label="Hauptnavigation">
+            {NAV.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`px-3 py-2 rounded-full text-[0.9rem] font-semibold transition-colors ${
+                    active ? "bg-deep/8 text-signal-ink" : "text-deep/70 hover:text-deep"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
 
-        {/* Auf schmalen Geräten nur „Buchen“ — die lange Beschriftung bricht
-            sonst um und drückt das Logo zusammen. */}
-        <Link
-          href="/buchen"
-          className="btn btn-primary ml-auto lg:ml-3 text-[0.95rem] py-2.5 px-4 whitespace-nowrap"
-        >
-          <span className="sm:hidden">Buchen</span>
-          <span className="hidden sm:inline">Termin buchen</span>
-        </Link>
+          {/* Auf schmalen Geräten nur „Buchen“ — die lange Beschriftung bricht
+              sonst um und drückt das Logo zusammen. */}
+          <Link
+            href="/buchen"
+            className="btn btn-primary ml-auto text-[0.9rem] py-2 px-4 md:px-5 whitespace-nowrap"
+          >
+            <span className="sm:hidden">Buchen</span>
+            <span className="hidden sm:inline">Termin buchen</span>
+          </Link>
 
-        <button
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          aria-controls="hauptmenue"
-          className="lg:hidden -mr-2 p-2.5 text-deep shrink-0"
-        >
-          <span className="sr-only">{open ? "Menü schliessen" : "Menü öffnen"}</span>
-          <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" fill="none">
-            {open ? (
-              <path d="M5 5 L21 21 M21 5 L5 21" stroke="currentColor" strokeWidth="2.5" />
-            ) : (
-              <path d="M3 7h20M3 13h20M3 19h20" stroke="currentColor" strokeWidth="2.5" />
-            )}
-          </svg>
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            aria-controls="hauptmenue"
+            className="lg:hidden p-2 text-deep shrink-0"
+          >
+            <span className="sr-only">{open ? "Menü schliessen" : "Menü öffnen"}</span>
+            <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true" fill="none">
+              {open ? (
+                <path d="M5 5 L21 21 M21 5 L5 21" stroke="currentColor" strokeWidth="2.5" />
+              ) : (
+                <path d="M3 7h20M3 13h20M3 19h20" stroke="currentColor" strokeWidth="2.5" />
+              )}
+            </svg>
+          </button>
+        </div>
+      </header>
 
       {open && (
         <nav
           id="hauptmenue"
-          className="lg:hidden border-t border-deep/15 glass"
+          className="glass lg:hidden mx-auto max-w-5xl mt-2 rounded-[28px] overflow-hidden"
           aria-label="Hauptnavigation"
         >
-          <ul className="shell py-2">
+          <ul className="px-2 py-2">
             {NAV.map((item) => (
-              <li key={item.href} className="border-b border-deep/10 last:border-0">
+              <li key={item.href}>
                 <Link
                   href={item.href}
                   aria-current={pathname === item.href ? "page" : undefined}
-                  className={`block py-3.5 font-semibold ${
-                    pathname === item.href ? "text-signal-ink" : "text-deep"
+                  className={`block px-4 py-3 rounded-2xl font-semibold ${
+                    pathname === item.href ? "bg-deep/8 text-signal-ink" : "text-deep"
                   }`}
                 >
                   {item.label}
@@ -115,6 +121,6 @@ export function SiteHeader() {
           </ul>
         </nav>
       )}
-    </header>
+    </div>
   );
 }

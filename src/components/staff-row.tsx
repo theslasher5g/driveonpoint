@@ -43,11 +43,11 @@ export function StaffRow({
 
   return (
     <article
-      className={`border p-5 ${person.active ? "bg-paper border-deep/15" : "bg-concrete-dim/40 border-deep/10"}`}
+      className={`rounded-[var(--radius-surface)] border p-5 ${person.active ? "bg-paper border-deep/15" : "bg-concrete-dim/40 border-deep/10"}`}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
         <div>
-          <h3 className="text-lg">
+          <h3 className="font-display text-lg font-bold">
             {person.name}
             {isSelf && <span className="text-slate font-normal"> — das bist du</span>}
           </h3>
@@ -56,23 +56,23 @@ export function StaffRow({
 
         <div className="flex flex-wrap items-center gap-2">
           {!person.active && (
-            <span className="text-fine font-bold bg-concrete-dim text-slate px-2 py-0.5">
+            <span className="text-fine font-bold bg-concrete-dim text-slate px-2.5 py-0.5 rounded-full">
               abgeschaltet
             </span>
           )}
           {person.mustChangePassword && (
-            <span className="text-fine font-bold bg-amber text-deep px-2 py-0.5">
+            <span className="text-fine font-bold bg-amber text-deep px-2.5 py-0.5 rounded-full">
               Startpasswort offen
             </span>
           )}
           <span
-            className={`text-fine font-bold px-2 py-0.5 ${
+            className={`text-fine font-bold px-2.5 py-0.5 rounded-full ${
               person.totpEnabled ? "bg-concrete-dim text-deep" : "bg-paper border border-deep/20 text-slate"
             }`}
           >
             {person.totpEnabled ? "MFA aktiv" : "MFA nicht eingerichtet"}
           </span>
-          <span className="text-fine font-bold bg-deep text-paper px-2 py-0.5">
+          <span className="text-fine font-bold bg-deep text-paper px-2.5 py-0.5 rounded-full">
             {ROLE_LABEL[person.role]}
           </span>
         </div>

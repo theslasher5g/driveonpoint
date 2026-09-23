@@ -26,7 +26,8 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
-        <h1 className="text-title">Buchhaltung</h1>
+        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
+        <h1 className="font-display text-3xl md:text-4xl font-bold">Buchhaltung</h1>
         <p className="text-slate text-lead mt-4 max-w-[62ch]">
           Auszüge für die Steuererklärung: Datum, Angebot, Betrag. Ohne Personendaten.
         </p>
@@ -70,7 +71,7 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
         </form>
 
         {/* Kennzahlen */}
-        <dl className="grid gap-px bg-deep/12 border border-deep/12 grid-cols-2 lg:grid-cols-4 mt-10">
+        <dl className="grid gap-px bg-deep/12 border border-deep/12 rounded-[var(--radius-surface)] overflow-hidden grid-cols-2 lg:grid-cols-4 mt-10">
           <Tile label={`Umsatz ${label}`} value={`CHF ${formatPrice(report.totalRappen)}`} strong />
           <Tile label="Erbrachte Termine" value={String(report.rows.length)} />
           <Tile
@@ -93,12 +94,10 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
           />
         </dl>
 
-        <p className="notice notice-warn mt-6 max-w-[68ch]">
-          Das ist ein Leistungsjournal, keine Zahlungsübersicht: die Anwendung weiss nicht, ob
-          eine Lektion bezahlt wurde — bezahlt wird per TWINT, Karte oder Rechnung ausserhalb der
-          Website. Für die Steuererklärung gehört der Auszug mit den tatsächlichen Zahlungseingängen
-          abgeglichen. Belege sind nach Artikel 958f OR zehn Jahre aufzubewahren, die Website
-          löscht die Personendaten dagegen schon nach 30 Tagen.
+        <p className="text-fine text-slate mt-6 max-w-[68ch]">
+          Leistungsjournal, keine Zahlungsübersicht — gehört für die Steuererklärung mit den
+          tatsächlichen Zahlungseingängen abgeglichen. Belege zehn Jahre aufbewahren (Art. 958f
+          OR); die Website selbst löscht Personendaten bereits nach 30 Tagen.
         </p>
 
         {/* Monate */}
@@ -108,11 +107,11 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
             {report.byMonth.length === 0 ? (
               <p className="text-slate">In diesem Jahr hat noch kein Termin stattgefunden.</p>
             ) : (
-              <div className="border-t border-deep/15 max-w-2xl">
+              <div className="surface bg-paper max-w-2xl">
                 {report.byMonth.map((entry) => (
                   <div
                     key={entry.month}
-                    className="border-b border-deep/15 py-3 flex items-baseline justify-between gap-6"
+                    className="border-b border-deep/10 px-5 py-3.5 flex items-baseline justify-between gap-6"
                   >
                     <a
                       href={`/team/buchhaltung?jahr=${year}&monat=${entry.month}`}
@@ -139,11 +138,11 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
           {report.byLessonType.length === 0 ? (
             <p className="text-slate">Keine erbrachten Termine im gewählten Zeitraum.</p>
           ) : (
-            <div className="border-t border-deep/15 max-w-2xl">
+            <div className="surface bg-paper max-w-2xl">
               {report.byLessonType.map((entry) => (
                 <div
                   key={entry.name}
-                  className="border-b border-deep/15 py-3 flex items-baseline justify-between gap-6"
+                  className="border-b border-deep/10 px-5 py-3.5 flex items-baseline justify-between gap-6"
                 >
                   <span className="font-semibold">{entry.name}</span>
                   <span className="nums text-slate text-fine ml-auto">
@@ -166,11 +165,11 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
           {report.rows.length === 0 ? (
             <p className="text-slate">Keine erbrachten Termine im gewählten Zeitraum.</p>
           ) : (
-            <div className="border-t border-deep/15">
+            <div className="surface bg-paper">
               {report.rows.map((row) => (
                 <div
                   key={row.reference}
-                  className="border-b border-deep/15 py-2.5 grid gap-x-5 gap-y-0.5 sm:grid-cols-[7rem_1fr_auto] items-baseline"
+                  className="border-b border-deep/10 px-5 py-3 grid gap-x-5 gap-y-0.5 sm:grid-cols-[7rem_1fr_auto] items-baseline"
                 >
                   <p className="nums text-fine">
                     {row.day.slice(8)}.{row.day.slice(5, 7)}.{row.day.slice(0, 4)}
@@ -199,11 +198,11 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
               Innert 24 Stunden abgesagt, laut AGB verrechenbar — oben nicht mitgezählt. Eigene
               Absagen stehen hier ebenfalls.
             </p>
-            <div className="border-t border-deep/15">
+            <div className="surface bg-paper">
               {report.lateCancellations.map((row) => (
                 <div
                   key={row.reference}
-                  className="border-b border-deep/15 py-2.5 grid gap-x-5 gap-y-0.5 sm:grid-cols-[7rem_1fr_auto] items-baseline"
+                  className="border-b border-deep/10 px-5 py-3 grid gap-x-5 gap-y-0.5 sm:grid-cols-[7rem_1fr_auto] items-baseline"
                 >
                   <p className="nums text-fine">
                     {row.day.slice(8)}.{row.day.slice(5, 7)}.{row.day.slice(0, 4)}
@@ -239,9 +238,11 @@ function Tile({
   strong?: boolean;
 }) {
   return (
-    <div className="bg-paper p-4">
+    <div className="bg-paper p-5">
       <p className="text-fine text-slate">{label}</p>
-      <p className={`nums leading-none mt-2 ${strong ? "text-2xl font-extrabold" : "text-xl font-semibold"}`}>
+      <p
+        className={`nums font-display leading-none mt-2 ${strong ? "text-3xl font-bold text-signal-ink" : "text-2xl font-bold"}`}
+      >
         {value}
       </p>
       {hint && <p className="text-[0.72rem] text-slate mt-1.5">{hint}</p>}

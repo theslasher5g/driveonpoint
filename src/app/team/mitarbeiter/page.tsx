@@ -50,15 +50,16 @@ export default async function MitarbeiterPage({ searchParams }: { searchParams: 
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
-        <h1 className="text-title">Mitarbeitende</h1>
+        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
+        <h1 className="font-display text-3xl md:text-4xl font-bold">Mitarbeitende</h1>
         <p className="text-slate text-lead mt-4 max-w-[58ch]">
           Wer hier ein Konto hat, kommt in den Team-Bereich. Die Rolle entscheidet, was jemand
           dort sehen und ändern darf.
         </p>
 
-        <dl className="grid gap-5 sm:grid-cols-3 mt-9 border-t border-deep/15 pt-6">
+        <dl className="grid gap-4 sm:grid-cols-3 mt-9">
           {staffRole.enumValues.map((role) => (
-            <div key={role}>
+            <div key={role} className="surface bg-paper p-4">
               <dt className="font-bold">{ROLE_LABEL[role]}</dt>
               <dd className="text-fine text-slate mt-1">{ROLE_DESCRIPTION[role]}</dd>
             </div>

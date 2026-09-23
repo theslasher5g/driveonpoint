@@ -33,7 +33,7 @@ export function AvailabilityForms({
     // Die vier Felder passen nebeneinander in eine Zeile. Untereinander
     // brauchte jedes Angebot den Platz eines halben Bildschirms, bei vier
     // Angeboten auf derselben Seite.
-    <form action={ruleAction} className="bg-paper border border-deep/15 p-4">
+    <form action={ruleAction} className="rounded-[var(--radius-control)] bg-concrete p-4">
       <input type="hidden" name="person" value={person} />
       <input type="hidden" name="lessonTypeId" value={lessonTypeId} />
       <h3 className="text-fine font-bold mb-3">Zeit für {lessonTypeName} hinzufügen</h3>
@@ -75,7 +75,7 @@ export function AvailabilityExceptionForm({
   const [exceptionState, exceptionAction] = useActionState(addExceptionAction, EMPTY);
 
   return (
-    <form action={exceptionAction} className="bg-paper border border-deep/15 p-4 mt-5">
+    <form action={exceptionAction} className="surface bg-paper p-4 mt-5">
       <input type="hidden" name="person" value={person} />
       <h3 className="text-fine font-bold mb-3">Einzelnen Tag ändern</h3>
       <Feedback state={exceptionState} />

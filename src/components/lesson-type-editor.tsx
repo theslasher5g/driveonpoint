@@ -12,14 +12,20 @@ export function LessonTypeEditor({ lessonType }: { lessonType: LessonType }) {
   const [state, action] = useActionState(updateLessonTypeAction, EMPTY);
 
   return (
-    <form action={action} className="bg-paper border border-deep/15 p-5 md:p-6">
+    <form action={action} className="surface bg-paper p-5 md:p-6">
       <input type="hidden" name="id" value={lessonType.id} />
 
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 mb-5">
-        <h2 className="text-section stretch-wide leading-none">{lessonType.name}</h2>
-        <p className="nums text-slate">
-          aktuell CHF {formatPrice(lessonType.priceRappen)}
-          {!lessonType.active && " · nicht buchbar"}
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 mb-6">
+        <div>
+          <h2 className="font-display text-xl font-bold leading-tight">{lessonType.name}</h2>
+          {!lessonType.active && (
+            <span className="inline-block mt-2 text-fine font-bold bg-concrete-dim text-slate px-2.5 py-0.5 rounded-full">
+              nicht buchbar
+            </span>
+          )}
+        </div>
+        <p className="nums font-display text-3xl font-bold leading-none text-signal-ink">
+          CHF {formatPrice(lessonType.priceRappen)}
         </p>
       </div>
 

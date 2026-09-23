@@ -83,7 +83,8 @@ export default async function VerfuegbarkeitPage({
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
-        <h1 className="text-title">Verfügbarkeit</h1>
+        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
+        <h1 className="font-display text-3xl md:text-4xl font-bold">Verfügbarkeit</h1>
         <p className="text-slate text-lead mt-4 max-w-[58ch]">
           Diese Zeiten sieht deine Kundschaft als buchbare Termine. Jedes Angebot hat seinen
           eigenen Plan.
@@ -95,10 +96,10 @@ export default async function VerfuegbarkeitPage({
               <li key={person.id}>
                 <Link
                   href={`/team/verfuegbarkeit?person=${person.id}`}
-                  className={`block px-3.5 py-2 text-fine font-semibold border ${
+                  className={`block px-4 py-2 rounded-full text-fine font-semibold border ${
                     person.id === targetId
                       ? "border-signal bg-signal text-deep"
-                      : "border-deep/20 bg-paper"
+                      : "border-deep/15 bg-paper hover:border-deep/30"
                   }`}
                 >
                   {person.name}
@@ -128,8 +129,8 @@ export default async function VerfuegbarkeitPage({
               }
 
               return (
-                <div key={offering.id} className="border-t-2 border-deep pt-5">
-                  <h2 className="text-section mb-4">{offering.name}</h2>
+                <div key={offering.id} className="surface bg-paper p-5 md:p-6">
+                  <h2 className="font-display text-xl font-bold mb-4">{offering.name}</h2>
 
                   {/* Bestand links, Eingabe rechts. Vorher stand das Formular
                       unter der Liste, viermal untereinander — dieselbe Seite
@@ -138,14 +139,14 @@ export default async function VerfuegbarkeitPage({
                     {ownRules.length === 0 ? (
                       <p className="text-slate text-fine">Noch nichts eingetragen.</p>
                     ) : (
-                      <div className="border-t border-deep/15">
+                      <div className="rounded-[var(--radius-control)] bg-concrete overflow-hidden">
                         {[1, 2, 3, 4, 5, 6, 0].map((weekday) => {
                           const list = byWeekday.get(weekday);
                           if (!list || list.length === 0) return null;
                           return (
                             <div
                               key={weekday}
-                              className="border-b border-deep/15 py-2 flex items-baseline gap-4"
+                              className="border-b border-deep/10 last:border-0 px-4 py-2.5 flex items-baseline gap-4"
                             >
                               <h3 className="text-fine font-bold w-[11ch] shrink-0 break-normal">
                                 {weekdayName(weekday)}
@@ -179,8 +180,9 @@ export default async function VerfuegbarkeitPage({
           </div>
         )}
 
-        <div className="mt-10 pt-6 border-t-2 border-deep">
-          <h2 className="text-section">Einzelne Tage</h2>
+        <div className="mt-10">
+          <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
+          <h2 className="font-display text-2xl font-bold">Einzelne Tage</h2>
           <p className="text-slate text-fine mt-1.5 mb-5 max-w-[60ch]">
             Ferien, Arzttermin oder eine Zeit extra. Für mehrere Tage am Stück das Feld „Bis"
             ausfüllen.
@@ -189,12 +191,12 @@ export default async function VerfuegbarkeitPage({
           {exceptions.length === 0 ? (
             <p className="text-slate text-fine">Keine Ausnahmen für die kommenden Tage.</p>
           ) : (
-            <ul className="border-t border-deep/15">
+            <ul className="surface bg-paper">
               {exceptions.map((entry) => (
-                <li key={entry.id} className="border-b border-deep/15 py-3.5">
+                <li key={entry.id} className="border-b border-deep/10 last:border-0 px-5 py-3.5">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <span
-                      className={`text-fine font-bold px-2 py-0.5 ${
+                      className={`text-fine font-bold px-2.5 py-0.5 rounded-full ${
                         entry.available ? "bg-success text-paper" : "bg-concrete-dim text-deep"
                       }`}
                     >

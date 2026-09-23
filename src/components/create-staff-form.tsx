@@ -13,7 +13,7 @@ export function CreateStaffForm() {
   const [state, action] = useActionState(createStaffAction, EMPTY);
 
   return (
-    <form action={action} className="bg-paper border border-deep/15 p-5 md:p-6 max-w-2xl space-y-4">
+    <form action={action} className="surface bg-paper p-5 md:p-6 max-w-2xl space-y-4">
       {state.error && (
         <p role="alert" className="notice notice-error">
           {state.error}

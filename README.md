@@ -129,13 +129,52 @@ Wichtig: `TRUST_PROXY_HOPS` muss der Anzahl Proxys entsprechen. Bei einem
 einzelnen Caddy oder nginx ist das `1`. Ein zu hoher Wert lässt sich mit einem
 gefälschten `X-Forwarded-For` ausnutzen, um Sperren zu umgehen.
 
-### Täglicher Aufräumlauf
+### Serverpflege: automatische Updates und Aufräumlauf
 
-Löscht Kundendaten nach Ablauf der Frist, entfernt abgelaufene Sitzungen und
-alte Zähler. Als Cron-Eintrag auf dem Server:
+Drei wiederkehrende Aufgaben, alle unter `deploy/`. Einmalig einrichten,
+laufen danach von selbst:
 
-```cron
-17 3 * * * curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://driveonpoint.ch/api/cron/aufraeumen
+```bash
+sudo deploy/server-updates.sh   # Sicherheitsupdates des Betriebssystems
+sudo deploy/install-cron.sh     # Aufräumlauf + Docker-Image-Updates als Cron
+```
+
+**`server-updates.sh`** richtet `unattended-upgrades` ein (Debian/Ubuntu):
+Sicherheitspatches des Betriebssystems werden automatisch eingespielt, ein
+nötiger Neustart passiert nachts um vier — danach starten die Container von
+selbst wieder, weil jeder Dienst in `docker-compose.yml` `restart:
+unless-stopped` gesetzt hat. Nur die Sicherheits-Paketquelle ist aktiviert,
+keine sonstigen Aktualisierungen. Protokoll unter
+`/var/log/unattended-upgrades/`.
+
+**`install-cron.sh`** trägt zwei Zeilen in die crontab von root ein:
+
+| Wann | Skript | Macht |
+|---|---|---|
+| täglich 03:17 | `deploy/aufraeumen.sh` | Löscht Kundendaten nach Ablauf der Frist, entfernt abgelaufene Sitzungen und alte Zähler ([Aufbewahrung](#rechtliches)) |
+| wöchentlich, So 04:00 | `deploy/docker-updates.sh` | Holt Sicherheitskorrekturen der Docker-Basisabbilder (siehe unten) |
+
+Beide protokollieren nach `/var/log/driveonpoint-*.log`
+(`install-cron.sh` richtet dafür auch gleich eine Log-Rotation ein). Läuft
+etwas schief, zeigt sich das dort — ohne Mailversand-Einrichtung auf dem
+Server verlässt sich nichts auf die stille Cron-Mail, die ohnehin oft
+nirgendwo ankommt.
+
+`docker-updates.sh` zieht `db` (Postgres) und `proxy` (Caddy) erneut in
+derselben Version, aber mit dem, was seit dem letzten Pull an Patches
+erschienen ist, und baut `app` mit `--pull` neu — das holt die aktuelle
+`node:22-bookworm-slim`-Basis, während `npm ci` sich strikt an
+`package-lock.json` hält. Es ändert sich also nur die Betriebssystemschicht
+der Basis-Abbilder, nie der Anwendungscode: Ein `git pull` mit neuen
+Funktionen bleibt bewusst eine manuelle Entscheidung, siehe [Wer was
+ändert](#wer-was-ändert). Nutzt du den mitgelieferten Mail-Container
+(`--profile mail`), wird er automatisch erkannt und mit aktualisiert.
+
+Von Hand ausführen und beim Aufräumlauf sofort das Ergebnis sehen:
+
+```bash
+sudo deploy/aufraeumen.sh && sudo tail -5 /var/log/driveonpoint-aufraeumen.log
+sudo deploy/docker-updates.sh && sudo tail -20 /var/log/driveonpoint-docker-updates.log
 ```
 
 ---
@@ -343,6 +382,7 @@ Aufbewahrungspflicht und gehören nicht in diese Anwendung.
 | CSRF | Next prüft bei jeder Server Action die Herkunft der Anfrage |
 | Passwortdiebstahl | argon2id nach OWASP-Empfehlung; Passwörter sind nirgends lesbar |
 | Rechteausweitung | Jede Seite und jede Aktion prüft die Berechtigung serverseitig, nicht nur die Navigation |
+| Bekannte Sicherheitslücken im Unterbau | Automatische Sicherheitsupdates für Betriebssystem und Docker-Basisabbilder, siehe [Serverpflege](#serverpflege-automatische-updates-und-aufräumlauf) |
 
 Gesperrt wird immer die **IP-Adresse**. Eine MAC-Adresse steht dem Server nicht
 zur Verfügung — sie wird beim ersten Router ersetzt und erreicht das Internet

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, isNull, lte } from "drizzle-orm";
+import { and, isNull, lte, sql } from "drizzle-orm";
 import { db } from "./db";
 import { auditLog, bookings } from "./db/schema";
 import { pruneSessions } from "./auth/session";
@@ -26,7 +26,13 @@ export async function purgeExpiredCustomerData(): Promise<number> {
       customerEmail: null,
       customerPhone: null,
       customerNote: null,
-      cancelToken: `verfallen:${crypto.randomUUID()}`,
+      // Nicht crypto.randomUUID() in JavaScript: das würde für alle
+      // betroffenen Zeilen denselben Wert liefern, weil er nur einmal beim
+      // Aufbau dieser einen UPDATE-Anweisung berechnet wird, nicht je Zeile.
+      // Das verletzt den eindeutigen Index, sobald an einem Lauf mehr als
+      // eine Buchung fällig ist — gen_random_uuid() läuft dagegen in
+      // Postgres selbst, einmal pro betroffener Zeile.
+      cancelToken: sql`'verfallen:' || gen_random_uuid()`,
       anonymisedAt: now,
       updatedAt: now,
     })

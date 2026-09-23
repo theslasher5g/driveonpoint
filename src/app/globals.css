@@ -496,42 +496,6 @@
     font-weight: 650;
   }
 
-  /* --- Der Stempel -------------------------------------------------------
-     Der eine laute Moment der Seite, und er sitzt dort, wo im Papierbetrieb
-     tatsächlich gestempelt würde: auf der bestätigten Buchung. Leicht
-     schief, weil ein Stempel von Hand nie gerade sitzt. Sonst hält sich die
-     Seite überall zurück. */
-  .stamp {
-    display: inline-block;
-    transform: rotate(-3.5deg);
-    border: 3px double var(--color-signal);
-    border-radius: 12px;
-    /* Der dunklere Rotton, nicht das grelle Knopfrot: als Schrift braucht
-       auch der Stempel 4,5:1, das grelle Rot liefert nur 3,7:1. */
-    color: var(--color-signal-ink);
-    padding: 0.55rem 1.1rem 0.45rem;
-    text-align: center;
-    /* Stempelfarbe deckt nie ganz. */
-    opacity: 0.85;
-  }
-
-  .stamp-word {
-    display: block;
-    font-stretch: 118%;
-    font-weight: 800;
-    font-size: 1.35rem;
-    line-height: 1;
-    letter-spacing: 0.02em;
-  }
-
-  .stamp-line {
-    display: block;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    line-height: 1.2;
-    margin-top: 0.3rem;
-  }
-
   .skip-link {
     position: absolute;
     left: -9999px;

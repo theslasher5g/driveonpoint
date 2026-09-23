@@ -29,9 +29,10 @@ export default async function BestaetigtPage({ searchParams }: { searchParams: P
   return (
     <>
       <section className="bg-concrete border-b border-deep/12">
-        <div className="shell py-10 md:py-14">
+        <div className="shell py-14 md:py-20">
           <div className="lane sm:flex sm:items-start sm:justify-between sm:gap-10">
             <div>
+              <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
               <h1 className="text-title max-w-[18ch]">
                 {multiple ? "Die Termine gehören dir." : "Der Termin gehört dir."}
               </h1>
@@ -47,17 +48,22 @@ export default async function BestaetigtPage({ searchParams }: { searchParams: P
               )}
             </div>
 
-            {/* Der gestempelte Beleg. Die Referenz(en) stehen darin, nicht
-                daneben — im Papierbetrieb stempelt man auf den Vorgang, nicht
-                neben ihn. */}
-            <p className="stamp shrink-0 mt-7 sm:mt-1">
-              <span className="stamp-word">Bestätigt</span>
-              {refs.map((reference) => (
-                <span key={reference} className="stamp-line">
-                  {reference}
-                </span>
-              ))}
-            </p>
+            {/* Die Referenz ist das, was man am Telefon durchgibt oder auf
+                der Bestätigungsmail abgleicht — deshalb gross und in einem
+                eigenen Kasten statt als kleine, gedrehte Beischrift. */}
+            <div className="surface bg-paper shrink-0 mt-7 sm:mt-1 p-5 sm:min-w-[15rem]">
+              <span className="chip">Bestätigt</span>
+              <div className="mt-4 space-y-2">
+                {refs.map((reference) => (
+                  <p
+                    key={reference}
+                    className="nums font-display text-xl font-bold tracking-wide rounded-[var(--radius-control)] bg-concrete px-4 py-2.5"
+                  >
+                    {reference}
+                  </p>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>

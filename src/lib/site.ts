@@ -27,7 +27,7 @@ const team: TeamMember[] = [
     owner: true,
     body: "Ich bin Sozialpädagogin HF und seit einigen Jahren auch Fahrlehrerin, dazu Nothelfer- und BLS-AED-Instruktorin. Aus der Sozialpädagogik habe ich gelernt, wie man etwas erklärt, ohne jemanden zu überfordern — das hilft auch auf der Autobahn.",
     tags: ["Fahrlehrerin", "Sozialpädagogin HF", "BLS-AED Instruktorin"],
-    photo: "",
+    photo: "/images/team-christina.jpg",
   },
   {
     name: "Jolanda",
@@ -35,7 +35,7 @@ const team: TeamMember[] = [
     owner: false,
     body: "Hauptberuflich bin ich Fachfrau Betreuung, daneben unterrichte ich den Nothilfekurs. Erste Hilfe ist mir wichtig, weil ich weiss, wie schnell man im Ernstfall überfordert ist — genau dann soll der Kurs greifen, ganz automatisch.",
     tags: ["Nothelferinstruktorin", "FaBe"],
-    photo: "",
+    photo: "/images/team-jolanda.jpg",
   },
 ];
 
@@ -156,24 +156,16 @@ export const site = {
   ],
 
   /**
-   * Drei Bildplätze. Die Dateien liegen unter /public/images und sind aktuell
-   * Platzhalter — einfach durch echte Fotos ersetzen. Weil die Dateien
-   * dauerhaft zwischengespeichert werden, dabei einen neuen Dateinamen
-   * vergeben und ihn hier eintragen.
-   * Empfohlen: 1600×1200 px, WebP oder JPEG, unter 300 KB.
+   * Die Dateien liegen unter /public/images. Beim Ersetzen durch ein neues
+   * Foto einen neuen Dateinamen vergeben und ihn hier eintragen — sonst
+   * zeigt der dauerhafte Zwischenspeicher weiter das alte Bild.
    */
   images: {
     hero: {
-      src: "/images/platzhalter-fahrzeug.svg",
+      src: "/images/fahrzeug-tucson.jpg",
       alt: "Schulfahrzeug von DriveOnPoint",
-      width: 1600,
-      height: 1200,
-    },
-    course: {
-      src: "/images/platzhalter-kursraum.svg",
-      alt: "Kursraum für Verkehrskundeunterricht und Nothilfekurs",
-      width: 1600,
-      height: 1200,
+      width: 738,
+      height: 497,
     },
   },
 

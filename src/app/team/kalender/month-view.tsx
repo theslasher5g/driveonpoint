@@ -79,9 +79,9 @@ export async function MonthView({
   ]);
 
   return (
-    <div className="border border-deep/15 bg-deep/15" style={{ display: "grid", gap: "1px" }}>
+    <div className="rounded-[var(--radius-surface)] border border-deep/12 bg-deep/12 overflow-hidden" style={{ display: "grid", gap: "1px" }}>
       {/* Wochentagsköpfe, nur einmal statt in jeder Zeile. */}
-      <div className="grid grid-cols-7 gap-px bg-deep/15">
+      <div className="grid grid-cols-7 gap-px bg-deep/12">
         {Array.from({ length: 7 }, (_, index) => (
           <div key={index} className="bg-deep text-paper text-center py-2.5">
             <span className="text-fine font-bold hidden sm:inline">{weekdayName(index === 6 ? 0 : index + 1, false)}</span>
@@ -90,7 +90,7 @@ export async function MonthView({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-deep/15">
+      <div className="grid grid-cols-7 gap-px bg-deep/12">
         {days.map((day) => {
           const inMonth = yearMonthOf(day) === yearMonth;
           const isToday = day === today;
@@ -123,17 +123,17 @@ export async function MonthView({
           return (
             <div
               key={day}
-              className={`min-h-28 sm:min-h-36 p-1.5 sm:p-2.5 flex flex-col ${
-                inMonth ? (isToday ? "bg-paper" : "bg-concrete") : "bg-concrete-dim"
+              className={`min-h-28 sm:min-h-36 p-1.5 sm:p-2.5 flex flex-col rounded-[10px] ${
+                isToday ? "bg-paper ring-1 ring-inset ring-signal/40" : inMonth ? "bg-concrete" : "bg-concrete-dim"
               }`}
             >
               <Link
                 href={dayHref}
-                className={`nums text-fine sm:text-base font-bold self-start px-1.5 -mx-1.5 ${
+                className={`nums text-fine sm:text-base font-bold self-start grid place-items-center w-6 h-6 sm:w-7 sm:h-7 rounded-full ${
                   isToday
-                    ? "bg-signal text-deep px-2 -mx-0.5"
+                    ? "bg-signal text-deep"
                     : inMonth
-                      ? "text-deep hover:text-signal-ink"
+                      ? "text-deep hover:bg-deep/8"
                       : "text-deep/35"
                 }`}
               >

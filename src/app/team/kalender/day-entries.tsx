@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { ActionMenu, ActionMenuItem } from "@/components/action-menu";
 import { CancelBookingButton } from "@/components/cancel-booking-button";
 import { DeleteExceptionButton } from "@/components/availability-delete";
 
@@ -97,7 +97,7 @@ export function DayEntries({
       <dialog
         ref={dialogRef}
         onClose={() => setSelected(null)}
-        className="m-auto w-[min(26rem,calc(100vw-2rem))] border border-deep/20 bg-paper p-0 backdrop:bg-deep/50"
+        className="m-auto w-[min(26rem,calc(100vw-2rem))] overflow-visible rounded-[var(--radius-surface)] border border-deep/20 bg-paper p-0 backdrop:bg-deep/50"
       >
         <div className="p-5">
           {booking && (
@@ -122,15 +122,12 @@ export function DayEntries({
 
               <DialogActions onClose={() => setSelected(null)}>
                 {manages && (
-                  <>
-                    <Link
-                      href={`/team/kalender/verschieben?id=${booking.id}`}
-                      className="text-fine font-semibold text-slate hover:text-signal-ink underline underline-offset-2"
-                    >
+                  <ActionMenu label="Termin verwalten" align="left">
+                    <ActionMenuItem href={`/team/kalender/verschieben?id=${booking.id}`}>
                       Verschieben
-                    </Link>
+                    </ActionMenuItem>
                     <CancelBookingButton bookingId={booking.id} />
-                  </>
+                  </ActionMenu>
                 )}
               </DialogActions>
             </>

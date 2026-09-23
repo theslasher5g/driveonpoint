@@ -13,6 +13,7 @@ import {
 } from "@/app/team/mitarbeiter/actions";
 import { ROLE_LABEL } from "@/lib/auth/permissions";
 import { staffRole, type StaffRole } from "@/lib/db/schema";
+import { ActionMenu, ActionMenuItem } from "./action-menu";
 import { PasswordNotice } from "./password-notice";
 
 const EMPTY: StaffState = {};
@@ -45,7 +46,7 @@ export function StaffRow({
     <article
       className={`rounded-[var(--radius-surface)] border p-5 ${person.active ? "bg-paper border-deep/15" : "bg-concrete-dim/40 border-deep/10"}`}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
         <div>
           <h3 className="font-display text-lg font-bold">
             {person.name}
@@ -75,6 +76,49 @@ export function StaffRow({
           <span className="text-fine font-bold bg-deep text-paper px-2.5 py-0.5 rounded-full">
             {ROLE_LABEL[person.role]}
           </span>
+
+          <ActionMenu label={`Konto von ${person.name} verwalten`}>
+            <form action={resetAction}>
+              <input type="hidden" name="id" value={person.id} />
+              <ActionMenuItem type="submit">Passwort zurücksetzen</ActionMenuItem>
+            </form>
+
+            {person.totpEnabled && !isSelf && (
+              <form action={resetMfaAction}>
+                <input type="hidden" name="id" value={person.id} />
+                <ActionMenuItem type="submit" danger>
+                  MFA zurücksetzen
+                </ActionMenuItem>
+              </form>
+            )}
+
+            {!isSelf && (
+              <form action={toggleActiveAction}>
+                <input type="hidden" name="id" value={person.id} />
+                <input type="hidden" name="aktiv" value={person.active ? "nein" : "ja"} />
+                <ActionMenuItem type="submit" danger={person.active}>
+                  {person.active ? "Zugang abschalten" : "Zugang freigeben"}
+                </ActionMenuItem>
+              </form>
+            )}
+
+            {!isSelf && (
+              <form
+                action={deleteStaffAction}
+                onSubmit={(event) => {
+                  const confirmed = window.confirm(
+                    `Konto von ${person.name} endgültig löschen? Künftige Termine werden nach Möglichkeit an eine andere Person übergeben, sonst abgesagt und die Kundschaft um einen neuen Termin gebeten. Das lässt sich nicht rückgängig machen.`,
+                  );
+                  if (!confirmed) event.preventDefault();
+                }}
+              >
+                <input type="hidden" name="id" value={person.id} />
+                <ActionMenuItem type="submit" danger>
+                  Konto löschen
+                </ActionMenuItem>
+              </form>
+            )}
+          </ActionMenu>
         </div>
       </div>
 
@@ -140,47 +184,6 @@ export function StaffRow({
             </form>
           )}
 
-          <div className="flex flex-wrap items-center gap-5">
-            <form action={resetAction}>
-              <input type="hidden" name="id" value={person.id} />
-              <MiniSubmit idle="Passwort zurücksetzen" busy="Setzt zurück …" />
-            </form>
-
-            {person.totpEnabled && !isSelf && (
-              <form action={resetMfaAction}>
-                <input type="hidden" name="id" value={person.id} />
-                <MiniSubmit idle="MFA zurücksetzen" busy="Setzt zurück …" danger />
-              </form>
-            )}
-
-            {!isSelf && (
-              <form action={toggleActiveAction}>
-                <input type="hidden" name="id" value={person.id} />
-                <input type="hidden" name="aktiv" value={person.active ? "nein" : "ja"} />
-                <MiniSubmit
-                  idle={person.active ? "Zugang abschalten" : "Zugang freigeben"}
-                  busy="Ändert …"
-                  danger={person.active}
-                />
-              </form>
-            )}
-
-            {!isSelf && (
-              <form
-                action={deleteStaffAction}
-                onSubmit={(event) => {
-                  const confirmed = window.confirm(
-                    `Konto von ${person.name} endgültig löschen? Künftige Termine werden nach Möglichkeit an eine andere Person übergeben, sonst abgesagt und die Kundschaft um einen neuen Termin gebeten. Das lässt sich nicht rückgängig machen.`,
-                  );
-                  if (!confirmed) event.preventDefault();
-                }}
-              >
-                <input type="hidden" name="id" value={person.id} />
-                <MiniSubmit idle="Konto löschen" busy="Löscht …" danger />
-              </form>
-            )}
-          </div>
-
           <p className="text-fine text-slate">
             {person.lastLoginAt
               ? `Zuletzt angemeldet am ${person.lastLoginAt.toLocaleDateString("de-CH")}`
@@ -192,23 +195,13 @@ export function StaffRow({
   );
 }
 
-function MiniSubmit({
-  idle,
-  busy,
-  danger,
-}: {
-  idle: string;
-  busy: string;
-  danger?: boolean;
-}) {
+function MiniSubmit({ idle, busy }: { idle: string; busy: string }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
-      className={`text-fine font-semibold underline underline-offset-2 disabled:opacity-50 mt-3 ${
-        danger ? "text-slate hover:text-danger" : "text-signal-ink"
-      }`}
+      className="text-fine font-semibold text-signal-ink underline underline-offset-2 disabled:opacity-50 mt-3"
     >
       {pending ? busy : idle}
     </button>

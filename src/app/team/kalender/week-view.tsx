@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { availabilityExceptions, availabilityRules, bookings, lessonTypes, staff } from "@/lib/db/schema";
@@ -12,6 +11,7 @@ import {
   zurichToInstant,
   zurichWeekday,
 } from "@/lib/time";
+import { ActionMenu, ActionMenuItem } from "@/components/action-menu";
 import { CancelBookingButton } from "@/components/cancel-booking-button";
 import { DeleteExceptionButton } from "@/components/availability-delete";
 
@@ -95,7 +95,7 @@ export async function WeekView({
   ]);
 
   return (
-    <div className="grid gap-px bg-deep/15 border border-deep/15 md:grid-cols-7">
+    <div className="grid gap-3 md:grid-cols-7">
       {days.map((day) => {
         const weekday = zurichWeekday(day);
         const isToday = day === today;
@@ -129,29 +129,39 @@ export async function WeekView({
         const absences = exceptions.filter((entry) => entry.day === day && !entry.available);
 
         return (
-          // Feste Mindesthöhe nur im Wochenraster. Untereinander gestapelt
-          // würden sieben leere Kästen das Telefon vollständig füllen.
-          <div key={day} className={`p-3.5 md:min-h-52 ${isToday ? "bg-paper" : "bg-concrete"}`}>
-            <h2 className={`text-base font-bold ${isToday ? "text-signal-ink" : ""}`}>
+          <div
+            key={day}
+            className={`rounded-[var(--radius-surface)] border p-3.5 md:min-h-56 ${
+              isToday ? "bg-paper border-signal/40" : "bg-concrete border-deep/10"
+            }`}
+          >
+            <h2 className={`text-base font-bold flex items-baseline gap-1.5 ${isToday ? "text-signal-ink" : ""}`}>
+              {isToday && <span className="w-1.5 h-1.5 rounded-full bg-signal" aria-hidden="true" />}
               {weekdayName(weekday, true)}
               <span className="nums font-normal text-slate">
-                {" "}
                 {Number(day.slice(8))}.{Number(day.slice(5, 7))}.
               </span>
             </h2>
 
             {openBlocks.length > 0 && (
-              <ul className="mt-2 space-y-1">
+              <ul className="mt-2.5 space-y-1">
                 {openBlocks.map((block, index) => (
-                  <li key={index} className="nums text-fine text-slate">
-                    {block.from}–{block.to} <span className="text-deep/70">{block.lessonName}</span>
+                  <li
+                    key={index}
+                    className="nums text-fine rounded-[calc(var(--radius-control)-4px)] bg-concrete-dim/60 px-2 py-1"
+                  >
+                    <span className="text-slate">{block.from}–{block.to}</span>{" "}
+                    <span className="text-deep/70">{block.lessonName}</span>
                   </li>
                 ))}
               </ul>
             )}
 
             {absences.map((absence) => (
-              <div key={absence.id} className="bg-concrete-dim px-2 py-1.5 mt-2">
+              <div
+                key={absence.id}
+                className="rounded-[var(--radius-control)] bg-concrete-dim px-2.5 py-2 mt-2.5"
+              >
                 <p className="nums text-fine">
                   Abwesend {absence.startTime.slice(0, 5)}–{absence.endTime.slice(0, 5)}
                   {absence.note ? ` · ${absence.note}` : ""}
@@ -168,10 +178,10 @@ export async function WeekView({
                 return (
                   <li
                     key={entry.id}
-                    className={`px-2.5 py-2 border-l-[3px] ${
+                    className={`relative rounded-[var(--radius-control)] px-3 py-2.5 pr-9 border ${
                       cancelled
-                        ? "bg-concrete-dim border-slate text-slate line-through"
-                        : "bg-deep/5 border-deep"
+                        ? "bg-concrete-dim/60 border-transparent text-slate line-through"
+                        : "bg-paper border-deep/12"
                     }`}
                   >
                     <p className="nums text-fine font-bold">
@@ -195,15 +205,15 @@ export async function WeekView({
                     {entry.customerNote && (
                       <p className="text-fine text-slate mt-1">{entry.customerNote}</p>
                     )}
+
                     {manages && !cancelled && (
-                      <div className="flex flex-wrap gap-3 items-center mt-1.5">
-                        <Link
-                          href={`/team/kalender/verschieben?id=${entry.id}`}
-                          className="text-fine font-semibold text-slate hover:text-signal-ink underline underline-offset-2"
-                        >
-                          Verschieben
-                        </Link>
-                        <CancelBookingButton bookingId={entry.id} />
+                      <div className="absolute top-1 right-1">
+                        <ActionMenu label={`Termin von ${entry.customerName ?? "Kundschaft"} verwalten`}>
+                          <ActionMenuItem href={`/team/kalender/verschieben?id=${entry.id}`}>
+                            Verschieben
+                          </ActionMenuItem>
+                          <CancelBookingButton bookingId={entry.id} />
+                        </ActionMenu>
                       </div>
                     )}
                   </li>

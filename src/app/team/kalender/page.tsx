@@ -78,9 +78,11 @@ export default async function KalenderPage({
           </p>
         )}
 
+        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
+
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-title">Kalender</h1>
+            <h1 className="font-display text-3xl md:text-4xl font-bold">Kalender</h1>
             <p className="nums text-slate mt-2">
               {view === "monat"
                 ? monthLabel(yearMonth)
@@ -99,12 +101,12 @@ export default async function KalenderPage({
           {/* Monat/Woche — ein Formular, keine zwei Kalender: wer die
               Übersicht will, bleibt im Monat; wer einen Termin verschieben
               oder absagen will, wechselt für die Einzelheiten in die Woche. */}
-          <div className="flex border border-deep/20" role="group" aria-label="Ansicht wählen">
+          <div className="inline-flex rounded-full bg-concrete-dim p-1" role="group" aria-label="Ansicht wählen">
             <Link
               href={monthHref}
               aria-current={view === "monat" ? "page" : undefined}
-              className={`px-4 py-2 text-fine font-semibold ${
-                view === "monat" ? "bg-signal text-deep" : "bg-paper text-deep/70 hover:text-deep"
+              className={`px-4 py-1.5 rounded-full text-fine font-semibold transition-colors ${
+                view === "monat" ? "bg-signal text-deep" : "text-deep/70 hover:text-deep"
               }`}
             >
               Monat
@@ -112,8 +114,8 @@ export default async function KalenderPage({
             <Link
               href={weekHref}
               aria-current={view === "woche" ? "page" : undefined}
-              className={`px-4 py-2 text-fine font-semibold border-l border-deep/20 ${
-                view === "woche" ? "bg-signal text-deep" : "bg-paper text-deep/70 hover:text-deep"
+              className={`px-4 py-1.5 rounded-full text-fine font-semibold transition-colors ${
+                view === "woche" ? "bg-signal text-deep" : "text-deep/70 hover:text-deep"
               }`}
             >
               Woche
@@ -174,9 +176,7 @@ export default async function KalenderPage({
             <li>
               <Link
                 href={`/team/kalender?ansicht=${view}&${view === "monat" ? `monat=${yearMonth}` : `woche=${weekStart}`}`}
-                className={`block px-3.5 py-2 text-fine font-semibold border ${
-                  focus ? "border-deep/20 bg-paper" : "border-signal bg-signal text-deep"
-                }`}
+                className={focus ? "chip chip-quiet" : "chip"}
               >
                 Alle
               </Link>
@@ -185,11 +185,7 @@ export default async function KalenderPage({
               <li key={person.id}>
                 <Link
                   href={`/team/kalender?ansicht=${view}&${view === "monat" ? `monat=${yearMonth}` : `woche=${weekStart}`}&person=${person.id}`}
-                  className={`block px-3.5 py-2 text-fine font-semibold border ${
-                    focus === person.id
-                      ? "border-signal bg-signal text-deep"
-                      : "border-deep/20 bg-paper"
-                  }`}
+                  className={focus === person.id ? "chip" : "chip chip-quiet"}
                 >
                   {person.name}
                 </Link>

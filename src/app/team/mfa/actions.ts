@@ -85,6 +85,17 @@ export async function verifyMfaAction(
     return { error: "Der Code stimmt nicht." };
   }
 
+  // Ein Code gilt rund 90 Sekunden (ein Zeitfenster vor und zurück). Wer ihn
+  // in der Zeit mitliest — über die Schulter, per Bildschirmfreigabe — könnte
+  // ihn sonst ein zweites Mal verwenden. Deshalb gilt jeder nur einmal.
+  if (!usedRecovery) {
+    const digits = code.replace(/\s+/g, "");
+    const fresh = await consume(`totp-verwendet:${account.id}:${digits}`, 1, 120);
+    if (!fresh.ok) {
+      return { error: "Dieser Code wurde eben schon verwendet. Warte auf den nächsten." };
+    }
+  }
+
   await clearMfaChallenge();
 
   const store = await headers();

@@ -18,8 +18,13 @@ const schema = z
       .min(3, "Gib der Aktion einen Namen, den Kundinnen und Kunden verstehen.")
       .max(80, "Der Name ist zu lang."),
     art: z.enum(["prozent", "betrag"]),
-    wert: z.coerce.number().positive("Der Rabatt muss grösser als null sein."),
-    angebot: z.string().optional(),
+    wert: z.coerce
+      .number()
+      .positive("Der Rabatt muss grösser als null sein.")
+      .max(10_000, "Der Rabatt ist unplausibel hoch."),
+    // Eine ungültige Kennung liess sonst die Datenbank mit einem Fehler
+    // aussteigen, und statt einer Meldung erschien eine Fehlerseite.
+    angebot: z.union([z.literal("alle"), z.string().uuid()]).optional(),
     von: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Startdatum."),
     bis: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Enddatum."),
   })

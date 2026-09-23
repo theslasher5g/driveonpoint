@@ -9,6 +9,7 @@ import {
   createBooking,
   findSlots,
   lessonTypeBySlug,
+  withinBookingHorizon,
 } from "@/lib/booking";
 import {
   sendBookingConfirmation,
@@ -16,13 +17,52 @@ import {
   sendNewBookingNotification,
   sendNewBookingsNotification,
 } from "@/lib/booking-mail";
-import { verifySolution } from "@/lib/captcha";
+import { redeemSolution } from "@/lib/captcha";
 import { env } from "@/lib/env";
 import { blockIp, blockedUntil, consume, hit } from "@/lib/rate-limit";
-import { clientIp } from "@/lib/request";
+import { clientIp, hashIp } from "@/lib/request";
 import { daysBetween } from "@/lib/time";
 
-export type BookingState = { error?: string; fieldErrors?: Record<string, string> };
+export type BookingState = {
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  /** Das Eingetippte, zurück ans Formular — siehe echoValues. */
+  values?: Record<string, string>;
+};
+
+/**
+ * Nach einer Server Action setzt React das Formular zurück. Ohne diese Werte
+ * standen nach einem Tippfehler in der Telefonnummer auch Name, Mailadresse
+ * und das AGB-Häkchen wieder leer da.
+ */
+function echoValues(formData: FormData): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const key of ["name", "email", "telefon", "bemerkung", "agb"]) {
+    const value = formData.get(key);
+    if (typeof value === "string") values[key] = value.slice(0, 600);
+  }
+  return values;
+}
+
+// Die Buchung selbst leitet bei Erfolg weiter; zurück kommt nur ein Fehler.
+export async function createBookingAction(
+  previous: BookingState,
+  formData: FormData,
+): Promise<BookingState> {
+  return { ...(await bookSingle(previous, formData)), values: echoValues(formData) };
+}
+
+export async function createMultiBookingAction(
+  previous: BookingState,
+  formData: FormData,
+): Promise<BookingState> {
+  return { ...(await bookSeveral(previous, formData)), values: echoValues(formData) };
+}
+
+// Nach jeder Antwort löst das Formular eine neue Aufgabe (siehe
+// CaptchaField) — erneutes Absenden genügt, ein Neuladen braucht es nicht.
+const CAPTCHA_FAILED =
+  "Die Sicherheitsprüfung ist nicht durchgelaufen. Warte einen Moment und sende noch einmal.";
 
 /**
  * Eingabeprüfung an der Systemgrenze.
@@ -70,7 +110,7 @@ const multiSchema = z.object({
   ...personFields,
 });
 
-export async function createBookingAction(
+async function bookSingle(
   _previous: BookingState,
   formData: FormData,
 ): Promise<BookingState> {
@@ -88,14 +128,10 @@ export async function createBookingAction(
 
   const verdict = await consume(`buchung:${ip}`, 5, 3600);
   if (!verdict.ok) {
-    await record("buchung.begrenzt", { label: "System" }, { ip });
+    await record("buchung.begrenzt", { label: "System" }, { adresse: hashIp(ip) });
     return {
       error: "Zu viele Buchungen von dieser Verbindung. Bitte versuche es in einer Stunde.",
     };
-  }
-
-  if (!verifySolution("buchung", formData.get("captcha") as string | null)) {
-    return { error: "Die Sicherheitsprüfung ist nicht durchgelaufen. Bitte lade die Seite neu." };
   }
 
   const parsed = schema.safeParse({
@@ -118,10 +154,18 @@ export async function createBookingAction(
     return { error: "Bitte prüfe die markierten Felder.", fieldErrors };
   }
 
+  if (!(await redeemSolution("buchung", formData.get("captcha") as string | null))) {
+    return { error: CAPTCHA_FAILED };
+  }
+
   const input = parsed.data;
   const lessonType = await lessonTypeBySlug(input.angebot);
   if (!lessonType || !lessonType.active) {
     return { error: "Dieses Angebot gibt es nicht mehr." };
+  }
+
+  if (!withinBookingHorizon(input.tag)) {
+    return { error: "Dieser Termin ist nicht mehr frei. Bitte wähle einen anderen." };
   }
 
   // Der gewählte Termin wird gegen die tatsächliche Verfügbarkeit geprüft.
@@ -203,7 +247,7 @@ export async function createBookingAction(
  * Termin inzwischen weg (jemand anders war schneller), fällt nur der aus,
  * nicht die ganze Anfrage.
  */
-export async function createMultiBookingAction(
+async function bookSeveral(
   _previous: BookingState,
   formData: FormData,
 ): Promise<BookingState> {
@@ -220,14 +264,10 @@ export async function createMultiBookingAction(
 
   const verdict = await consume(`buchung:${ip}`, 5, 3600);
   if (!verdict.ok) {
-    await record("buchung.begrenzt", { label: "System" }, { ip });
+    await record("buchung.begrenzt", { label: "System" }, { adresse: hashIp(ip) });
     return {
       error: "Zu viele Buchungen von dieser Verbindung. Bitte versuche es in einer Stunde.",
     };
-  }
-
-  if (!verifySolution("buchung", formData.get("captcha") as string | null)) {
-    return { error: "Die Sicherheitsprüfung ist nicht durchgelaufen. Bitte lade die Seite neu." };
   }
 
   const parsed = multiSchema.safeParse({
@@ -249,6 +289,10 @@ export async function createMultiBookingAction(
     return { error: "Bitte prüfe die markierten Felder.", fieldErrors };
   }
 
+  if (!(await redeemSolution("buchung", formData.get("captcha") as string | null))) {
+    return { error: CAPTCHA_FAILED };
+  }
+
   const input = parsed.data;
   const lessonType = await lessonTypeBySlug(input.angebot);
   if (!lessonType || !lessonType.active) {
@@ -256,10 +300,15 @@ export async function createMultiBookingAction(
   }
 
   // Doppelt angehakte Zeiten nur einmal zählen, dann nach Tag/Zeit aufteilen.
-  const requested = [...new Set(input.termine)].map((value) => {
+  // Termine ausserhalb des buchbaren Zeitraums zählen als nicht mehr frei.
+  const unique = [...new Set(input.termine)].map((value) => {
     const [day, time] = value.split("T");
     return { day, time };
   });
+  const requested = unique.filter((entry) => withinBookingHorizon(entry.day));
+  if (requested.length === 0) {
+    return { error: "Keiner der gewählten Termine ist mehr frei. Bitte wähle andere." };
+  }
 
   const days = requested.map((entry) => entry.day).sort();
   const fromDay = days[0];
@@ -269,7 +318,7 @@ export async function createMultiBookingAction(
   const priced = applyPromotions(lessonType, await activePromotions());
 
   const booked: { day: string; time: string; reference: string; cancelToken: string }[] = [];
-  let failedCount = 0;
+  let failedCount = unique.length - requested.length;
 
   for (const { day, time } of requested) {
     const slot = slots.find((entry) => entry.day === day && entry.time === time);

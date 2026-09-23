@@ -28,7 +28,8 @@ export default async function KontoPage({
 
         {(erstanmeldung || user.mustChangePassword) && (
           <p className="surface bg-amber text-deep px-5 py-4 font-semibold mt-6 max-w-xl">
-            Du bist noch mit dem vergebenen Startpasswort unterwegs. Wähle jetzt ein eigenes.
+            Du bist noch mit dem vergebenen Startpasswort unterwegs. Wähle ein eigenes — erst
+            danach öffnen sich Kalender und die übrigen Bereiche.
           </p>
         )}
 

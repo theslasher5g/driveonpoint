@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash, createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { env } from "./env";
+import { consume } from "./rate-limit";
 
 /**
  * Rechenaufgabe statt Bilderrätsel.
@@ -59,17 +60,32 @@ type Solution = {
 };
 
 /**
- * Prüft die Lösung. Der Server speichert die Aufgabe nicht — die Signatur
- * belegt, dass sie von uns stammt und wofür sie gilt.
+ * Prüft die Lösung und entwertet sie. Die Aufgabe selbst speichert der
+ * Server nicht — die Signatur belegt, dass sie von uns stammt und wofür sie
+ * gilt. Gespeichert wird nur, dass sie eingelöst ist: ohne das liesse sich eine einmal
+ * gelöste Aufgabe 15 Minuten lang beliebig oft einreichen — von beliebig
+ * vielen Adressen aus, womit die Rechenarbeit für Massenversand entfiele.
+ * Erst nach der Prüfung der Formularfelder aufrufen, damit ein Tippfehler
+ * die Lösung nicht verbraucht.
  */
-export function verifySolution(scope: string, raw: string | null | undefined): boolean {
-  if (!raw) return false;
+export async function redeemSolution(
+  scope: string,
+  raw: string | null | undefined,
+): Promise<boolean> {
+  const challenge = solvedChallenge(scope, raw);
+  if (!challenge) return false;
+  const verdict = await consume(`captcha-eingeloest:${challenge}`, 1, VALID_FOR_MS / 1000);
+  return verdict.ok;
+}
+
+function solvedChallenge(scope: string, raw: string | null | undefined): string | null {
+  if (!raw) return null;
 
   let parsed: Solution;
   try {
     parsed = JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as Solution;
   } catch {
-    return false;
+    return null;
   }
 
   const { challenge, salt, number, signature, expires } = parsed;
@@ -80,17 +96,17 @@ export function verifySolution(scope: string, raw: string | null | undefined): b
     typeof number !== "number" ||
     typeof expires !== "number"
   ) {
-    return false;
+    return null;
   }
 
-  if (!Number.isInteger(number) || number < 0 || number > MAX_NUMBER) return false;
-  if (expires < Date.now()) return false;
+  if (!Number.isInteger(number) || number < 0 || number > MAX_NUMBER) return null;
+  if (expires < Date.now()) return null;
 
   const expected = sign(`${scope}:${challenge}:${expires}`);
-  if (!constantTimeEqual(expected, signature)) return false;
+  if (!constantTimeEqual(expected, signature)) return null;
 
   const recomputed = createHash("sha256").update(`${salt}${number}`).digest("hex");
-  return constantTimeEqual(recomputed, challenge);
+  return constantTimeEqual(recomputed, challenge) ? challenge : null;
 }
 
 function constantTimeEqual(a: string, b: string): boolean {

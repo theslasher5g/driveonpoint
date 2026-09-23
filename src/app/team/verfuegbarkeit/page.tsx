@@ -162,7 +162,7 @@ export default async function VerfuegbarkeitPage({
                               className="border-b border-deep/10 last:border-0 px-4 py-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1"
                             >
                               <span className="font-semibold">{formatDayLong(entry.day)}</span>
-                              <span className="nums text-slate">
+                              <span className="nums text-slate whitespace-nowrap">
                                 {entry.startTime.slice(0, 5)} – {entry.endTime.slice(0, 5)}
                               </span>
                               <DeleteExceptionButton id={entry.id} person={targetId} />
@@ -215,8 +215,8 @@ export default async function VerfuegbarkeitPage({
                               </h3>
                               <ul className="flex flex-wrap gap-x-4 gap-y-1">
                                 {list.map((rule) => (
-                                  <li key={rule.id} className="nums flex items-center gap-2">
-                                    <span className="font-semibold">
+                                  <li key={rule.id} className="nums flex flex-wrap items-center gap-x-2">
+                                    <span className="font-semibold whitespace-nowrap">
                                       {rule.startTime.slice(0, 5)} – {rule.endTime.slice(0, 5)}
                                     </span>
                                     <DeleteRuleButton id={rule.id} person={targetId} />

@@ -37,6 +37,7 @@ export function ManualBookingForm({
         label="Vor- und Nachname"
         autoComplete="name"
         error={state.fieldErrors?.name}
+        defaultValue={state.values?.name}
         required
       />
       <Field
@@ -46,6 +47,7 @@ export function ManualBookingForm({
         autoComplete="tel"
         inputMode="tel"
         error={state.fieldErrors?.telefon}
+        defaultValue={state.values?.telefon}
         required
       />
       <Field
@@ -56,6 +58,7 @@ export function ManualBookingForm({
         autoComplete="email"
         inputMode="email"
         error={state.fieldErrors?.email}
+        defaultValue={state.values?.email}
       />
 
       <div>
@@ -70,6 +73,7 @@ export function ManualBookingForm({
           className="field resize-y"
           aria-invalid={state.fieldErrors?.bemerkung ? "true" : undefined}
           placeholder="Zum Beispiel ein abweichender Treffpunkt."
+          defaultValue={state.values?.bemerkung}
         />
         {state.fieldErrors?.bemerkung && (
           <p className="field-hint text-danger">{state.fieldErrors.bemerkung}</p>
@@ -99,6 +103,7 @@ function Field({
   required,
   autoComplete,
   inputMode,
+  defaultValue,
 }: {
   name: string;
   label: string;
@@ -108,6 +113,7 @@ function Field({
   required?: boolean;
   autoComplete?: string;
   inputMode?: "text" | "email" | "tel";
+  defaultValue?: string;
 }) {
   const hintId = hint || error ? `${name}-hinweis` : undefined;
 
@@ -123,6 +129,7 @@ function Field({
         required={required}
         autoComplete={autoComplete}
         inputMode={inputMode}
+        defaultValue={defaultValue}
         className="field"
         aria-invalid={error ? "true" : undefined}
         aria-describedby={hintId}

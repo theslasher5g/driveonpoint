@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import {
   activePromotions,
   applyPromotions,
+  BOOKING_HORIZON_DAYS,
   findSlots,
   lessonTypeBySlug,
   listLessonTypes,
@@ -42,7 +43,11 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
 
   const promotions = await activePromotions();
   const priced = applyPromotions(lessonType, promotions);
-  const slots = await findSlots({ lessonType, fromDay: todayInZurich(), days: 28 });
+  const slots = await findSlots({
+    lessonType,
+    fromDay: todayInZurich(),
+    days: BOOKING_HORIZON_DAYS,
+  });
 
   // Mehrere Fahrstunden auf einmal: eine eigene Auswahl statt eines
   // einzelnen Termins, siehe FahrstundeSlotSelector. Nur für Fahrstunden —

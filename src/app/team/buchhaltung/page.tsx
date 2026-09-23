@@ -111,18 +111,20 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
                 {report.byMonth.map((entry) => (
                   <div
                     key={entry.month}
-                    className="border-b border-deep/10 px-5 py-3.5 flex items-baseline justify-between gap-6"
+                    className="border-b border-deep/10 last:border-0 px-5 py-3.5 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4"
                   >
-                    <a
-                      href={`/team/buchhaltung?jahr=${year}&monat=${entry.month}`}
-                      className="font-semibold underline-offset-4 hover:underline"
-                    >
-                      {monthName(entry.month)}
-                    </a>
-                    <span className="nums text-slate text-fine ml-auto">
-                      {entry.count} {entry.count === 1 ? "Termin" : "Termine"}
-                    </span>
-                    <span className="nums font-bold w-32 text-right">
+                    <div className="min-w-0">
+                      <a
+                        href={`/team/buchhaltung?jahr=${year}&monat=${entry.month}`}
+                        className="font-semibold underline-offset-4 hover:underline"
+                      >
+                        {monthName(entry.month)}
+                      </a>
+                      <span className="nums text-slate text-fine block sm:inline sm:ml-3">
+                        {entry.count} {entry.count === 1 ? "Termin" : "Termine"}
+                      </span>
+                    </div>
+                    <span className="nums font-bold text-right whitespace-nowrap">
                       CHF {formatPrice(entry.totalRappen)}
                     </span>
                   </div>
@@ -140,15 +142,21 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
           ) : (
             <div className="surface bg-paper max-w-2xl">
               {report.byLessonType.map((entry) => (
+                // Name und Anzahl teilen sich die linke Spalte, der Betrag
+                // bleibt rechts und bricht nie um — mit der festen Spalte
+                // von vorher schob „Verkehrskundeunterricht“ den Betrag auf
+                // dem Telefon aus der Karte.
                 <div
                   key={entry.name}
-                  className="border-b border-deep/10 px-5 py-3.5 flex items-baseline justify-between gap-6"
+                  className="border-b border-deep/10 last:border-0 px-5 py-3.5 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4"
                 >
-                  <span className="font-semibold">{entry.name}</span>
-                  <span className="nums text-slate text-fine ml-auto">
-                    {entry.count} {entry.count === 1 ? "Termin" : "Termine"}
-                  </span>
-                  <span className="nums font-bold w-32 text-right">
+                  <div className="min-w-0">
+                    <span className="font-semibold">{entry.name}</span>
+                    <span className="nums text-slate text-fine block sm:inline sm:ml-3">
+                      {entry.count} {entry.count === 1 ? "Termin" : "Termine"}
+                    </span>
+                  </div>
+                  <span className="nums font-bold text-right whitespace-nowrap">
                     CHF {formatPrice(entry.totalRappen)}
                   </span>
                 </div>

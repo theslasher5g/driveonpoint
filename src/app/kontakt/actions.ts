@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { verifySolution } from "@/lib/captcha";
+import { redeemSolution } from "@/lib/captcha";
 import { escapeHtml, mailLayout, sendMail } from "@/lib/mail";
 import { blockIp, blockedUntil, consume } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
@@ -11,7 +11,24 @@ export type ContactState = {
   ok?: boolean;
   error?: string;
   fieldErrors?: Record<string, string>;
+  /** Das Eingetippte — React leert das Formular nach dem Absenden sonst. */
+  values?: Record<string, string>;
 };
+
+export async function sendContactAction(
+  previous: ContactState,
+  formData: FormData,
+): Promise<ContactState> {
+  const result = await sendContact(previous, formData);
+  if (result.ok) return result;
+
+  const values: Record<string, string> = {};
+  for (const key of ["name", "email", "telefon", "nachricht"]) {
+    const value = formData.get(key);
+    if (typeof value === "string") values[key] = value.slice(0, 2100);
+  }
+  return { ...result, values };
+}
 
 const schema = z.object({
   name: z.string().trim().min(2, "Bitte gib deinen Namen an.").max(120, "Der Name ist zu lang."),
@@ -35,7 +52,7 @@ const schema = z.object({
     .max(2000, "Die Nachricht ist zu lang."),
 });
 
-export async function sendContactAction(
+async function sendContact(
   _previous: ContactState,
   formData: FormData,
 ): Promise<ContactState> {
@@ -55,10 +72,6 @@ export async function sendContactAction(
     return { error: "Zu viele Nachrichten von dieser Verbindung. Bitte versuche es später." };
   }
 
-  if (!verifySolution("kontakt", formData.get("captcha") as string | null)) {
-    return { error: "Die Sicherheitsprüfung ist nicht durchgelaufen. Bitte lade die Seite neu." };
-  }
-
   const parsed = schema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -73,6 +86,14 @@ export async function sendContactAction(
       fieldErrors[key] ??= issue.message;
     }
     return { error: "Bitte prüfe die markierten Felder.", fieldErrors };
+  }
+
+  // Erst nach der Feldprüfung: ein Tippfehler soll die Lösung nicht verbrauchen.
+  if (!(await redeemSolution("kontakt", formData.get("captcha") as string | null))) {
+    return {
+      error:
+        "Die Sicherheitsprüfung ist nicht durchgelaufen. Warte einen Moment und sende noch einmal.",
+    };
   }
 
   const input = parsed.data;

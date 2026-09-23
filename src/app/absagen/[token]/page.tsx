@@ -65,7 +65,7 @@ export default async function AbsagenPage({ params }: { params: Params }) {
 
   return (
     <Shell title="Termin absagen?">
-      <div className="bg-paper border border-deep/15 p-5 max-w-xl">
+      <div className="surface bg-paper p-5 md:p-6 max-w-xl">
         <p className="font-bold text-lg">{booking.lessonName ?? "Termin"}</p>
         <p className="nums text-slate mt-1">
           {formatDayLong(zurichDay(booking.startsAt))}, {zurichTime(booking.startsAt)} Uhr
@@ -74,7 +74,7 @@ export default async function AbsagenPage({ params }: { params: Params }) {
       </div>
 
       {chargeable && (
-        <p className="bg-amber text-deep px-5 py-4 font-semibold max-w-xl mt-6">
+        <p className="notice notice-warn max-w-xl mt-6">
           Bis zum Termin sind es weniger als 24 Stunden. Eine Absage jetzt wird verrechnet.
         </p>
       )}
@@ -94,8 +94,9 @@ export default async function AbsagenPage({ params }: { params: Params }) {
 
 function Shell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="shell py-14 md:py-20">
+    <section className="shell pt-24 pb-14 md:pt-32 md:pb-20">
       <div className="lane">
+        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
         <h1 className="text-title max-w-[18ch]">{title}</h1>
         <div className="mt-7">{children}</div>
       </div>

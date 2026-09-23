@@ -44,6 +44,7 @@ export function ContactForm() {
           autoComplete="name"
           required
           aria-invalid={state.fieldErrors?.name ? "true" : undefined}
+          defaultValue={state.values?.name}
         />
         {state.fieldErrors?.name && (
           <p className="field-hint text-danger font-semibold">{state.fieldErrors.name}</p>
@@ -63,6 +64,7 @@ export function ContactForm() {
           autoComplete="email"
           required
           aria-invalid={state.fieldErrors?.email ? "true" : undefined}
+          defaultValue={state.values?.email}
         />
         {state.fieldErrors?.email && (
           <p className="field-hint text-danger font-semibold">{state.fieldErrors.email}</p>
@@ -81,6 +83,7 @@ export function ContactForm() {
           className="field"
           autoComplete="tel"
           aria-invalid={state.fieldErrors?.telefon ? "true" : undefined}
+          defaultValue={state.values?.telefon}
         />
         {state.fieldErrors?.telefon && (
           <p className="field-hint text-danger font-semibold">{state.fieldErrors.telefon}</p>
@@ -99,13 +102,14 @@ export function ContactForm() {
           className="field resize-y"
           required
           aria-invalid={state.fieldErrors?.nachricht ? "true" : undefined}
+          defaultValue={state.values?.nachricht}
         />
         {state.fieldErrors?.nachricht && (
           <p className="field-hint text-danger font-semibold">{state.fieldErrors.nachricht}</p>
         )}
       </div>
 
-      <CaptchaField scope="kontakt" />
+      <CaptchaField scope="kontakt" refreshOn={state} />
 
       <p className="text-fine text-slate">
         Deine Angaben werden ausschliesslich zur Beantwortung dieser Anfrage verwendet und

@@ -19,6 +19,7 @@ export async function requireUser(): Promise<SessionUser> {
  */
 export async function requirePermission(permission: Permission): Promise<SessionUser> {
   const user = await requireUser();
+  if (user.mustChangePassword) redirect(PASSWORD_CHANGE_PAGE);
   if (!can(user.role, permission)) redirect("/team?fehler=keine-berechtigung");
   return user;
 }
@@ -27,6 +28,16 @@ export async function requirePermission(permission: Permission): Promise<Session
 export async function assertPermission(permission: Permission): Promise<SessionUser> {
   const user = await currentUser();
   if (!user) throw new Error("Nicht angemeldet.");
+  if (user.mustChangePassword) throw new Error("Bitte zuerst das Startpasswort ändern.");
   if (!can(user.role, permission)) throw new Error("Für diese Aktion fehlt die Berechtigung.");
   return user;
 }
+
+/**
+ * Das Startpasswort hat die Administration gesehen und meist per Telefon
+ * oder Nachricht weitergegeben. Bis es ersetzt ist, bleibt nur „Mein Konto“
+ * offen (dort wird es geändert, mit requireUser statt requirePermission) —
+ * sonst arbeitet jemand wochenlang mit einem Passwort, das eine zweite
+ * Person kennt.
+ */
+export const PASSWORD_CHANGE_PAGE = "/team/konto?erstanmeldung=1";

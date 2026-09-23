@@ -21,10 +21,19 @@ type State = "bereit" | "rechnet" | "fertig" | "fehler";
  * keine Verbindung zu einem fremden Dienst: die Aufgabe kommt vom eigenen
  * Server, es fliesst keine IP-Adresse ab, und es wird nichts gespeichert.
  */
-export function CaptchaField({ scope }: { scope: "buchung" | "kontakt" }) {
+export function CaptchaField({
+  scope,
+  refreshOn,
+}: {
+  scope: "buchung" | "kontakt";
+  /** Jede Lösung gilt nur einmal. Ändert sich dieser Wert (die Antwort des
+   * Servers auf einen Versand), wird eine neue Aufgabe gelöst. */
+  refreshOn?: unknown;
+}) {
   const [state, setState] = useState<State>("bereit");
   const [payload, setPayload] = useState("");
   const started = useRef(false);
+  const firstRender = useRef(true);
 
   const solve = useCallback(async () => {
     if (started.current) return;
@@ -65,8 +74,18 @@ export function CaptchaField({ scope }: { scope: "buchung" | "kontakt" }) {
     return () => window.clearTimeout(idle);
   }, [solve]);
 
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    started.current = false;
+    setPayload("");
+    void solve();
+  }, [refreshOn, solve]);
+
   return (
-    <div className="bg-concrete border border-deep/15 px-4 py-3.5 flex items-center gap-3">
+    <div className="bg-concrete border border-deep/15 rounded-[var(--radius-control)] px-4 py-3.5 flex items-center gap-3">
       <input type="hidden" name="captcha" value={payload} />
       <Indicator state={state} />
       <p className="text-fine" aria-live="polite">
@@ -107,7 +126,7 @@ function Indicator({ state }: { state: State }) {
   }
   return (
     <span
-      className="w-5 h-5 shrink-0 border-2 border-deep/25 border-t-signal animate-spin"
+      className="w-5 h-5 shrink-0 rounded-full border-2 border-deep/25 border-t-signal animate-spin"
       aria-hidden="true"
     />
   );

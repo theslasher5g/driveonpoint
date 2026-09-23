@@ -1,5 +1,15 @@
 import Link from "next/link";
 
+/**
+ * Chromium unter Windows und Linux kennt keine deutsche Silbentrennung —
+ * `hyphens: auto` greift dort nicht, und auf dem Telefon brach der Titel als
+ * „Verkehrskundeunt / erricht“ um. Ein weiches Trennzeichen an der
+ * Wortfuge trennt überall an der richtigen Stelle und bleibt sonst unsichtbar.
+ */
+function withSoftHyphens(title: string): string {
+  return title.replace("Verkehrskundeunterricht", "Verkehrskunde­unterricht");
+}
+
 export function PageHeader({
   title,
   lead,
@@ -19,7 +29,10 @@ export function PageHeader({
         className="pointer-events-none absolute -top-32 right-[-8rem] w-[26rem] h-[26rem] rounded-full opacity-[0.16] blur-3xl"
         style={{ background: "var(--color-signal)" }}
       />
-      <div className="shell py-14 md:py-20 relative">
+      {/* Oben mehr Luft als unten: die schwebende Kopfzeile liegt über den
+          ersten 68 px (Desktop 80 px), sonst verschwindet der rote Strich
+          darunter. */}
+      <div className="shell pt-24 pb-14 md:pt-32 md:pb-20 relative">
         <div className="lane md:grid md:grid-cols-[minmax(0,29rem)_minmax(0,1fr)] md:gap-10 md:items-end">
           <div>
             <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
@@ -30,7 +43,7 @@ export function PageHeader({
                 Zeichenbreite (vorher 20ch) brach es ohne Trennstelle mitten
                 im Wort um, weil kein Leerzeichen zum Umbrechen da ist. */}
             <h1 className="font-display text-4xl md:text-6xl font-bold leading-[1.02]">
-              {title}
+              {withSoftHyphens(title)}
             </h1>
           </div>
           <div className="mt-5 md:mt-0">

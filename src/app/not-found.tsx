@@ -6,8 +6,9 @@ export const dynamic = "force-dynamic";
 
 export default function NotFound() {
   return (
-    <section className="shell band">
+    <section className="shell pt-24 pb-14 md:pt-32 md:pb-20">
       <div className="lane">
+        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
         <h1 className="text-title max-w-[16ch]">Diese Seite gibt es nicht.</h1>
         <p className="text-lead text-slate mt-6 max-w-[50ch]">
           Vielleicht ein alter Link oder ein Tippfehler in der Adresse. Von hier kommst du weiter.

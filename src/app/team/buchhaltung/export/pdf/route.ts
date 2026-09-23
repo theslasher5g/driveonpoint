@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const user = await currentUser();
-  if (!user || !can(user.role, "buchhaltung.ansehen")) {
+  if (!user || user.mustChangePassword || !can(user.role, "buchhaltung.ansehen")) {
     return new Response("Nicht berechtigt", { status: 403 });
   }
 

@@ -13,7 +13,11 @@ export const dynamic = "force-dynamic";
  * falsch an.
  */
 function csvCell(value: string | number): string {
-  const text = String(value);
+  let text = String(value);
+  // Angebots-, Personen- und Aktionsnamen sind frei eingegeben. Beginnt einer
+  // mit =, +, - oder @, führt Excel ihn beim Öffnen als Formel aus — ein
+  // vorangestelltes Hochkomma macht daraus wieder Text.
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return /[";\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -38,7 +42,7 @@ function toCsv(rows: JournalRow[], heading: string): string[] {
 
 export async function GET(request: Request) {
   const user = await currentUser();
-  if (!user || !can(user.role, "buchhaltung.ansehen")) {
+  if (!user || user.mustChangePassword || !can(user.role, "buchhaltung.ansehen")) {
     return new Response("Nicht berechtigt", { status: 403 });
   }
 

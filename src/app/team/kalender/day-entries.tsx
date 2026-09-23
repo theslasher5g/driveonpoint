@@ -85,9 +85,15 @@ export function DayEntries({
             <button
               type="button"
               onClick={() => setSelected({ kind: "buchung", id: entry.id })}
-              className="block w-full bg-deep/5 hover:bg-signal-tint border-l-2 border-deep px-1.5 py-0.5 text-left text-[0.62rem] sm:text-[0.7rem] leading-tight transition-colors"
+              className="block w-full overflow-hidden whitespace-nowrap bg-deep/5 hover:bg-signal-tint border-l-2 border-deep px-0.5 sm:px-1.5 py-0.5 text-left text-[0.62rem] sm:text-[0.7rem] leading-tight transition-colors"
             >
-              <span className="nums font-bold">{entry.timeLabel.slice(0, 5)}</span>
+              {/* Auf dem Telefon ist die Tageszelle rund 20 px breit —
+                  „08:00“ brach dort als „08: / 00“ um. Ohne führende Null
+                  passt die Zeit auf eine Zeile. */}
+              <span className="nums font-bold sm:hidden">
+                {entry.timeLabel.slice(0, 5).replace(/^0/, "")}
+              </span>
+              <span className="nums font-bold hidden sm:inline">{entry.timeLabel.slice(0, 5)}</span>
               <span className="hidden sm:inline"> {entry.customerName}</span>
             </button>
           </li>

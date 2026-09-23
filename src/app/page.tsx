@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
-import { BrandMark } from "@/components/brand-mark";
 import { NextSlotPanel, NextSlotSkeleton } from "@/components/next-slot";
 import { site } from "@/lib/site";
 
@@ -68,20 +67,16 @@ export default function HomePage() {
           className="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full opacity-40 blur-3xl"
           style={{ background: "#ff847a" }}
         />
-        <div className="shell pt-16 pb-14 md:pt-24 md:pb-20 lg:pt-28 lg:pb-24">
+        <div className="shell pt-24 pb-14 md:pt-32 md:pb-20 lg:pt-36 lg:pb-24">
           <div className="lane text-paper lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14 lg:items-center">
             <div className="min-w-0">
-              <div className="flex items-start justify-between gap-5">
-                <h1 className="text-display max-w-[15ch] min-w-0">
-                  {site.hero.headline[0]}
-                  <br />
-                  {site.hero.headline[1]}
-                </h1>
-                {/* Ab 1024px trägt die weisse Terminkarte rechts die Farbe;
-                    daneben wäre die Marke ein zweiter Blickfang für dieselbe
-                    Sache. Sie steht ohnehin in der Kopfzeile. */}
-                <BrandMark className="w-14 md:w-20 lg:hidden" tone="invert" />
-              </div>
+              {/* Keine zweite Marke neben der Schlagzeile: seit die Kopfzeile
+                  schwebt, steht das Zeichen direkt darüber schon einmal. */}
+              <h1 className="text-display max-w-[15ch] min-w-0">
+                {site.hero.headline[0]}
+                <br />
+                {site.hero.headline[1]}
+              </h1>
 
               <p className="text-lead text-paper/80 max-w-[46ch] mt-6 md:mt-8">
                 {site.hero.lead}

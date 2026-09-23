@@ -26,6 +26,16 @@ import {
   zurichWeekday,
 } from "./time";
 
+/** So weit im Voraus lässt sich online buchen — die Buchungsseite zeigt genau
+ * diesen Zeitraum, und die Buchung selbst nimmt nichts ausserhalb an. */
+export const BOOKING_HORIZON_DAYS = 28;
+
+/** Liegt der Tag im online buchbaren Zeitraum ab heute? */
+export function withinBookingHorizon(day: string): boolean {
+  const today = todayInZurich();
+  return day >= today && day < addDays(today, BOOKING_HORIZON_DAYS);
+}
+
 export type Slot = {
   day: string;
   time: string;

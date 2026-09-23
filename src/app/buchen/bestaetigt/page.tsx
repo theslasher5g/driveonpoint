@@ -29,7 +29,7 @@ export default async function BestaetigtPage({ searchParams }: { searchParams: P
   return (
     <>
       <section className="bg-concrete border-b border-deep/12">
-        <div className="shell py-14 md:py-20">
+        <div className="shell pt-24 pb-14 md:pt-32 md:pb-20">
           <div className="lane sm:flex sm:items-start sm:justify-between sm:gap-10">
             <div>
               <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />

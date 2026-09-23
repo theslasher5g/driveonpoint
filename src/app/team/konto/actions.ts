@@ -98,7 +98,9 @@ export async function changePasswordAction(
   await createSession(user.id, { userAgent: store.get("user-agent"), ip });
 
   await record("passwort.geaendert", { id: user.id, label: user.name });
-  revalidatePath("/team");
+  // Das ganze Layout: mit dem Startpasswort war alles ausser „Mein Konto“
+  // gesperrt, und der Hinweis oben auf dieser Seite muss verschwinden.
+  revalidatePath("/team", "layout");
 
   return { ok: "Passwort geändert. Andere Geräte wurden abgemeldet." };
 }

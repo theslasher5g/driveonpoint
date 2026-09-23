@@ -38,6 +38,7 @@ export function BookingForm({
         label="Vor- und Nachname"
         autoComplete="name"
         error={state.fieldErrors?.name}
+        defaultValue={state.values?.name}
         required
       />
       <Field
@@ -48,6 +49,7 @@ export function BookingForm({
         autoComplete="email"
         inputMode="email"
         error={state.fieldErrors?.email}
+        defaultValue={state.values?.email}
         required
       />
       <Field
@@ -58,6 +60,7 @@ export function BookingForm({
         autoComplete="tel"
         inputMode="tel"
         error={state.fieldErrors?.telefon}
+        defaultValue={state.values?.telefon}
         required
       />
 
@@ -73,13 +76,14 @@ export function BookingForm({
           className="field resize-y"
           aria-invalid={state.fieldErrors?.bemerkung ? "true" : undefined}
           placeholder="Zum Beispiel ein abweichender Treffpunkt."
+          defaultValue={state.values?.bemerkung}
         />
         {state.fieldErrors?.bemerkung && (
           <p className="field-hint text-danger">{state.fieldErrors.bemerkung}</p>
         )}
       </div>
 
-      <CaptchaField scope="buchung" />
+      <CaptchaField scope="buchung" refreshOn={state} />
 
       <div>
         <label className="flex gap-3 items-start cursor-pointer">
@@ -88,6 +92,7 @@ export function BookingForm({
             name="agb"
             value="ja"
             className="mt-1 w-5 h-5 accent-signal shrink-0"
+            defaultChecked={state.values?.agb === "ja"}
             aria-invalid={state.fieldErrors?.agb ? "true" : undefined}
           />
           <span className="text-fine">
@@ -130,6 +135,7 @@ function Field({
   required,
   autoComplete,
   inputMode,
+  defaultValue,
 }: {
   name: string;
   label: string;
@@ -139,6 +145,7 @@ function Field({
   required?: boolean;
   autoComplete?: string;
   inputMode?: "text" | "email" | "tel";
+  defaultValue?: string;
 }) {
   const hintId = hint || error ? `${name}-hinweis` : undefined;
 
@@ -154,6 +161,7 @@ function Field({
         required={required}
         autoComplete={autoComplete}
         inputMode={inputMode}
+        defaultValue={defaultValue}
         className="field"
         aria-invalid={error ? "true" : undefined}
         aria-describedby={hintId}

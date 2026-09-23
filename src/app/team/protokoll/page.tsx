@@ -1,13 +1,25 @@
 import { and, desc, gte, lte } from "drizzle-orm";
 import { requirePermission } from "@/lib/auth/guard";
+import { ROLE_LABEL } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
-import { auditLog } from "@/lib/db/schema";
-import { addDays, todayInZurich, zurichDay, zurichTime, zurichToInstant } from "@/lib/time";
+import { auditLog, lessonTypes, staff } from "@/lib/db/schema";
+import {
+  addDays,
+  formatPrice,
+  todayInZurich,
+  weekdayName,
+  zurichDay,
+  zurichTime,
+  zurichToInstant,
+} from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
 /** Menschenlesbare Beschriftung je Protokoll-Eintrag. Fehlt einer, wird der Rohwert gezeigt. */
 const ACTION_LABELS: Record<string, string> = {
+  "buchung.erstellt": "Online-Buchung eingegangen",
+  "mitarbeiter.geloescht": "Konto gelöscht",
+  "aufbewahrung.geloescht": "Kundendaten nach Ablauf der Frist gelöscht",
   "buchung.begrenzt": "Buchung wegen zu vieler Versuche abgewiesen",
   "buchung.abgesagt": "Termin von Kundschaft abgesagt",
   "buchung.abgesagt-intern": "Termin von der Fahrschule abgesagt",
@@ -41,11 +53,74 @@ const ACTION_LABELS: Record<string, string> = {
   "aktion.geloescht": "Rabattaktion gelöscht",
 };
 
-function describeDetail(detail: Record<string, unknown> | null): string | null {
+const DETAIL_LABELS: Record<string, string> = {
+  id: "Konto",
+  neu: "Konto",
+  fuer: "Für",
+  staffId: "Konto",
+  rolle: "Rolle",
+  aktiv: "Aktiv",
+  lektionsart: "Angebot",
+  angebot: "Angebot",
+  art: "Art",
+  tag: "Tag",
+  bis: "bis",
+  von: "von",
+  auf: "auf",
+  wochentag: "Wochentag",
+  referenz: "Referenz",
+  referenzen: "Referenzen",
+  anzahl: "Anzahl",
+  preisRappen: "Preis",
+  name: "Name",
+  versuche: "Versuche",
+  weg: "Weg",
+  geloescht: "Gelöscht",
+  uebergeben: "Übergeben",
+  abgesagt: "Abgesagt",
+};
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Kennungen werden zu Namen aufgelöst — eine Zeile wie „neu: d2e2a591-…“
+ * sagte niemandem etwas. Eine Kennung ohne Treffer (gelöschtes Konto,
+ * Kennung einer Regel oder Aktion) fällt weg statt als Zeichensalat stehen
+ * zu bleiben.
+ */
+function describeDetail(
+  detail: Record<string, unknown> | null,
+  names: Map<string, string>,
+): string | null {
   if (!detail) return null;
-  const parts = Object.entries(detail)
-    .filter(([key]) => key !== "id" && key !== "fuer")
-    .map(([key, value]) => `${key}: ${String(value)}`);
+  const parts: string[] = [];
+
+  for (const [key, raw] of Object.entries(detail)) {
+    if (raw === undefined || raw === null || raw === "") continue;
+    let value: string;
+
+    if (typeof raw === "string" && UUID.test(raw)) {
+      const resolved = names.get(raw);
+      if (!resolved) continue;
+      value = resolved;
+    } else if (typeof raw === "boolean") {
+      value = raw ? "ja" : "nein";
+    } else if (key === "rolle" && typeof raw === "string" && raw in ROLE_LABEL) {
+      value = ROLE_LABEL[raw as keyof typeof ROLE_LABEL];
+    } else if (key === "wochentag" && typeof raw === "number") {
+      value = weekdayName(raw);
+    } else if (key === "preisRappen" && typeof raw === "number") {
+      value = `CHF ${formatPrice(raw)}`;
+    } else if (key === "ip" || key === "adresse") {
+      // Nur zum Abgleich in der Datenbank; als Prüfsumme sagt sie hier nichts.
+      continue;
+    } else {
+      value = String(raw);
+    }
+
+    parts.push(`${DETAIL_LABELS[key] ?? key}: ${value}`);
+  }
+
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -62,12 +137,21 @@ export default async function ProtokollPage({ searchParams }: { searchParams: Pa
   const from = zurichToInstant(von, "00:00");
   const until = zurichToInstant(bis, "23:59");
 
-  const rows = await db
-    .select()
-    .from(auditLog)
-    .where(and(gte(auditLog.occurredAt, from), lte(auditLog.occurredAt, until)))
-    .orderBy(desc(auditLog.occurredAt))
-    .limit(300);
+  const [rows, people, offerings] = await Promise.all([
+    db
+      .select()
+      .from(auditLog)
+      .where(and(gte(auditLog.occurredAt, from), lte(auditLog.occurredAt, until)))
+      .orderBy(desc(auditLog.occurredAt))
+      .limit(300),
+    db.select({ id: staff.id, name: staff.name }).from(staff),
+    db.select({ id: lessonTypes.id, name: lessonTypes.name }).from(lessonTypes),
+  ]);
+
+  const names = new Map<string, string>([
+    ...people.map((person) => [person.id, person.name] as const),
+    ...offerings.map((offering) => [offering.id, offering.name] as const),
+  ]);
 
   return (
     <section className="shell py-10 md:py-14">
@@ -100,7 +184,7 @@ export default async function ProtokollPage({ searchParams }: { searchParams: Pa
         ) : (
           <div className="border-t border-deep/15 mt-10">
             {rows.map((row) => {
-              const detail = describeDetail(row.detail);
+              const detail = describeDetail(row.detail, names);
               return (
                 <div
                   key={row.id}

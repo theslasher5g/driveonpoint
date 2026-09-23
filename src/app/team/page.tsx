@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { and, asc, count, eq, gte, lte, ne } from "drizzle-orm";
-import { requireUser } from "@/lib/auth/guard";
+import { PASSWORD_CHANGE_PAGE, requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { availabilityRules, bookings, lessonTypes, staff, staffLessonTypes } from "@/lib/db/schema";
@@ -72,6 +73,7 @@ export default async function TeamDashboard({
   searchParams: Promise<{ fehler?: string }>;
 }) {
   const user = await requireUser();
+  if (user.mustChangePassword) redirect(PASSWORD_CHANGE_PAGE);
   const { fehler } = await searchParams;
 
   const today = todayInZurich();
@@ -140,17 +142,7 @@ export default async function TeamDashboard({
           </p>
         )}
 
-        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-          <h1 className="text-title">Guten Tag, {user.name.split(" ")[0]}.</h1>
-          {user.mustChangePassword && (
-            <Link
-              href="/team/konto"
-              className="text-fine font-bold text-signal-ink underline underline-offset-4"
-            >
-              Startpasswort noch nicht geändert
-            </Link>
-          )}
-        </div>
+        <h1 className="text-title">Guten Tag, {user.name.split(" ")[0]}.</h1>
 
         {/* Gelb trägt hier Bedeutung: nur die Kachel, die eine Reaktion
             braucht, ist eingefärbt. */}

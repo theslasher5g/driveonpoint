@@ -15,7 +15,24 @@ import {
 import { sendBookingConfirmation } from "@/lib/booking-mail";
 import { env } from "@/lib/env";
 
-export type ManualBookingState = { error?: string; fieldErrors?: Record<string, string> };
+export type ManualBookingState = {
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  /** Das Eingetippte — React leert das Formular nach dem Absenden sonst. */
+  values?: Record<string, string>;
+};
+
+export async function createManualBookingAction(
+  previous: ManualBookingState,
+  formData: FormData,
+): Promise<ManualBookingState> {
+  const values: Record<string, string> = {};
+  for (const key of ["name", "telefon", "email", "bemerkung"]) {
+    const value = formData.get(key);
+    if (typeof value === "string") values[key] = value.slice(0, 600);
+  }
+  return { ...(await createManualBooking(previous, formData)), values };
+}
 
 const schema = z.object({
   angebot: z.string().min(1).max(60),
@@ -47,7 +64,7 @@ const schema = z.object({
  * AGB-Häkchen: die anmeldende Person vertritt hier das Geschäft, nicht sich
  * selbst.
  */
-export async function createManualBookingAction(
+async function createManualBooking(
   _previous: ManualBookingState,
   formData: FormData,
 ): Promise<ManualBookingState> {

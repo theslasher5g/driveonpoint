@@ -153,12 +153,8 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   notice: {
-    backgroundColor: COLOR.amberTint,
-    borderLeftWidth: 2.5,
-    borderLeftColor: "#C98A1E",
-    padding: 10,
     fontSize: 8,
-    color: COLOR.amberInk,
+    color: COLOR.slate,
     lineHeight: 1.5,
     marginBottom: 22,
   },

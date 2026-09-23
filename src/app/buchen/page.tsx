@@ -12,6 +12,7 @@ import {
   listLessonTypes,
   type Slot,
 } from "@/lib/booking";
+import { site } from "@/lib/site";
 import { formatDayLong, formatPrice, todayInZurich } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
@@ -169,7 +170,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
             ? allowsMulti
               ? "Wähle einen oder mehrere Termine — heute gleich drei hintereinander, oder verteilt auf mehrere Tage. Alles, was hier steht, ist tatsächlich frei."
               : `Wähle einen Termin. Alles, was hier steht, ist tatsächlich frei — die Liste kommt direkt aus dem Kalender der Fahrlehrerinnen und Fahrlehrer.`
-            : "Für die nächsten vier Wochen ist gerade nichts frei. Ruf uns an, oft lässt sich trotzdem etwas einrichten."
+            : "Für die nächsten vier Wochen ist online nichts frei."
         }
       />
       <section className="shell band">
@@ -184,7 +185,23 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
             </Link>
           </div>
 
-          {allowsMulti ? (
+          {slots.length === 0 ? (
+            <div className="surface bg-paper p-6 md:p-7 max-w-xl">
+              <p className="font-display text-xl font-bold">Ruf uns an</p>
+              <p className="text-slate mt-2">
+                Oft lässt sich trotzdem etwas einrichten, auch wenn online gerade nichts frei
+                ist — ruf uns an oder schreib uns kurz.
+              </p>
+              <div className="flex flex-wrap gap-3 mt-5">
+                <a href={`tel:${site.contact.phoneHref}`} className="btn btn-primary">
+                  {site.contact.phone}
+                </a>
+                <Link href="/kontakt" className="btn btn-outline">
+                  Schreib uns
+                </Link>
+              </div>
+            </div>
+          ) : allowsMulti ? (
             <FahrstundeSlotSelector slots={slots} slug={lessonType.slug} />
           ) : (
             <SlotList slots={slots} slug={lessonType.slug} isCourse={lessonType.capacity > 1} />

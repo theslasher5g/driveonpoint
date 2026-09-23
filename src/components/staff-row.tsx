@@ -43,6 +43,8 @@ export function StaffRow({
   const [resetState, resetAction] = useActionState(resetPasswordAction, EMPTY);
   const [offersOpen, setOffersOpen] = useState(false);
   const offersDialogRef = useRef<HTMLDialogElement>(null);
+  const [roleOpen, setRoleOpen] = useState(false);
+  const roleDialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     const dialog = offersDialogRef.current;
@@ -50,6 +52,13 @@ export function StaffRow({
     if (offersOpen && !dialog.open) dialog.showModal();
     if (!offersOpen && dialog.open) dialog.close();
   }, [offersOpen]);
+
+  useEffect(() => {
+    const dialog = roleDialogRef.current;
+    if (!dialog) return;
+    if (roleOpen && !dialog.open) dialog.showModal();
+    if (!roleOpen && dialog.open) dialog.close();
+  }, [roleOpen]);
 
   const assignedOffers = offers.filter((offer) => assigned.includes(offer.id));
 
@@ -90,6 +99,9 @@ export function StaffRow({
 
           <ActionMenu label={`Konto von ${person.name} verwalten`}>
             <ActionMenuItem onClick={() => setOffersOpen(true)}>Angebote bearbeiten</ActionMenuItem>
+            {!isSelf && (
+              <ActionMenuItem onClick={() => setRoleOpen(true)}>Rolle ändern</ActionMenuItem>
+            )}
 
             {!isSelf && (
               <form action={resetAction}>
@@ -163,33 +175,7 @@ export function StaffRow({
         </p>
       )}
 
-      <div className="flex flex-wrap items-end justify-between gap-4 mt-5 pt-5 border-t border-deep/10">
-        {!isSelf ? (
-          <form action={updateRoleAction} className="flex flex-wrap items-end gap-3">
-            <input type="hidden" name="id" value={person.id} />
-            <div className="min-w-40">
-              <label className="field-label" htmlFor={`rolle-${person.id}`}>
-                Rolle
-              </label>
-              <select
-                id={`rolle-${person.id}`}
-                name="rolle"
-                className="field"
-                defaultValue={person.role}
-              >
-                {staffRole.enumValues.map((role) => (
-                  <option key={role} value={role}>
-                    {ROLE_LABEL[role]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <MiniSubmit idle="Rolle setzen" busy="Setzt …" />
-          </form>
-        ) : (
-          <span />
-        )}
-
+      <div className="flex items-center justify-end mt-5 pt-5 border-t border-deep/10">
         <p className="text-fine text-slate">
           {person.lastLoginAt
             ? `Zuletzt angemeldet am ${person.lastLoginAt.toLocaleDateString("de-CH")}`
@@ -241,6 +227,51 @@ export function StaffRow({
           </div>
         </form>
       </dialog>
+
+      <dialog
+        ref={roleDialogRef}
+        onClose={() => setRoleOpen(false)}
+        className="m-auto w-[min(24rem,calc(100vw-2rem))] rounded-[var(--radius-surface)] border border-deep/20 bg-paper p-0 backdrop:bg-deep/50"
+      >
+        <form action={updateRoleAction} className="p-5 md:p-6">
+          <input type="hidden" name="id" value={person.id} />
+          <CloseOnSaved onSaved={() => setRoleOpen(false)} />
+
+          <h2 className="font-display text-lg font-bold">Rolle von {person.name}</h2>
+          <p className="text-fine text-slate mt-1">
+            Die Rolle entscheidet, was diese Person im Team-Bereich sehen und ändern darf.
+          </p>
+
+          <div className="mt-4">
+            <label className="field-label" htmlFor={`rolle-${person.id}`}>
+              Rolle
+            </label>
+            <select
+              id={`rolle-${person.id}`}
+              name="rolle"
+              className="field"
+              defaultValue={person.role}
+            >
+              {staffRole.enumValues.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABEL[role]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 mt-6">
+            <RoleSaveButton />
+            <button
+              type="button"
+              onClick={() => setRoleOpen(false)}
+              className="text-fine font-semibold text-slate underline underline-offset-2"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </form>
+      </dialog>
     </article>
   );
 }
@@ -267,15 +298,11 @@ function OffersSaveButton() {
   );
 }
 
-function MiniSubmit({ idle, busy }: { idle: string; busy: string }) {
+function RoleSaveButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="text-fine font-semibold text-signal-ink underline underline-offset-2 disabled:opacity-50 mt-3"
-    >
-      {pending ? busy : idle}
+    <button type="submit" className="btn btn-primary py-2.5 px-5 text-fine" disabled={pending}>
+      {pending ? "Wird gespeichert …" : "Speichern"}
     </button>
   );
 }

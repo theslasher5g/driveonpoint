@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 const offer = site.offers.nothilfekurs;
 
 export const metadata: Metadata = {
-  title: "Nothilfekurs",
-  description: offer.lead,
+  title: `Nothilfekurs in ${site.contact.city}`,
+  description: `${offer.lead} Kursort ${site.contact.city}.`,
   alternates: { canonical: "/nothilfekurs" },
 };
 

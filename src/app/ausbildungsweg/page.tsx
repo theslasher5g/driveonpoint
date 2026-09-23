@@ -8,9 +8,8 @@ import { site } from "@/lib/site";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Weg zum Führerausweis",
-  description:
-    "Nothilfekurs, Sehtest, Theorieprüfung, VKU, Fahrstunden, praktische Prüfung, WAB — die sieben Schritte zum Führerausweis Kategorie B in der Schweiz.",
+  title: `Weg zum Führerausweis in ${site.contact.city}`,
+  description: `Nothilfekurs, Sehtest, Theorieprüfung, VKU, Fahrstunden, praktische Prüfung, WAB — die sieben Schritte zum Führerausweis Kategorie B, mit einer Fahrschule in ${site.contact.city}.`,
   alternates: { canonical: "/ausbildungsweg" },
 };
 

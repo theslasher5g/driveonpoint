@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
 import { PublicOnly } from "@/components/public-chrome";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { StructuredData } from "@/components/structured-data";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -32,6 +33,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "de_CH",
     siteName: site.name,
+    images: [
+      {
+        url: site.images.hero.src,
+        width: site.images.hero.width,
+        height: site.images.hero.height,
+        alt: site.images.hero.alt,
+      },
+    ],
   },
   robots: { index: true, follow: true },
   alternates: { canonical: "/" },
@@ -51,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Zum Inhalt springen
         </a>
         <PublicOnly>
+          <StructuredData />
           <SiteHeader />
         </PublicOnly>
         <main id="inhalt" className="flex-1">

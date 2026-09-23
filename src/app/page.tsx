@@ -242,7 +242,7 @@ export default function HomePage() {
             <div>
               <h2 className="text-title max-w-[15ch]">Such dir einen Termin aus.</h2>
               <p className="text-paper/80 mt-3 max-w-[50ch]">
-                Du siehst direkt, wann Christina und Jolanda frei sind. Keine Rückrufe, keine
+                Du siehst direkt, wann Christina frei ist. Keine Rückrufe, keine
                 Warteschleife — und absagen kannst du bis 24 Stunden vorher kostenlos.
               </p>
             </div>

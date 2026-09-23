@@ -3,14 +3,14 @@ import Link from "next/link";
 import { PageHeader, Section } from "@/components/page-header";
 import { PriceTable } from "@/components/price-table";
 import { activePromotions } from "@/lib/booking";
+import { site } from "@/lib/site";
 import { formatDayLong } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Preise",
-  description:
-    "Alle Preise für Fahrstunden, Verkehrskundeunterricht und Nothilfekurs — ohne Anmeldegebühr und ohne Kleingedrucktes.",
+  title: `Preise — Fahrschule in ${site.contact.city}`,
+  description: `Alle Preise für Fahrstunden, Verkehrskundeunterricht und Nothilfekurs in ${site.contact.city} — ohne Anmeldegebühr und ohne Kleingedrucktes.`,
   alternates: { canonical: "/preise" },
 };
 

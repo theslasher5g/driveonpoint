@@ -68,7 +68,7 @@ export const site = {
 
   hero: {
     headline: ["Fahren lernen,", "ohne Druck."],
-    lead: "Zwei Fahrlehrerinnen, dein Tempo. Wir sagen dir ehrlich, wo du stehst — und melden dich erst zur Prüfung an, wenn du wirklich bereit bist.",
+    lead: "Deine Fahrlehrerin in Basel, dein Tempo. Wir sagen dir ehrlich, wo du stehst — und melden dich erst zur Prüfung an, wenn du wirklich bereit bist.",
   },
 
   philosophy: {

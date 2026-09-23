@@ -9,9 +9,8 @@ export const dynamic = "force-dynamic";
 const offer = site.offers.fahrstunden;
 
 export const metadata: Metadata = {
-  title: "Fahrstunden Kategorie B",
-  description:
-    "Einzelunterricht im Schulfahrzeug, 45 Minuten pro Lektion, in deinem eigenen Lerntempo. Schnupperstunde, Einzelstunden und Abos.",
+  title: `Fahrstunden in ${site.contact.city} — Kategorie B`,
+  description: `Einzelunterricht im Schulfahrzeug in ${site.contact.city} und Umgebung, 45 Minuten pro Lektion, in deinem eigenen Lerntempo. Schnupperstunde, Einzelstunden und Abos.`,
   alternates: { canonical: "/fahrstunden" },
 };
 

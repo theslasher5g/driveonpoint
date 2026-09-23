@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 const offer = site.offers.vku;
 
 export const metadata: Metadata = {
-  title: "Verkehrskundeunterricht (VKU)",
-  description: offer.lead,
+  title: `Verkehrskundeunterricht (VKU) in ${site.contact.city}`,
+  description: `${offer.lead} Kursort ${site.contact.city}.`,
   alternates: { canonical: "/vku" },
 };
 

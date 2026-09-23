@@ -65,6 +65,55 @@ export function AvailabilityForms({
   );
 }
 
+/**
+ * Ein Kurstermin, kein wöchentlicher Rhythmus: VKU und Nothilfekurs finden
+ * nicht jede Woche statt, sondern nur an den Tagen, die tatsächlich
+ * angeboten werden. Deshalb trägt man hier direkt einzelne Daten ein statt
+ * über die wöchentliche Regel — die würde sonst jede Woche denselben
+ * Wochentag anbieten, egal ob an dem Tag wirklich ein Kurs stattfindet.
+ */
+export function CourseDateForm({
+  person,
+  lessonTypeId,
+  lessonTypeName,
+  durationMinutes,
+}: {
+  person: string;
+  lessonTypeId: string;
+  lessonTypeName: string;
+  durationMinutes: number;
+}) {
+  const [state, action] = useActionState(addExceptionAction, EMPTY);
+  const defaultEnd = fromMinutes(minutesSinceMidnight(DEFAULT_START) + durationMinutes);
+
+  return (
+    <form action={action} className="rounded-[var(--radius-control)] bg-concrete p-4">
+      <input type="hidden" name="person" value={person} />
+      <input type="hidden" name="lessonTypeId" value={lessonTypeId} />
+      <input type="hidden" name="art" value="frei" />
+      <h3 className="text-fine font-bold mb-3">Kurstermin für {lessonTypeName} hinzufügen</h3>
+      <Feedback state={state} />
+
+      <div className="flex flex-wrap items-end gap-3 mt-3">
+        <div className="min-w-[9rem]">
+          <label className="field-label text-fine" htmlFor={`kurstag-${lessonTypeId}`}>
+            Datum
+          </label>
+          <input
+            id={`kurstag-${lessonTypeId}`}
+            name="tag"
+            type="date"
+            className="field nums py-2"
+            required
+          />
+        </div>
+        <TimePair idPrefix={`kurs-${lessonTypeId}`} defaultFrom={DEFAULT_START} defaultTo={defaultEnd} />
+        <Submit label="Eintragen" busy="…" />
+      </div>
+    </form>
+  );
+}
+
 export function AvailabilityExceptionForm({
   person,
   offerings,

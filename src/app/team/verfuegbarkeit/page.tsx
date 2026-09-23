@@ -11,7 +11,7 @@ import {
   staffLessonTypes,
 } from "@/lib/db/schema";
 import { formatDayLong, todayInZurich, weekdayName } from "@/lib/time";
-import { AvailabilityForms, AvailabilityExceptionForm } from "@/components/availability-forms";
+import { AvailabilityForms, AvailabilityExceptionForm, CourseDateForm } from "@/components/availability-forms";
 import { DeleteRuleButton, DeleteExceptionButton } from "@/components/availability-delete";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +40,12 @@ export default async function VerfuegbarkeitPage({
 
   const [offerings, rules, exceptions] = await Promise.all([
     db
-      .select({ id: lessonTypes.id, name: lessonTypes.name, durationMinutes: lessonTypes.durationMinutes })
+      .select({
+        id: lessonTypes.id,
+        name: lessonTypes.name,
+        durationMinutes: lessonTypes.durationMinutes,
+        capacity: lessonTypes.capacity,
+      })
       .from(staffLessonTypes)
       .innerJoin(lessonTypes, eq(lessonTypes.id, staffLessonTypes.lessonTypeId))
       .where(and(eq(staffLessonTypes.staffId, targetId), eq(lessonTypes.active, true)))
@@ -79,6 +84,16 @@ export default async function VerfuegbarkeitPage({
       )
       .orderBy(asc(availabilityExceptions.day), asc(availabilityExceptions.startTime)),
   ]);
+
+  // Kurstermine erscheinen bereits oben beim jeweiligen Kurs — hier unten
+  // bleiben nur Abwesenheiten und Zusatzzeiten für Einzelangebote, sonst
+  // stünde derselbe Kurstermin zweimal auf der Seite.
+  const courseOfferingIds = new Set(
+    offerings.filter((offering) => offering.capacity > 1).map((offering) => offering.id),
+  );
+  const generalExceptions = exceptions.filter(
+    (entry) => !(entry.available && entry.lessonTypeId && courseOfferingIds.has(entry.lessonTypeId)),
+  );
 
   return (
     <section className="shell py-10 md:py-14">
@@ -120,6 +135,53 @@ export default async function VerfuegbarkeitPage({
         ) : (
           <div className="mt-10 space-y-14">
             {offerings.map((offering) => {
+              // Kurse wie VKU und Nothilfekurs finden nicht jede Woche statt
+              // — eine wöchentliche Regel würde sie fälschlich jede Woche
+              // anbieten. Sie bekommen stattdessen einzelne Kurstermine.
+              if (offering.capacity > 1) {
+                const courseDates = exceptions.filter(
+                  (entry) => entry.lessonTypeId === offering.id && entry.available,
+                );
+
+                return (
+                  <div key={offering.id} className="surface bg-paper p-5 md:p-6">
+                    <h2 className="font-display text-xl font-bold">{offering.name}</h2>
+                    <p className="text-fine text-slate mt-1 mb-4 max-w-[52ch]">
+                      Ein Kurs, kein wöchentlicher Termin — jeder Kurstermin wird einzeln
+                      eingetragen.
+                    </p>
+
+                    <div className="grid gap-6 lg:grid-cols-2 lg:gap-10 items-start">
+                      {courseDates.length === 0 ? (
+                        <p className="text-slate text-fine">Noch kein Kurstermin eingetragen.</p>
+                      ) : (
+                        <ul className="rounded-[var(--radius-control)] bg-concrete overflow-hidden">
+                          {courseDates.map((entry) => (
+                            <li
+                              key={entry.id}
+                              className="border-b border-deep/10 last:border-0 px-4 py-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1"
+                            >
+                              <span className="font-semibold">{formatDayLong(entry.day)}</span>
+                              <span className="nums text-slate">
+                                {entry.startTime.slice(0, 5)} – {entry.endTime.slice(0, 5)}
+                              </span>
+                              <DeleteExceptionButton id={entry.id} person={targetId} />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <CourseDateForm
+                        person={targetId}
+                        lessonTypeId={offering.id}
+                        lessonTypeName={offering.name}
+                        durationMinutes={offering.durationMinutes}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+
               const ownRules = rules.filter((rule) => rule.lessonTypeId === offering.id);
               const byWeekday = new Map<number, typeof ownRules>();
               for (const rule of ownRules) {
@@ -185,14 +247,14 @@ export default async function VerfuegbarkeitPage({
           <h2 className="font-display text-2xl font-bold">Einzelne Tage</h2>
           <p className="text-slate text-fine mt-1.5 mb-5 max-w-[60ch]">
             Ferien, Arzttermin oder eine Zeit extra. Für mehrere Tage am Stück das Feld „Bis"
-            ausfüllen.
+            ausfüllen. Kurstermine trägst du oben direkt beim jeweiligen Kurs ein.
           </p>
 
-          {exceptions.length === 0 ? (
+          {generalExceptions.length === 0 ? (
             <p className="text-slate text-fine">Keine Ausnahmen für die kommenden Tage.</p>
           ) : (
             <ul className="surface bg-paper">
-              {exceptions.map((entry) => (
+              {generalExceptions.map((entry) => (
                 <li key={entry.id} className="border-b border-deep/10 last:border-0 px-5 py-3.5">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <span

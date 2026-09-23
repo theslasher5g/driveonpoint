@@ -19,6 +19,11 @@ export function CreateStaffForm() {
           {state.error}
         </p>
       )}
+      {state.ok && (
+        <p role="status" className="notice notice-success">
+          {state.ok} Das Startpasswort wurde in einem Fenster angezeigt.
+        </p>
+      )}
       {state.ok && state.password && (
         <PasswordNotice heading={state.ok} password={state.password} />
       )}

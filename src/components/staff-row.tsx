@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   deleteStaffAction,
@@ -41,6 +41,17 @@ export function StaffRow({
   isSelf: boolean;
 }) {
   const [resetState, resetAction] = useActionState(resetPasswordAction, EMPTY);
+  const [offersOpen, setOffersOpen] = useState(false);
+  const offersDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = offersDialogRef.current;
+    if (!dialog) return;
+    if (offersOpen && !dialog.open) dialog.showModal();
+    if (!offersOpen && dialog.open) dialog.close();
+  }, [offersOpen]);
+
+  const assignedOffers = offers.filter((offer) => assigned.includes(offer.id));
 
   return (
     <article
@@ -78,10 +89,14 @@ export function StaffRow({
           </span>
 
           <ActionMenu label={`Konto von ${person.name} verwalten`}>
-            <form action={resetAction}>
-              <input type="hidden" name="id" value={person.id} />
-              <ActionMenuItem type="submit">Passwort zurücksetzen</ActionMenuItem>
-            </form>
+            <ActionMenuItem onClick={() => setOffersOpen(true)}>Angebote bearbeiten</ActionMenuItem>
+
+            {!isSelf && (
+              <form action={resetAction}>
+                <input type="hidden" name="id" value={person.id} />
+                <ActionMenuItem type="submit">Passwort zurücksetzen</ActionMenuItem>
+              </form>
+            )}
 
             {person.totpEnabled && !isSelf && (
               <form action={resetMfaAction}>
@@ -122,10 +137,25 @@ export function StaffRow({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-1.5 mt-3">
+        {assignedOffers.length === 0 ? (
+          <span className="text-fine text-slate">Darf noch nichts unterrichten</span>
+        ) : (
+          assignedOffers.map((offer) => (
+            <span key={offer.id} className="chip chip-quiet">
+              {offer.name}
+            </span>
+          ))
+        )}
+      </div>
+
+      {resetState.ok && (
+        <p role="status" className="notice notice-success mt-4">
+          {resetState.ok} Das neue Startpasswort wurde in einem Fenster angezeigt.
+        </p>
+      )}
       {resetState.ok && resetState.password && (
-        <div className="mt-4">
-          <PasswordNotice heading={resetState.ok} password={resetState.password} />
-        </div>
+        <PasswordNotice heading={resetState.ok} password={resetState.password} />
       )}
       {resetState.error && (
         <p role="alert" className="notice notice-error mt-4">
@@ -133,12 +163,57 @@ export function StaffRow({
         </p>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2 mt-5 pt-5 border-t border-deep/10">
-        <form action={setLessonTypesAction}>
+      <div className="flex flex-wrap items-end justify-between gap-4 mt-5 pt-5 border-t border-deep/10">
+        {!isSelf ? (
+          <form action={updateRoleAction} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="id" value={person.id} />
+            <div className="min-w-40">
+              <label className="field-label" htmlFor={`rolle-${person.id}`}>
+                Rolle
+              </label>
+              <select
+                id={`rolle-${person.id}`}
+                name="rolle"
+                className="field"
+                defaultValue={person.role}
+              >
+                {staffRole.enumValues.map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABEL[role]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <MiniSubmit idle="Rolle setzen" busy="Setzt …" />
+          </form>
+        ) : (
+          <span />
+        )}
+
+        <p className="text-fine text-slate">
+          {person.lastLoginAt
+            ? `Zuletzt angemeldet am ${person.lastLoginAt.toLocaleDateString("de-CH")}`
+            : "Noch nie angemeldet"}
+        </p>
+      </div>
+
+      <dialog
+        ref={offersDialogRef}
+        onClose={() => setOffersOpen(false)}
+        className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-[var(--radius-surface)] border border-deep/20 bg-paper p-0 backdrop:bg-deep/50"
+      >
+        <form action={setLessonTypesAction} className="p-5 md:p-6">
           <input type="hidden" name="id" value={person.id} />
-          <fieldset>
-            <legend className="field-label">Darf unterrichten</legend>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 mt-1">
+          <CloseOnSaved onSaved={() => setOffersOpen(false)} />
+
+          <h2 className="font-display text-lg font-bold">Angebote von {person.name}</h2>
+          <p className="text-fine text-slate mt-1">
+            Nur angekreuzte Angebote erscheinen bei dieser Person als buchbar.
+          </p>
+
+          <fieldset className="mt-4">
+            <legend className="sr-only">Angebote</legend>
+            <div className="flex flex-wrap gap-x-5 gap-y-2.5">
               {offers.map((offer) => (
                 <label key={offer.id} className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -152,46 +227,43 @@ export function StaffRow({
                 </label>
               ))}
             </div>
-            <p className="field-hint">
-              Nur angekreuzte Angebote erscheinen bei dieser Person als buchbar.
-            </p>
           </fieldset>
-          <MiniSubmit idle="Angebote speichern" busy="Speichert …" />
+
+          <div className="flex flex-wrap items-center gap-4 mt-6">
+            <OffersSaveButton />
+            <button
+              type="button"
+              onClick={() => setOffersOpen(false)}
+              className="text-fine font-semibold text-slate underline underline-offset-2"
+            >
+              Abbrechen
+            </button>
+          </div>
         </form>
-
-        <div className="space-y-4">
-          {!isSelf && (
-            <form action={updateRoleAction} className="flex flex-wrap items-end gap-3">
-              <input type="hidden" name="id" value={person.id} />
-              <div className="flex-1 min-w-40">
-                <label className="field-label" htmlFor={`rolle-${person.id}`}>
-                  Rolle
-                </label>
-                <select
-                  id={`rolle-${person.id}`}
-                  name="rolle"
-                  className="field"
-                  defaultValue={person.role}
-                >
-                  {staffRole.enumValues.map((role) => (
-                    <option key={role} value={role}>
-                      {ROLE_LABEL[role]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <MiniSubmit idle="Rolle setzen" busy="Setzt …" />
-            </form>
-          )}
-
-          <p className="text-fine text-slate">
-            {person.lastLoginAt
-              ? `Zuletzt angemeldet am ${person.lastLoginAt.toLocaleDateString("de-CH")}`
-              : "Noch nie angemeldet"}
-          </p>
-        </div>
-      </div>
+      </dialog>
     </article>
+  );
+}
+
+/** Schliesst den Dialog selbsttätig, sobald die Server-Aktion durchgelaufen ist. */
+function CloseOnSaved({ onSaved }: { onSaved: () => void }) {
+  const { pending } = useFormStatus();
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (wasPending.current && !pending) onSaved();
+    wasPending.current = pending;
+  }, [pending, onSaved]);
+
+  return null;
+}
+
+function OffersSaveButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn btn-primary py-2.5 px-5 text-fine" disabled={pending}>
+      {pending ? "Wird gespeichert …" : "Speichern"}
+    </button>
   );
 }
 

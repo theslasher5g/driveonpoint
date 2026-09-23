@@ -60,7 +60,14 @@ export function ActionMenu({
       {open && (
         <div
           role="menu"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            // Erst nach dem aktuellen Klick schliessen: ein Submit-Knopf
+            // löst beim Klicken selbst noch das Absenden des umgebenden
+            // Formulars aus — würde das Menü synchron schliessen, verliert
+            // React den Knopf aus dem DOM, bevor der Browser das Formular
+            // überhaupt abschickt, und die Aktion verpufft stillschweigend.
+            window.setTimeout(() => setOpen(false), 0);
+          }}
           className={`glass absolute z-30 top-full mt-2 min-w-[13rem] rounded-[var(--radius-control)] p-1.5 ${
             align === "right" ? "right-0" : "left-0"
           }`}

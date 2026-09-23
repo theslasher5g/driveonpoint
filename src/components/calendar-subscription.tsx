@@ -19,8 +19,8 @@ export function CalendarSubscription({ url }: { url: string }) {
   }
 
   return (
-    <div className="max-w-md">
-      <p className="text-slate mb-5">
+    <div>
+      <p className="text-slate mb-5 max-w-[62ch]">
         Deine Termine erscheinen automatisch in Google Kalender, Apple Kalender oder Outlook.
         Einmal einrichten, danach aktualisiert es sich von selbst.
       </p>
@@ -45,30 +45,39 @@ export function CalendarSubscription({ url }: { url: string }) {
         </form>
       </div>
 
-      <ol className="mt-7 space-y-3 text-fine text-slate">
-        <li>
-          <span className="font-bold text-deep">Google Kalender:</span> Einstellungen öffnen,
-          „Kalender hinzufügen“, dann „Per URL“ — Link einfügen.
+      <ol className="grid gap-3 sm:grid-cols-3 mt-7">
+        <li className="rounded-[var(--radius-control)] bg-concrete p-4">
+          <p className="font-bold text-deep">Google Kalender</p>
+          <p className="text-fine text-slate mt-1">
+            Einstellungen öffnen, „Kalender hinzufügen“, dann „Per URL“ — Link einfügen.
+          </p>
         </li>
-        <li>
-          <span className="font-bold text-deep">Apple Kalender:</span> Ablage, „Neues
-          Kalenderabonnement“ — Link einfügen.
+        <li className="rounded-[var(--radius-control)] bg-concrete p-4">
+          <p className="font-bold text-deep">Apple Kalender</p>
+          <p className="text-fine text-slate mt-1">
+            Ablage, „Neues Kalenderabonnement“ — Link einfügen.
+          </p>
         </li>
-        <li>
-          <span className="font-bold text-deep">Outlook:</span> Kalender hinzufügen, „Aus dem
-          Internet abonnieren“ — Link einfügen.
+        <li className="rounded-[var(--radius-control)] bg-concrete p-4">
+          <p className="font-bold text-deep">Outlook</p>
+          <p className="text-fine text-slate mt-1">
+            Kalender hinzufügen, „Aus dem Internet abonnieren“ — Link einfügen.
+          </p>
         </li>
       </ol>
 
-      <p className="text-fine text-slate mt-6">
-        Der Link enthält kein Passwort und ist trotzdem geheim: Wer ihn hat, sieht deine Termine.
-        Gib ihn nicht weiter. Ist er versehentlich abhandengekommen, erzeuge einen neuen — der
-        alte hört dann sofort auf zu funktionieren, und du richtest das Abonnement neu ein.
-      </p>
-      <p className="text-fine text-slate mt-3">
-        Google fragt abonnierte Kalender nur alle paar Stunden ab. Neue Buchungen erscheinen
-        deshalb dort verzögert, im Team-Kalender dieser Seite sofort.
-      </p>
+      <div className="max-w-[62ch] space-y-3 mt-6">
+        <p className="text-fine text-slate">
+          Der Link enthält kein Passwort und ist trotzdem geheim: Wer ihn hat, sieht deine
+          Termine. Gib ihn nicht weiter. Ist er versehentlich abhandengekommen, erzeuge einen
+          neuen — der alte hört dann sofort auf zu funktionieren, und du richtest das Abonnement
+          neu ein.
+        </p>
+        <p className="text-fine text-slate">
+          Google fragt abonnierte Kalender nur alle paar Stunden ab. Neue Buchungen erscheinen
+          deshalb dort verzögert, im Team-Kalender dieser Seite sofort.
+        </p>
+      </div>
     </div>
   );
 }

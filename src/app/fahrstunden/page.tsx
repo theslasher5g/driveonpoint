@@ -63,14 +63,14 @@ export default function FahrstundenPage() {
       </Section>
 
       <Section title="Was du mitbringen musst">
-        <ul className="border-t border-deep/12 max-w-2xl">
+        <ul className="grid gap-x-8 gap-y-5 sm:grid-cols-2 max-w-2xl">
           {[
             ["Lernfahrausweis", "Ohne ihn dürfen wir nicht losfahren. Er kommt vom Strassenverkehrsamt."],
             ["Brille oder Linsen", "Falls im Lernfahrausweis vermerkt. Der Experte prüft das."],
             ["Festes Schuhwerk", "Keine Flipflops und keine Schuhe mit dicker Sohle."],
             ["Pünktlichkeit", "Bei Verspätung verkürzt sich die Lektion, sie fällt aber nicht aus."],
           ].map(([title, body]) => (
-            <li key={title} className="border-b border-deep/12 py-4">
+            <li key={title}>
               <h3 className="text-base">{title}</h3>
               <p className="text-slate mt-1">{body}</p>
             </li>
@@ -97,10 +97,10 @@ export default function FahrstundenPage() {
           klappt sie auf. <details> kann das von sich aus — mit Tastatur,
           ohne JavaScript und auch dann, wenn die Seite noch lädt. */}
       <Section title="Häufige Fragen">
-        <div className="border-t border-deep/12 max-w-3xl">
+        <div className="space-y-2.5 max-w-3xl">
           {site.faq.map((entry) => (
-            <details key={entry.q} className="group border-b border-deep/12">
-              <summary className="flex items-baseline gap-4 py-3.5 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            <details key={entry.q} className="group surface bg-paper">
+              <summary className="flex items-baseline gap-4 px-5 py-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                 <span className="flex-1 font-bold">{entry.q}</span>
                 <span
                   aria-hidden="true"
@@ -109,7 +109,7 @@ export default function FahrstundenPage() {
                   +
                 </span>
               </summary>
-              <p className="text-slate text-fine pb-4 max-w-[62ch]">{entry.a}</p>
+              <p className="text-slate text-fine px-5 pb-4 max-w-[62ch]">{entry.a}</p>
             </details>
           ))}
         </div>

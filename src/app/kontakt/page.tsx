@@ -33,8 +33,8 @@ export default function KontaktPage() {
           <div>
             <h2 className="text-section mb-7">Direkt erreichen</h2>
 
-            <dl className="border-t border-deep/15">
-              <div className="border-b border-deep/15 py-4">
+            <dl className="surface bg-paper divide-y divide-deep/10">
+              <div className="px-5 py-4">
                 <dt className="text-fine text-slate">Telefon</dt>
                 <dd className="nums font-bold text-lg mt-0.5">
                   <a href={`tel:${site.contact.phoneHref}`} className="hover:text-signal-ink">
@@ -42,7 +42,7 @@ export default function KontaktPage() {
                   </a>
                 </dd>
               </div>
-              <div className="border-b border-deep/15 py-4">
+              <div className="px-5 py-4">
                 <dt className="text-fine text-slate">Mail</dt>
                 <dd className="font-bold text-lg mt-0.5 break-all">
                   <a href={`mailto:${site.contact.email}`} className="hover:text-signal-ink">
@@ -50,7 +50,7 @@ export default function KontaktPage() {
                   </a>
                 </dd>
               </div>
-              <div className="border-b border-deep/15 py-4">
+              <div className="px-5 py-4">
                 <dt className="text-fine text-slate">Adresse</dt>
                 <dd className="mt-0.5">
                   <address className="not-italic font-bold text-lg leading-snug">

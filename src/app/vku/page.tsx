@@ -44,10 +44,10 @@ export default function VkuPage() {
       />
 
       <Section title="Die vier Abende" tone="paper">
-        <ol className="border-t border-deep/12 max-w-3xl">
+        <ol className="timeline max-w-3xl">
           {EVENINGS.map(([title, body], index) => (
-            <li key={title} className="border-b border-deep/12 py-5 flex gap-5 sm:gap-8">
-              <span className="nums stretch-wide font-extrabold text-signal-ink text-xl w-7 shrink-0">
+            <li key={title}>
+              <span className="timeline-mark nums text-base md:text-lg" aria-hidden="true">
                 {index + 1}
               </span>
               <div>
@@ -65,14 +65,14 @@ export default function VkuPage() {
 
       <Section title="Gut zu wissen">
         <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-start">
-          <ul className="border-t border-deep/12">
+          <ul className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
             {[
               ["Lernfahrausweis nötig?", "Nein. Du kannst den VKU schon vorher besuchen. Viele machen ihn parallel zu den ersten Fahrstunden."],
               ["Wie lange gültig?", "Die Bescheinigung verfällt nicht. Du kannst dir mit der Prüfung also Zeit lassen."],
               ["Wie gross sind die Gruppen?", "Höchstens zwölf Personen, damit Fragen auch wirklich drankommen."],
               ["Was mitbringen?", "Nur den Ausweis. Kursunterlagen bekommst du am ersten Abend."],
             ].map(([q, a]) => (
-              <li key={q} className="border-b border-deep/12 py-4">
+              <li key={q}>
                 <h3 className="text-base">{q}</h3>
                 <p className="text-slate mt-1">{a}</p>
               </li>

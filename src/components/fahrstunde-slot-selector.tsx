@@ -73,10 +73,12 @@ export function FahrstundeSlotSelector({ slots, slug }: { slots: Slot[]; slug: s
       </div>
 
       {/* Fest am unteren Bildschirmrand, damit die Auswahl beim Scrollen
-          durch mehrere Wochen jederzeit sichtbar bleibt. */}
+          durch mehrere Wochen jederzeit sichtbar bleibt. Helles statt
+          dunkles Glas: über der dunklen Fusszeile verschwand die dunkle
+          Leiste sonst fast unsichtbar im Hintergrund. */}
       <div className="fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-4">
-        <div className="glass-deep w-full max-w-xl rounded-[var(--radius-surface)] px-5 py-3.5 flex items-center justify-between gap-4">
-          <p className="text-fine text-paper">
+        <div className="glass w-full max-w-xl rounded-[var(--radius-surface)] px-5 py-3.5 flex items-center justify-between gap-4">
+          <p className="text-fine text-deep">
             {selected.size === 0
               ? "Eine oder mehrere Lektionen auswählen"
               : `${selected.size} ${selected.size === 1 ? "Lektion" : "Lektionen"} ausgewählt`}

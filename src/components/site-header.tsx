@@ -33,11 +33,11 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    // Schwebende Kapsel statt voller Leiste: eigener Wrapper mit Abstand zum
-    // Rand, damit "sticky" nicht die ganze Breite einnimmt. Bleibt beim
-    // Laden an ihrem Platz im Textfluss (kein Überlappen der ersten
-    // Bildschirmhöhe nötig) und hält diesen Abstand auch beim Scrollen.
-    <div className="sticky top-3 md:top-4 z-50 px-3 md:px-6">
+    // Schwebende Kapsel statt voller Leiste: "fixed" statt "sticky", damit
+    // der Wrapper keinen eigenen Platz im Textfluss beansprucht — sonst
+    // schimmerte dort oben ein Streifen der Seitenfarbe durch, bevor der
+    // erste Abschnitt (Aufmacher oder Seitenkopf) überhaupt begann.
+    <div className="fixed inset-x-0 top-3 md:top-4 z-50 px-3 md:px-6">
       <header className="glass mx-auto max-w-5xl rounded-full">
         <div className="flex items-center gap-2 md:gap-3 h-14 md:h-16 pl-4 pr-2 md:pl-6 md:pr-3">
           <Link

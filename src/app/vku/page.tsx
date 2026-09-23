@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { PageHeader, Section } from "@/components/page-header";
 import { PriceTable } from "@/components/price-table";
@@ -64,30 +63,19 @@ export default function VkuPage() {
       </Section>
 
       <Section title="Gut zu wissen">
-        <div className="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-start">
-          <ul className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
-            {[
-              ["Lernfahrausweis nötig?", "Nein. Du kannst den VKU schon vorher besuchen. Viele machen ihn parallel zu den ersten Fahrstunden."],
-              ["Wie lange gültig?", "Die Bescheinigung verfällt nicht. Du kannst dir mit der Prüfung also Zeit lassen."],
-              ["Wie gross sind die Gruppen?", "Höchstens zwölf Personen, damit Fragen auch wirklich drankommen."],
-              ["Was mitbringen?", "Nur den Ausweis. Kursunterlagen bekommst du am ersten Abend."],
-            ].map(([q, a]) => (
-              <li key={q}>
-                <h3 className="text-base">{q}</h3>
-                <p className="text-slate mt-1">{a}</p>
-              </li>
-            ))}
-          </ul>
-
-          <Image
-            src={site.images.course.src}
-            alt={site.images.course.alt}
-            width={site.images.course.width}
-            height={site.images.course.height}
-            className="w-full h-auto surface"
-            sizes="(min-width: 1024px) 40vw, 100vw"
-          />
-        </div>
+        <ul className="grid gap-x-8 gap-y-5 sm:grid-cols-2 max-w-3xl">
+          {[
+            ["Lernfahrausweis nötig?", "Nein. Du kannst den VKU schon vorher besuchen. Viele machen ihn parallel zu den ersten Fahrstunden."],
+            ["Wie lange gültig?", "Die Bescheinigung verfällt nicht. Du kannst dir mit der Prüfung also Zeit lassen."],
+            ["Wie gross sind die Gruppen?", "Höchstens zwölf Personen, damit Fragen auch wirklich drankommen."],
+            ["Was mitbringen?", "Nur den Ausweis. Kursunterlagen bekommst du am ersten Abend."],
+          ].map(([q, a]) => (
+            <li key={q}>
+              <h3 className="text-base">{q}</h3>
+              <p className="text-slate mt-1">{a}</p>
+            </li>
+          ))}
+        </ul>
       </Section>
 
       <Section title="Preis" tone="paper">

@@ -36,10 +36,13 @@ export function FahrstundeSlotSelector({ slots, slug }: { slots: Slot[]; slug: s
     <form action="/buchen" method="get" className="pb-20">
       <input type="hidden" name="angebot" value={slug} />
 
-      <div className="border-t border-deep/15">
+      <div className="space-y-3">
         {[...byDay.entries()].map(([day, entries]) => (
-          <div key={day} className="border-b border-deep/15 py-5 grid gap-3 sm:grid-cols-[13rem_1fr]">
-            <h2 className="text-base font-bold pt-1.5">{formatDayLong(day)}</h2>
+          <div
+            key={day}
+            className="surface bg-paper p-5 grid gap-3 sm:grid-cols-[13rem_1fr] sm:items-center"
+          >
+            <h2 className="text-base font-bold">{formatDayLong(day)}</h2>
             <ul className="flex flex-wrap gap-2">
               {entries.map((slot) => {
                 const value = `${slot.day}T${slot.time}`;
@@ -47,10 +50,8 @@ export function FahrstundeSlotSelector({ slots, slug }: { slots: Slot[]; slug: s
                 return (
                   <li key={slot.time}>
                     <label
-                      className={`nums block border px-4 py-2.5 font-bold cursor-pointer transition-colors select-none ${
-                        checked
-                          ? "bg-signal text-deep border-signal"
-                          : "bg-paper border-deep/20 hover:bg-signal-tint"
+                      className={`nums block rounded-[var(--radius-control)] px-4 py-2.5 font-bold cursor-pointer transition-colors select-none ${
+                        checked ? "bg-signal text-deep" : "bg-concrete hover:bg-signal-tint"
                       }`}
                     >
                       <input
@@ -73,14 +74,14 @@ export function FahrstundeSlotSelector({ slots, slug }: { slots: Slot[]; slug: s
 
       {/* Fest am unteren Bildschirmrand, damit die Auswahl beim Scrollen
           durch mehrere Wochen jederzeit sichtbar bleibt. */}
-      <div className="fixed inset-x-0 bottom-0 bg-deep text-paper border-t border-deep/40 z-20">
-        <div className="shell py-3.5 flex items-center justify-between gap-4">
-          <p className="text-fine">
+      <div className="fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-4">
+        <div className="glass-deep w-full max-w-xl rounded-[var(--radius-surface)] px-5 py-3.5 flex items-center justify-between gap-4">
+          <p className="text-fine text-paper">
             {selected.size === 0
               ? "Eine oder mehrere Lektionen auswählen"
               : `${selected.size} ${selected.size === 1 ? "Lektion" : "Lektionen"} ausgewählt`}
           </p>
-          <button type="submit" className="btn btn-primary" disabled={selected.size === 0}>
+          <button type="submit" className="btn btn-primary py-2.5 px-5" disabled={selected.size === 0}>
             Weiter
           </button>
         </div>

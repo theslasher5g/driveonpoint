@@ -38,7 +38,7 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
             <label className="field-label" htmlFor="jahr">
               Jahr
             </label>
-            <select id="jahr" name="jahr" className="field nums" defaultValue={year}>
+            <select id="jahr" name="jahr" className="field nums h-[52px]" defaultValue={year}>
               {years.map((entry) => (
                 <option key={entry} value={entry}>
                   {entry}
@@ -50,7 +50,7 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
             <label className="field-label" htmlFor="monat">
               Monat
             </label>
-            <select id="monat" name="monat" className="field" defaultValue={month ?? ""}>
+            <select id="monat" name="monat" className="field h-[52px]" defaultValue={month ?? ""}>
               <option value="">Ganzes Jahr</option>
               {Array.from({ length: 12 }, (_, index) => index + 1).map((entry) => (
                 <option key={entry} value={entry}>
@@ -59,13 +59,13 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
               ))}
             </select>
           </div>
-          <button type="submit" className="btn btn-outline sm:min-w-60">
+          <button type="submit" className="btn btn-outline h-[52px] sm:min-w-60">
             Anzeigen
           </button>
-          <a href={pdfHref} className="btn btn-primary sm:min-w-60" download>
+          <a href={pdfHref} className="btn btn-primary h-[52px] sm:min-w-60" download>
             Als PDF herunterladen
           </a>
-          <a href={csvHref} className="btn btn-outline sm:min-w-60" download>
+          <a href={csvHref} className="btn btn-outline h-[52px] sm:min-w-60" download>
             Als CSV herunterladen
           </a>
         </form>

@@ -43,8 +43,7 @@ export const site = {
   name: "DriveOnPoint",
   // Einzelunternehmen, kein Handelsregistereintrag: der volle Name der
   // verantwortlichen Person gehört ins Impressum, nicht ein Firmenname.
-  // ### Vor- und Nachname der Inhaberin eintragen.
-  legalName: "Christina Vorname Nachname", // ###
+  legalName: "Christina Mühle",
   claim: "Fahrschule",
   domain: "driveonpoint.ch",
 

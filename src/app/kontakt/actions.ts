@@ -41,10 +41,9 @@ const schema = z.object({
   telefon: z
     .string()
     .trim()
+    .min(6, "Bitte gib eine Telefonnummer an.")
     .max(30, "Die Nummer ist zu lang.")
-    .regex(/^[0-9+().\s/-]*$/, "Die Nummer enthält unerlaubte Zeichen.")
-    .optional()
-    .or(z.literal("")),
+    .regex(/^[0-9+().\s/-]+$/, "Die Nummer enthält unerlaubte Zeichen."),
   nachricht: z
     .string()
     .trim()
@@ -105,7 +104,7 @@ async function sendContact(
       text: [
         `Name: ${input.name}`,
         `Mail: ${input.email}`,
-        `Telefon: ${input.telefon || "keine Angabe"}`,
+        `Telefon: ${input.telefon}`,
         "",
         input.nachricht,
       ].join("\n"),
@@ -117,7 +116,7 @@ async function sendContact(
   <tr><td style="padding:8px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Mail</td>
       <td style="padding:8px 0;border-bottom:1px solid #D6D6D2;">${escapeHtml(input.email)}</td></tr>
   <tr><td style="padding:8px 0;font-size:14px;color:#515052;">Telefon</td>
-      <td style="padding:8px 0;">${escapeHtml(input.telefon || "keine Angabe")}</td></tr>
+      <td style="padding:8px 0;">${escapeHtml(input.telefon)}</td></tr>
 </table>
 <p style="margin:0;white-space:pre-wrap;">${escapeHtml(input.nachricht)}</p>`,
       ),

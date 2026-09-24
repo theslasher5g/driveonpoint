@@ -49,7 +49,7 @@ export default function DatenschutzPage() {
             <p className="text-slate mb-3">
               Bei einer Buchung erheben wir Name, Mailadresse und Telefonnummer sowie die von dir
               gewählte Lektionsart und den Termin. Eine freiwillige Bemerkung wird mitgespeichert.
-              Beim Kontaktformular erheben wir Name, Mailadresse, freiwillig die Telefonnummer und
+              Beim Kontaktformular erheben wir Name, Mailadresse, Telefonnummer und
               den Text deiner Nachricht.
             </p>
             <p className="text-slate">

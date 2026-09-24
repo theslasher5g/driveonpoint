@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { sendContactAction, type ContactState } from "@/app/kontakt/actions";
 import { CaptchaField } from "./captcha-field";
 import { Honeypot } from "./honeypot";
+import { PhoneField } from "./phone-field";
 
 const EMPTY: ContactState = {};
 
@@ -71,24 +72,11 @@ export function ContactForm() {
         )}
       </div>
 
-      <div>
-        <label className="field-label" htmlFor="telefon">
-          Telefonnummer <span className="font-normal text-slate">(freiwillig)</span>
-        </label>
-        <input
-          id="telefon"
-          name="telefon"
-          type="tel"
-          inputMode="tel"
-          className="field"
-          autoComplete="tel"
-          aria-invalid={state.fieldErrors?.telefon ? "true" : undefined}
-          defaultValue={state.values?.telefon}
-        />
-        {state.fieldErrors?.telefon && (
-          <p className="field-hint text-danger font-semibold">{state.fieldErrors.telefon}</p>
-        )}
-      </div>
+      <PhoneField
+        hint="Falls wir dich für eine Antwort lieber kurz anrufen."
+        error={state.fieldErrors?.telefon}
+        defaultValue={state.values?.telefon}
+      />
 
       <div>
         <label className="field-label" htmlFor="nachricht">

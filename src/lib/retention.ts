@@ -4,6 +4,7 @@ import { db } from "./db";
 import { auditLog, bookings } from "./db/schema";
 import { pruneSessions } from "./auth/session";
 import { pruneRateLimits } from "./rate-limit";
+import { deleteExpiredRequests } from "./reminders";
 
 /**
  * Löscht die Personendaten der Kundschaft nach Ablauf der Aufbewahrungsfrist.
@@ -33,6 +34,7 @@ export async function purgeExpiredCustomerData(): Promise<number> {
       // eine Buchung fällig ist — gen_random_uuid() läuft dagegen in
       // Postgres selbst, einmal pro betroffener Zeile.
       cancelToken: sql`'verfallen:' || gen_random_uuid()`,
+      confirmToken: null,
       anonymisedAt: now,
       updatedAt: now,
     })
@@ -53,6 +55,9 @@ export async function purgeExpiredCustomerData(): Promise<number> {
 /** Vollständiger Aufräumlauf, täglich angestossen. */
 export async function runRetention(): Promise<{ bookings: number }> {
   const count = await purgeExpiredCustomerData();
+  // Eigentlich Sache des stündlichen Laufs; hier nochmals, falls der auf
+  // einem Server (noch) nicht eingerichtet ist.
+  await deleteExpiredRequests();
   await pruneSessions();
   await pruneRateLimits();
   return { bookings: count };

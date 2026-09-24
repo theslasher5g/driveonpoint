@@ -17,7 +17,12 @@ export const dynamic = "force-dynamic";
 
 /** Menschenlesbare Beschriftung je Protokoll-Eintrag. Fehlt einer, wird der Rohwert gezeigt. */
 const ACTION_LABELS: Record<string, string> = {
-  "buchung.erstellt": "Online-Buchung eingegangen",
+  "buchung.erstellt": "Online-Buchung eingegangen, wartet auf Bestätigung",
+  "buchung.bestaetigt": "Online-Buchung per Mail bestätigt",
+  "buchung.verfallen": "Unbestätigte Buchungen verfallen",
+  "buchung.nicht-erschienen": "Als nicht erschienen markiert",
+  "buchung.erschienen": "Markierung „nicht erschienen“ zurückgenommen",
+  "erinnerung.versendet": "Erinnerungen vor dem Termin verschickt",
   "mitarbeiter.geloescht": "Konto gelöscht",
   "aufbewahrung.geloescht": "Kundendaten nach Ablauf der Frist gelöscht",
   "buchung.begrenzt": "Buchung wegen zu vieler Versuche abgewiesen",

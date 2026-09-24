@@ -45,7 +45,7 @@ export function BookingForm({
         name="email"
         type="email"
         label="Mailadresse"
-        hint="Hierhin geht die Bestätigung mit dem Absage-Link."
+        hint="Hierhin geht ein Link, mit dem du die Buchung bestätigst."
         autoComplete="email"
         inputMode="email"
         error={state.fieldErrors?.email}

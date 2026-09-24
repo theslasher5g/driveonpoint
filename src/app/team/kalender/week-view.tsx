@@ -1,6 +1,8 @@
-import { and, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { availabilityExceptions, availabilityRules, bookings, lessonTypes, staff } from "@/lib/db/schema";
+import { occupiesTime } from "@/lib/booking";
+import { toggleNoShowAction } from "./actions";
 import {
   addDays,
   minutesSinceMidnight,
@@ -34,6 +36,7 @@ export async function WeekView({
   const end = addDays(start, 6);
   const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
   const today = todayInZurich();
+  const now = Date.now();
 
   const [entries, rules, exceptions] = await Promise.all([
     db
@@ -43,6 +46,7 @@ export async function WeekView({
         startsAt: bookings.startsAt,
         endsAt: bookings.endsAt,
         status: bookings.status,
+        noShowAt: bookings.noShowAt,
         customerName: bookings.customerName,
         customerPhone: bookings.customerPhone,
         customerNote: bookings.customerNote,
@@ -56,6 +60,9 @@ export async function WeekView({
       .where(
         and(
           inArray(bookings.staffId, visibleIds),
+          // Abgesagte bleiben durchgestrichen sichtbar, verfallene
+          // Anfragen (nie per Mail bestätigt) dagegen nicht.
+          or(eq(bookings.status, "abgesagt"), occupiesTime()),
           gte(bookings.startsAt, zurichToInstant(start, "00:00")),
           lte(bookings.startsAt, zurichToInstant(end, "23:59")),
         ),
@@ -176,18 +183,38 @@ export async function WeekView({
             <ul className="mt-3 space-y-2">
               {dayEntries.map((entry) => {
                 const cancelled = entry.status === "abgesagt";
+                const pending = entry.status === "angefragt";
+                const started = entry.startsAt.getTime() <= now;
                 return (
                   <li
                     key={entry.id}
                     className={`relative rounded-[var(--radius-control)] px-3 py-2.5 pr-9 border ${
                       cancelled
                         ? "bg-concrete-dim/60 border-transparent text-slate line-through"
-                        : "bg-paper border-deep/12"
+                        : pending
+                          ? "bg-paper border-dashed border-deep/25"
+                          : "bg-paper border-deep/12"
                     }`}
                   >
                     <p className="nums text-fine font-bold">
                       {zurichTime(entry.startsAt)}–{zurichTime(entry.endsAt)}
                     </p>
+                    {/* Unter der Zeit und bis unter das Menü hinein (-mr-6):
+                        die Spalten sind schmal, und in der Zeile neben dem
+                        Menüknopf brach der Hinweis mitten im Wort um. */}
+                    {pending && (
+                      <p
+                        className="text-fine font-semibold text-slate -mr-6 break-normal"
+                        title="Online gebucht, der Link in der Mail ist noch nicht angeklickt. Ohne Bestätigung wird der Platz nach einer Stunde wieder frei."
+                      >
+                        Unbestätigt
+                      </p>
+                    )}
+                    {entry.noShowAt && !cancelled && (
+                      <p className="text-fine font-semibold text-danger -mr-6 break-normal">
+                        Nicht erschienen
+                      </p>
+                    )}
                     <p className="text-[0.85rem] leading-snug">
                       {entry.customerName ?? "Angaben gelöscht"}
                     </p>
@@ -213,6 +240,14 @@ export async function WeekView({
                           <ActionMenuItem href={`/team/kalender/verschieben?id=${entry.id}`}>
                             Verschieben
                           </ActionMenuItem>
+                          {started && !pending && (
+                            <form action={toggleNoShowAction}>
+                              <input type="hidden" name="id" value={entry.id} />
+                              <ActionMenuItem type="submit">
+                                {entry.noShowAt ? "Doch erschienen" : "Nicht erschienen"}
+                              </ActionMenuItem>
+                            </form>
+                          )}
                           <CancelBookingButton bookingId={entry.id} />
                         </ActionMenu>
                       </div>

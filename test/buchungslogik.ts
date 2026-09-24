@@ -21,8 +21,11 @@ import {
   staff,
   staffLessonTypes,
 } from "@/lib/db/schema";
-import { createBooking, findSlots, lessonTypeBySlug } from "@/lib/booking";
-import { addDays, todayInZurich, zurichWeekday } from "@/lib/time";
+import { randomBytes } from "node:crypto";
+import { accountingReport } from "@/lib/accounting";
+import { createBooking, findSlots, lessonTypeBySlug, newConfirmToken } from "@/lib/booking";
+import { deleteExpiredRequests, sendDueReminders } from "@/lib/reminders";
+import { addDays, todayInZurich, zurichDay, zurichWeekday } from "@/lib/time";
 
 const MARK = "PRUEFSTAND";
 let failures = 0;
@@ -321,6 +324,112 @@ async function main() {
     "auch im Team nichts in der Vergangenheit",
     team.every((slot) => slot.startsAt.getTime() > Date.now()),
     true,
+  );
+
+  // ===================================================================
+  console.log("\nSZENARIO I — Unbestätigte Online-Buchung hält den Platz nur bis zur Frist");
+  // ===================================================================
+  const tagI = addDays(todayInZurich(), 12);
+  await addRule(personA.id, fahrstunde.id, zurichWeekday(tagI), "14:00", "16:00");
+  const freiI = () =>
+    findSlots({ lessonType: fahrstunde, fromDay: tagI, days: 1, staffId: personA.id }).then(
+      (list) => list.some((slot) => slot.time === "14:00"),
+    );
+  const slotI = (await findSlots({ lessonType: fahrstunde, fromDay: tagI, days: 1, staffId: personA.id })).find(
+    (slot) => slot.time === "14:00",
+  )!;
+  check("14:00 ist anfangs frei", Boolean(slotI), true);
+
+  const tokenI = newConfirmToken();
+  const anfrage = await createBooking({
+    lessonType: fahrstunde,
+    staffId: personA.id,
+    startsAt: slotI.startsAt,
+    customerName: `${MARK} I1`,
+    customerEmail: "pruefstand@example.invalid",
+    customerPhone: "079 000 00 00",
+    priceRappen: fahrstunde.priceRappen,
+    retentionDays: 30,
+    confirmation: { token: tokenI, expiresAt: new Date(Date.now() + 60 * 60_000) },
+  });
+  check("unbestätigte Buchung wird angelegt", "error" in anfrage, false);
+  check("solange die Frist läuft, ist 14:00 belegt", await freiI(), false);
+  check("zweite Buchung auf 14:00 wird abgewiesen", (await book("fahrstunde", personA.id, slotI.startsAt, "I2")).ok, false);
+
+  await db
+    .update(bookings)
+    // Frist samt der Luft danach abgelaufen (siehe occupiesTime).
+    .set({ confirmExpiresAt: new Date(Date.now() - 6 * 60_000) })
+    .where(eq(bookings.confirmToken, tokenI));
+  check("nach Ablauf der Frist ist 14:00 wieder frei", await freiI(), true);
+  check("jemand anders bekommt den Platz", (await book("fahrstunde", personA.id, slotI.startsAt, "I3")).ok, true);
+
+  await deleteExpiredRequests();
+  const rest = await db.select({ id: bookings.id }).from(bookings).where(eq(bookings.confirmToken, tokenI));
+  check("verfallene Anfrage ist gelöscht", rest.length, 0);
+
+  // ===================================================================
+  console.log("\nSZENARIO J — Erinnerung und Nicht-erschienen in der Buchhaltung");
+  // ===================================================================
+  const HOUR = 60 * 60_000;
+  const now = Date.now();
+  async function insert(who: string, startsIn: number, extra: Partial<typeof bookings.$inferInsert>) {
+    const startsAt = new Date(now + startsIn);
+    const [row] = await db
+      .insert(bookings)
+      .values({
+        reference: `PRF-${randomBytes(3).toString("hex").toUpperCase()}`,
+        cancelToken: randomBytes(24).toString("base64url"),
+        staffId: personB.id,
+        lessonTypeId: fahrstunde.id,
+        startsAt,
+        endsAt: new Date(startsAt.getTime() + 45 * 60_000),
+        status: "bestaetigt",
+        customerName: `${MARK} ${who}`,
+        customerEmail: "pruefstand@example.invalid",
+        customerPhone: "079 000 00 00",
+        priceRappen: 9500,
+        purgeAfter: new Date(now + 40 * 24 * HOUR),
+        ...extra,
+      })
+      .returning({ id: bookings.id, reference: bookings.reference, startsAt: bookings.startsAt });
+    return row;
+  }
+
+  const faellig = await insert("J1", 28 * HOUR, { confirmedAt: new Date(now - 48 * HOUR) });
+  const frisch = await insert("J2", 28 * HOUR + 60 * 60_000, { confirmedAt: new Date(now - HOUR) });
+  const zuNah = await insert("J3", 20 * HOUR, { confirmedAt: new Date(now - 48 * HOUR) });
+  const reminded = async (id: string) =>
+    (await db.select({ at: bookings.reminderSentAt }).from(bookings).where(eq(bookings.id, id)))[0].at !== null;
+
+  if (process.env.SMTP_HOST) {
+    await sendDueReminders();
+    check("Erinnerung für Termin in 28 h", await reminded(faellig.id), true);
+    check("keine Erinnerung direkt nach der Bestätigung", await reminded(frisch.id), false);
+    check("keine Erinnerung unter 24 h", await reminded(zuNah.id), false);
+    check("zweiter Lauf schickt nichts doppelt", await sendDueReminders(), 0);
+  } else {
+    note("Erinnerungen übersprungen", "SMTP_HOST nicht gesetzt — ohne Mailversand nicht prüfbar");
+  }
+
+  const verpasst = await insert("J4", -3 * HOUR, { confirmedAt: new Date(now - 48 * HOUR), noShowAt: new Date() });
+  const erschienen = await insert("J5", -4 * HOUR, { confirmedAt: new Date(now - 48 * HOUR) });
+  const nieBestaetigt = await insert("J6", -5 * HOUR, {
+    status: "angefragt",
+    confirmToken: newConfirmToken(),
+    confirmExpiresAt: new Date(now - 6 * HOUR),
+  });
+  const tagJ = zurichDay(verpasst.startsAt);
+  const bericht = await accountingReport(Number(tagJ.slice(0, 4)), Number(tagJ.slice(5, 7)));
+  const inUmsatz = (ref: string) => bericht.rows.some((row) => row.reference === ref);
+  const ausfall = bericht.chargeable.find((row) => row.reference === verpasst.reference);
+  check("nicht erschienen: nicht im Umsatz", inUmsatz(verpasst.reference), false);
+  check("nicht erschienen: als verrechenbarer Ausfall", ausfall?.reason, "Nicht erschienen");
+  check("erschienen: im Umsatz", inUmsatz(erschienen.reference), true);
+  check(
+    "nie bestätigt: weder Umsatz noch Ausfall",
+    inUmsatz(nieBestaetigt.reference) || bericht.chargeable.some((row) => row.reference === nieBestaetigt.reference),
+    false,
   );
 
   console.log(`\n${failures === 0 ? "Alle Prüfungen bestanden." : `${failures} Prüfung(en) fehlgeschlagen.`}`);

@@ -218,7 +218,9 @@ const styles = StyleSheet.create({
   colRef: { width: 62, fontFamily: "Courier" },
   colOffer: { flex: 1.3 },
   colStaff: { flex: 1 },
-  colPromo: { flex: 1, color: COLOR.slate, fontSize: 8 },
+  // Ohne flex: in der senkrechten Spalte des Angebots liess flex: 1 die
+  // zweite Zeile auf null Höhe schrumpfen, sie ragte in die nächste Zeile.
+  colPromo: { color: COLOR.slate, fontSize: 8, marginTop: 1 },
   colAmount: { width: 58, fontFamily: "Courier-Bold", textAlign: "right" },
   totalRow: {
     flexDirection: "row",
@@ -301,6 +303,7 @@ function journalDataRow(row: JournalRow, index: number) {
       <View style={styles.colOffer}>
         <Text>{row.lessonName}</Text>
         {row.promotionLabel && <Text style={styles.colPromo}>{row.promotionLabel}</Text>}
+        {row.reason && <Text style={styles.colPromo}>{row.reason}</Text>}
       </View>
       <Text style={styles.colStaff}>{row.staffName}</Text>
       <Text style={styles.colAmount}>{formatPrice(row.amountRappen)}</Text>
@@ -361,14 +364,14 @@ export async function renderAccountingPdf(
             {report.openCount > 0 && <Text style={styles.tileHint}>{report.openCount} gebucht</Text>}
           </View>
           <View style={[styles.tile, styles.tileLast]}>
-            <Text style={styles.tileLabel}>KURZFRISTIGE ABSAGEN</Text>
+            <Text style={styles.tileLabel}>VERRECHENBARE AUSFÄLLE</Text>
             <Text style={styles.tileValue}>
-              {report.lateCancellations.length === 0
+              {report.chargeable.length === 0
                 ? "—"
-                : `CHF ${formatPrice(report.lateCancelledRappen)}`}
+                : `CHF ${formatPrice(report.chargeableRappen)}`}
             </Text>
-            {report.lateCancellations.length > 0 && (
-              <Text style={styles.tileHint}>{report.lateCancellations.length} Stück, nicht im Umsatz</Text>
+            {report.chargeable.length > 0 && (
+              <Text style={styles.tileHint}>{report.chargeable.length} Stück, nicht im Umsatz</Text>
             )}
           </View>
         </View>
@@ -436,21 +439,21 @@ export async function renderAccountingPdf(
         </Page>
       )}
 
-      {/* --- Kurzfristige Absagen, eigene Seite ---------------------------- */}
-      {report.lateCancellations.length > 0 && (
+      {/* --- Verrechenbare Ausfälle, eigene Seite -------------------------- */}
+      {report.chargeable.length > 0 && (
         <Page size="A4" style={styles.page} wrap>
-          <HeaderBand title="Kurzfristige Absagen" period={period} />
-          <Text style={styles.sectionTitle}>Kurzfristige Absagen</Text>
+          <HeaderBand title="Verrechenbare Ausfälle" period={period} />
+          <Text style={styles.sectionTitle}>Kurzfristige Absagen und nicht erschienen</Text>
           <Text style={styles.pageIntro}>
-            Innert 24 Stunden vor Beginn abgesagt und laut AGB verrechenbar, im Umsatz auf Seite 1
+            Innert 24 Stunden vor Beginn abgesagt oder nicht erschienen und laut AGB verrechenbar, im Umsatz auf Seite 1
             aber nicht mitgezählt. Absagen, die von der Fahrschule ausgingen, stehen hier ebenfalls
             und gehören von Hand aussortiert — die Anwendung kennt den Grund einer Absage nicht.
           </Text>
           {journalHeadRow()}
-          {report.lateCancellations.map((row, index) => journalDataRow(row, index))}
+          {report.chargeable.map((row, index) => journalDataRow(row, index))}
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Summe kurzfristige Absagen</Text>
-            <Text style={styles.totalAmount}>{formatPrice(report.lateCancelledRappen)}</Text>
+            <Text style={styles.totalLabel}>Summe verrechenbare Ausfälle</Text>
+            <Text style={styles.totalAmount}>{formatPrice(report.chargeableRappen)}</Text>
           </View>
           <Footer generatedAt={generatedAt} />
         </Page>

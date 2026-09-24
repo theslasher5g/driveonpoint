@@ -25,7 +25,7 @@ const CLAUSES = [
   },
   {
     title: "Zustandekommen der Buchung",
-    body: "Eine Buchung über die Website ist verbindlich, sobald du die Bestätigungsmail erhalten hast. Kommt keine Bestätigung an, ist der Termin nicht zustande gekommen — melde dich in diesem Fall telefonisch.",
+    body: "Nach einer Buchung über die Website schicken wir dir eine Mail mit einem Link. Verbindlich wird die Buchung, sobald du sie über diesen Link bestätigt und daraufhin die Bestätigungsmail erhalten hast. Bestätigst du nicht innert einer Stunde, verfällt die Buchung. Kommt keine Bestätigung an, ist der Termin nicht zustande gekommen — melde dich in diesem Fall telefonisch.",
   },
   {
     title: "Voraussetzungen für Fahrstunden",

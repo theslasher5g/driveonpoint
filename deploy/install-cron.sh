@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Trägt die beiden wiederkehrenden Aufgaben in die crontab von root ein:
-# täglich den Aufräumlauf, wöchentlich die Docker-Image-Updates. Läuft
+# Trägt die wiederkehrenden Aufgaben in die crontab von root ein: stündlich
+# Erinnerungen und verfallene Anfragen, täglich den Aufräumlauf, wöchentlich
+# die Docker-Image-Updates. Läuft
 # als root, damit der Cron-Aufruf ohne weitere Einrichtung auf den
 # Docker-Socket zugreifen kann.
 #
@@ -18,7 +19,7 @@ fi
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MARKER="# driveonpoint"
 
-chmod +x "$DIR/deploy/aufraeumen.sh" "$DIR/deploy/docker-updates.sh"
+chmod +x "$DIR/deploy/cron-aufruf.sh" "$DIR/deploy/aufraeumen.sh" "$DIR/deploy/stuendlich.sh" "$DIR/deploy/docker-updates.sh"
 
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
@@ -26,6 +27,7 @@ trap 'rm -f "$TMP"' EXIT
 crontab -l 2>/dev/null | grep -vF "$MARKER" > "$TMP" || true
 {
   cat "$TMP"
+  echo "7 * * * * $DIR/deploy/stuendlich.sh $MARKER stuendlich"
   echo "17 3 * * * $DIR/deploy/aufraeumen.sh $MARKER aufraeumen"
   echo "0 4 * * 0 $DIR/deploy/docker-updates.sh $MARKER docker-updates"
 } | crontab -
@@ -37,4 +39,4 @@ fi
 echo "Eingetragen:"
 crontab -l | grep -F "$MARKER"
 echo
-echo "Protokolle: /var/log/driveonpoint-aufraeumen.log, /var/log/driveonpoint-docker-updates.log"
+echo "Protokolle: /var/log/driveonpoint-stuendlich.log, /var/log/driveonpoint-aufraeumen.log, /var/log/driveonpoint-docker-updates.log"

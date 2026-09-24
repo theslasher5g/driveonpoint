@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, asc, count, eq, gte, lte, ne } from "drizzle-orm";
+import { and, asc, count, eq, gte, lte } from "drizzle-orm";
+import { isConfirmed } from "@/lib/booking";
 import { PASSWORD_CHANGE_PAGE, requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
@@ -83,7 +84,7 @@ export default async function TeamDashboard({
   // Dieselbe Bedingung für Liste und Zähler — die Liste ist begrenzt, damit
   // eine volle Woche die Seite nicht sprengt; gezählt wird trotzdem alles.
   const weekFilter = and(
-    ne(bookings.status, "abgesagt"),
+    isConfirmed(),
     gte(bookings.startsAt, zurichToInstant(today, "00:00")),
     lte(bookings.startsAt, zurichToInstant(weekEnd, "23:59")),
     seesEveryone ? undefined : eq(bookings.staffId, user.id),

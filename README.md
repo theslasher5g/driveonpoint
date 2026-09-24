@@ -17,8 +17,14 @@ Fahrstunden, Verkehrskundeunterricht, Nothelferkurs, Preise, Ausbildungsweg,
 Über uns, Kontakt, Buchung, Impressum, Datenschutz, AGB.
 
 **Buchung** — Angebot wählen, freien Termin aus dem Kalender der Mitarbeitenden
-wählen, Name, Mailadresse und Telefonnummer angeben. Danach geht eine
-Bestätigung mit Absagelink raus. Absagen funktioniert ohne Konto.
+wählen, Name, Mailadresse und Telefonnummer angeben. Danach kommt eine Mail
+mit einem Bestätigungslink (Double-Opt-In): der Termin ist bis dahin eine
+Stunde lang reserviert und wird erst mit dem Klick verbindlich. Dann geht
+die Bestätigung mit Absagelink und Kalenderdatei (.ics) raus, und rund einen
+Tag vor dem Termin eine Erinnerung. Absagen funktioniert ohne Konto. Im Team
+erfasste Termine sind sofort verbindlich. Nach einem Termin lässt er sich im
+Kalender als „nicht erschienen“ markieren; die Buchhaltung führt ihn dann
+wie eine kurzfristige Absage als verrechenbaren Ausfall.
 
 **Team-Bereich** unter `/team`, verlinkt unauffällig im Fussbereich:
 
@@ -147,14 +153,15 @@ unless-stopped` gesetzt hat. Nur die Sicherheits-Paketquelle ist aktiviert,
 keine sonstigen Aktualisierungen. Protokoll unter
 `/var/log/unattended-upgrades/`.
 
-**`install-cron.sh`** trägt zwei Zeilen in die crontab von root ein:
+**`install-cron.sh`** trägt drei Zeilen in die crontab von root ein:
 
 | Wann | Skript | Macht |
 |---|---|---|
+| stündlich, :07 | `deploy/stuendlich.sh` | Verschickt die Erinnerungen vor dem Termin und löscht Online-Buchungen, die nie bestätigt wurden |
 | täglich 03:17 | `deploy/aufraeumen.sh` | Löscht Kundendaten nach Ablauf der Frist, entfernt abgelaufene Sitzungen und alte Zähler ([Aufbewahrung](#rechtliches)) |
 | wöchentlich, So 04:00 | `deploy/docker-updates.sh` | Holt Sicherheitskorrekturen der Docker-Basisabbilder (siehe unten) |
 
-Beide protokollieren nach `/var/log/driveonpoint-*.log`
+Alle protokollieren nach `/var/log/driveonpoint-*.log`
 (`install-cron.sh` richtet dafür auch gleich eine Log-Rotation ein). Läuft
 etwas schief, zeigt sich das dort — ohne Mailversand-Einrichtung auf dem
 Server verlässt sich nichts auf die stille Cron-Mail, die ohnehin oft
@@ -170,9 +177,13 @@ Funktionen bleibt bewusst eine manuelle Entscheidung, siehe [Wer was
 ändert](#wer-was-ändert). Nutzt du den mitgelieferten Mail-Container
 (`--profile mail`), wird er automatisch erkannt und mit aktualisiert.
 
-Von Hand ausführen und beim Aufräumlauf sofort das Ergebnis sehen:
+Wer `install-cron.sh` schon vor dem stündlichen Lauf ausgeführt hat, führt es
+nach dem Update einfach noch einmal aus — es ersetzt die alten Zeilen.
+
+Von Hand ausführen und sofort das Ergebnis sehen:
 
 ```bash
+sudo deploy/stuendlich.sh && sudo tail -5 /var/log/driveonpoint-stuendlich.log
 sudo deploy/aufraeumen.sh && sudo tail -5 /var/log/driveonpoint-aufraeumen.log
 sudo deploy/docker-updates.sh && sudo tail -20 /var/log/driveonpoint-docker-updates.log
 ```
@@ -181,10 +192,12 @@ sudo deploy/docker-updates.sh && sudo tail -20 /var/log/driveonpoint-docker-upda
 
 ## Mailversand
 
-Freiwillig und standardmässig aus — ohne Domain lässt sich ohnehin keine Mail
-zustellen, und die Anwendung läuft bis dahin problemlos ohne. Bucht jemand
-einen Termin, wird er trotzdem angelegt; es geht nur keine Bestätigungsmail
-raus (im Serverprotokoll erscheint dazu eine Zeile, mehr passiert nicht).
+Standardmässig aus — ohne Domain lässt sich ohnehin keine Mail zustellen.
+**Für Online-Buchungen ist der Mailversand aber Pflicht:** jede Buchung muss
+über den Link in einer Mail bestätigt werden. Kann die Anwendung diese Mail
+nicht verschicken, wird die Buchung sofort verworfen und das Formular zeigt
+einen Hinweis mit der Telefonnummer. Im Team erfasste Termine funktionieren
+auch ohne Mailversand.
 
 Zwei Wege dahin — den mitgelieferten Postfix-Container selbst betreiben, oder
 ein bestehendes Postfach bei einem Anbieter wie Infomaniak als Versandweg

@@ -1,8 +1,52 @@
 import "server-only";
 import { env } from "./env";
-import { escapeHtml, mailLayout, sendMail } from "./mail";
+import { buildInvite } from "./ics";
+import { escapeHtml, mailLayout, sendMail, type Mail } from "./mail";
 import { site } from "./site";
-import { formatDayLong, formatPrice, zurichDay, zurichTime } from "./time";
+import { formatDayLong, formatPrice, zurichDay, zurichTime, zurichToInstant } from "./time";
+
+const meetingPoint = () => `${site.contact.street}, ${site.contact.zip} ${site.contact.city}`;
+
+/**
+ * Kalenderdatei für die Bestätigung. Die UID hängt an der Referenz, damit
+ * ein zweites Öffnen desselben Anhangs den Eintrag ersetzt statt ihn zu
+ * verdoppeln.
+ */
+function calendarAttachment(
+  appointments: { day: string; time: string; reference: string; cancelToken: string }[],
+  lessonName: string,
+  durationMinutes: number,
+): NonNullable<Mail["attachments"]> {
+  const now = new Date();
+  const ics = buildInvite(
+    appointments.map((entry) => {
+      const startsAt = zurichToInstant(entry.day, entry.time);
+      return {
+        uid: `${entry.reference}@${site.domain}`,
+        startsAt,
+        endsAt: new Date(startsAt.getTime() + durationMinutes * 60_000),
+        title: `${lessonName} — ${site.name}`,
+        description: [
+          `Referenz ${entry.reference}`,
+          `Absagen bis 24 Stunden vorher kostenlos: ${env.appUrl}/absagen/${entry.cancelToken}`,
+          `Fragen: ${site.contact.phone}`,
+        ].join("\n"),
+        location: meetingPoint(),
+        cancelled: false,
+        updatedAt: now,
+        alarmMinutesBefore: 60,
+      };
+    }),
+  );
+  const name = appointments.length === 1 ? `termin-${appointments[0].reference}` : "termine";
+  return [
+    {
+      filename: `${name.toLowerCase()}.ics`,
+      content: ics,
+      contentType: "text/calendar; charset=utf-8; method=PUBLISH",
+    },
+  ];
+}
 
 /**
  * Bestätigungsmail für einen neuen Termin.
@@ -67,7 +111,7 @@ export async function sendBookingConfirmation(details: {
 <p style="margin:0 0 20px;">
   <a href="${escapeHtml(cancelUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;">Termin absagen</a>
 </p>
-<p style="margin:0;color:#515052;font-size:14px;">Absagen bis 24 Stunden vor Beginn sind kostenlos. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
+<p style="margin:0;color:#515052;font-size:14px;">Absagen bis 24 Stunden vor Beginn sind kostenlos. Den Termin für deinen Kalender findest du im Anhang. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
   );
 
   await sendMail({
@@ -75,6 +119,11 @@ export async function sendBookingConfirmation(details: {
     subject: `Termin bestätigt — ${details.reference}`,
     text,
     html,
+    attachments: calendarAttachment(
+      [details],
+      details.lessonName,
+      details.durationMinutes,
+    ),
   });
 }
 
@@ -325,7 +374,7 @@ ${
 }
 <p style="margin:0 0 8px;font-weight:700;">Treffpunkt</p>
 <p style="margin:0 0 20px;color:#515052;">${escapeHtml(site.contact.street)}, ${escapeHtml(site.contact.zip)} ${escapeHtml(site.contact.city)}<br>Einen abweichenden Treffpunkt im Einzugsgebiet vereinbaren wir telefonisch.</p>
-<p style="margin:0;color:#515052;font-size:14px;">Jeder Termin lässt sich einzeln bis 24 Stunden vorher kostenlos absagen, über den Link in der Tabelle oben. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
+<p style="margin:0;color:#515052;font-size:14px;">Jeder Termin lässt sich einzeln bis 24 Stunden vorher kostenlos absagen, über den Link in der Tabelle oben. Alle Termine für deinen Kalender findest du im Anhang. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
   );
 
   await sendMail({
@@ -333,6 +382,7 @@ ${
     subject: `${details.booked.length} Termine bestätigt — ${sorted[0]?.reference}`,
     text,
     html,
+    attachments: calendarAttachment(sorted, details.lessonName, details.durationMinutes),
   });
 }
 
@@ -393,6 +443,132 @@ ${rows}
   await sendMail({
     to: site.contact.email,
     subject: `Neue Buchung — ${details.booked.length} Termine`,
+    text,
+    html,
+  });
+}
+
+/**
+ * Erste Mail nach einer Online-Buchung: bitte bestätigen (Double-Opt-In).
+ *
+ * Erst der Klick auf den Link macht den Termin verbindlich. So landet kein
+ * Termin im Kalender, den jemand mit einer fremden oder vertippten
+ * Mailadresse gebucht hat — und die Bestätigung mit Absagelink und
+ * Kalenderdatei geht nur an eine Adresse, die tatsächlich gelesen wird.
+ */
+export async function sendConfirmationRequest(details: {
+  to: string;
+  name: string;
+  confirmToken: string;
+  lessonName: string;
+  appointments: { day: string; time: string }[];
+  expiresMinutes: number;
+}): Promise<void> {
+  const confirmUrl = `${env.appUrl}/bestaetigen/${details.confirmToken}`;
+  const sorted = [...details.appointments].sort((a, b) =>
+    (a.day + a.time).localeCompare(b.day + b.time),
+  );
+  const whenLines = sorted.map((entry) => `${formatDayLong(entry.day)}, ${entry.time} Uhr`);
+  const several = sorted.length > 1;
+
+  const text = [
+    `Hallo ${details.name}`,
+    "",
+    several
+      ? `Bitte bestätige deine ${sorted.length} Termine bei ${site.name}:`
+      : `Bitte bestätige deinen Termin bei ${site.name}:`,
+    "",
+    details.lessonName,
+    ...whenLines,
+    "",
+    confirmUrl,
+    "",
+    `Wir halten ${several ? "die Termine" : "den Termin"} ${details.expiresMinutes} Minuten für dich frei. Ohne Bestätigung ${several ? "werden sie" : "wird er"} danach wieder freigegeben.`,
+    "",
+    "Hast du nichts gebucht? Dann ignoriere diese Mail — es passiert nichts weiter.",
+  ].join("\n");
+
+  const html = mailLayout(
+    several ? "Bitte bestätige deine Termine" : "Bitte bestätige deinen Termin",
+    `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
+<p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
+<p style="margin:0 0 20px;">${whenLines.map(escapeHtml).join("<br>")}</p>
+<p style="margin:0 0 20px;">
+  <a href="${escapeHtml(confirmUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;">${several ? "Termine bestätigen" : "Termin bestätigen"}</a>
+</p>
+<p style="margin:0 0 12px;color:#515052;">Wir halten ${several ? "die Termine" : "den Termin"} ${details.expiresMinutes} Minuten für dich frei. Ohne Bestätigung ${several ? "werden sie" : "wird er"} danach wieder freigegeben.</p>
+<p style="margin:0;color:#515052;font-size:14px;">Hast du nichts gebucht? Dann ignoriere diese Mail — es passiert nichts weiter.</p>`,
+  );
+
+  await sendMail({
+    to: details.to,
+    subject: several ? "Bitte bestätige deine Termine" : "Bitte bestätige deinen Termin",
+    text,
+    html,
+  });
+}
+
+/**
+ * Erinnerung rund einen Tag vor dem Termin. Geht so früh raus, dass die
+ * kostenlose Absage meist noch möglich ist — wer merkt, dass es nicht
+ * passt, gibt den Platz frei, statt einfach nicht zu erscheinen.
+ */
+export async function sendBookingReminder(details: {
+  to: string;
+  name: string;
+  reference: string;
+  cancelToken: string;
+  lessonName: string;
+  startsAt: Date;
+  durationMinutes: number | null;
+}): Promise<void> {
+  const day = zurichDay(details.startsAt);
+  const time = zurichTime(details.startsAt);
+  const when = `${formatDayLong(day)}, ${time} Uhr`;
+  const cancelUrl = `${env.appUrl}/absagen/${details.cancelToken}`;
+  const deadline = new Date(details.startsAt.getTime() - 24 * 60 * 60 * 1000);
+  const freeCancellation = deadline.getTime() > Date.now();
+  const deadlineText = `${formatDayLong(zurichDay(deadline))}, ${zurichTime(deadline)} Uhr`;
+
+  const cancelHint = freeCancellation
+    ? `Passt es doch nicht? Kostenlos absagen kannst du noch bis ${deadlineText}:`
+    : `Für eine kostenlose Absage ist es zu kurzfristig. Kommt etwas dazwischen, ruf uns an: ${site.contact.phone}`;
+
+  const text = [
+    `Hallo ${details.name}`,
+    "",
+    `Kurze Erinnerung an deinen Termin bei ${site.name}:`,
+    "",
+    details.lessonName,
+    `${when}${details.durationMinutes ? ` (${details.durationMinutes} Minuten)` : ""}`,
+    `Referenz: ${details.reference}`,
+    "",
+    `Treffpunkt: ${meetingPoint()}`,
+    "",
+    cancelHint,
+    ...(freeCancellation ? [cancelUrl] : []),
+    "",
+    `Fragen? ${site.contact.phone}`,
+  ].join("\n");
+
+  const html = mailLayout(
+    "Erinnerung an deinen Termin",
+    `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
+<p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
+<p style="margin:0 0 20px;">${escapeHtml(when)}${details.durationMinutes ? ` · ${details.durationMinutes} Minuten` : ""}<br><span style="color:#515052;font-size:14px;">Referenz ${escapeHtml(details.reference)}</span></p>
+<p style="margin:0 0 8px;font-weight:700;">Treffpunkt</p>
+<p style="margin:0 0 20px;color:#515052;">${escapeHtml(meetingPoint())}<br>Einen abweichenden Treffpunkt im Einzugsgebiet vereinbaren wir telefonisch.</p>
+<p style="margin:0 0 ${freeCancellation ? "12" : "0"}px;color:#515052;">${escapeHtml(cancelHint)}</p>
+${
+  freeCancellation
+    ? `<p style="margin:0;"><a href="${escapeHtml(cancelUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Termin absagen</a></p>`
+    : ""
+}`,
+  );
+
+  await sendMail({
+    to: details.to,
+    subject: `Erinnerung: ${details.lessonName} am ${formatDayLong(day)}, ${time} Uhr`,
     text,
     html,
   });

@@ -1,4 +1,4 @@
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes, staff } from "@/lib/db/schema";
 import { buildCalendar, type CalendarEntry } from "@/lib/ics";
@@ -69,7 +69,16 @@ export async function GET(
     })
     .from(bookings)
     .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
-    .where(and(eq(bookings.staffId, owner.id), gte(bookings.startsAt, since)));
+    .where(
+      and(
+        eq(bookings.staffId, owner.id),
+        gte(bookings.startsAt, since),
+        // Unbestätigte Online-Buchungen erst, wenn der Link geklickt ist —
+        // sonst stünde im Handykalender ein Termin, der eine Stunde später
+        // ersatzlos verschwindet.
+        ne(bookings.status, "angefragt"),
+      ),
+    );
 
   const entries: CalendarEntry[] = rows.map((row) => {
     const firstName = row.customerName?.trim().split(/\s+/)[0];

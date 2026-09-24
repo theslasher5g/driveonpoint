@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { and, asc, eq, gte, inArray, lte, ne } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+import { isConfirmed } from "@/lib/booking";
 import { db } from "@/lib/db";
 import { availabilityExceptions, bookings, lessonTypes, staff } from "@/lib/db/schema";
 import { monthName, todayInZurich, weekdayName, zurichDay, zurichTime, zurichToInstant, zurichWeekday } from "@/lib/time";
@@ -47,7 +48,7 @@ export async function MonthView({
       .where(
         and(
           inArray(bookings.staffId, visibleIds),
-          ne(bookings.status, "abgesagt"),
+          isConfirmed(),
           gte(bookings.startsAt, zurichToInstant(gridStart, "00:00")),
           lte(bookings.startsAt, zurichToInstant(gridEnd, "23:59")),
         ),

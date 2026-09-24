@@ -33,6 +33,7 @@ function toCsv(rows: JournalRow[], heading: string): string[] {
         row.staffName,
         formatPrice(row.amountRappen),
         row.promotionLabel ?? "",
+        ...(row.reason ? [row.reason] : []),
       ]
         .map(csvCell)
         .join(";"),
@@ -70,14 +71,14 @@ export async function GET(request: Request) {
     `Summe;;;;;${formatPrice(report.totalRappen)};`,
   ];
 
-  if (report.lateCancellations.length > 0) {
+  if (report.chargeable.length > 0) {
     lines.push(
       "",
-      "# Absagen innert 24 Stunden vor Beginn — laut AGB verrechenbar,",
-      "# oben nicht mitgezählt. Absagen durch die Fahrschule selbst stehen",
-      "# hier ebenfalls und gehören von Hand aussortiert.",
-      ...toCsv(report.lateCancellations, "Datum;Zeit;Referenz;Angebot;Fahrlehrerin;Betrag CHF;Aktion"),
-      `Summe kurzfristige Absagen;;;;;${formatPrice(report.lateCancelledRappen)};`,
+      "# Absagen innert 24 Stunden vor Beginn und nicht erschienen — laut AGB",
+      "# verrechenbar, oben nicht mitgezählt. Absagen durch die Fahrschule",
+      "# selbst stehen hier ebenfalls und gehören von Hand aussortiert.",
+      ...toCsv(report.chargeable, "Datum;Zeit;Referenz;Angebot;Fahrlehrerin;Betrag CHF;Aktion;Grund"),
+      `Summe verrechenbare Ausfälle;;;;;${formatPrice(report.chargeableRappen)};;`,
     );
   }
 

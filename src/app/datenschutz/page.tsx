@@ -63,7 +63,10 @@ export default function DatenschutzPage() {
           <div>
             <h2 className="text-lg mb-2">Wozu wir sie bearbeiten</h2>
             <ul className="text-slate space-y-2 list-disc pl-5">
-              <li>Um deinen Termin durchzuführen und dich bei Änderungen zu erreichen.</li>
+              <li>
+                Um deine Mailadresse vor der Buchung zu bestätigen, deinen Termin durchzuführen,
+                dich rund einen Tag vorher daran zu erinnern und dich bei Änderungen zu erreichen.
+              </li>
               <li>Um die Leistung abzurechnen und die gesetzlichen Aufbewahrungspflichten zu erfüllen.</li>
               <li>Um deine Anfrage zu beantworten.</li>
               <li>Um die Website vor automatisierten Angriffen und Spam zu schützen.</li>
@@ -78,7 +81,8 @@ export default function DatenschutzPage() {
             <h2 className="text-lg mb-2">Wie lange wir sie aufbewahren</h2>
             <p className="text-slate">
               Name, Mailadresse, Telefonnummer und Bemerkung werden 30 Tage nach dem Termin
-              automatisch aus der Datenbank gelöscht. Der Termin selbst bleibt danach ohne
+              automatisch aus der Datenbank gelöscht. Eine Online-Buchung, die du nicht innert
+              einer Stunde über den Link in unserer Mail bestätigst, löschen wir vollständig. Der Termin selbst bleibt danach ohne
               Personenbezug erhalten, damit Auslastung und Umsatz nachvollziehbar bleiben. Davon
               ausgenommen sind Belege, die wir nach Artikel 958f des Obligationenrechts zehn Jahre
               aufbewahren müssen; diese liegen in der Buchhaltung, nicht in dieser Website.

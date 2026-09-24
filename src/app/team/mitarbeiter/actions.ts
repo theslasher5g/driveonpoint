@@ -8,7 +8,7 @@ import { z } from "zod";
 import { record } from "@/lib/audit";
 import { assertPermission } from "@/lib/auth/guard";
 import { destroyAllSessions, hashPassword, newCalendarToken } from "@/lib/auth/session";
-import { findSlots } from "@/lib/booking";
+import { findSlots, occupiesTime } from "@/lib/booking";
 import { sendRebookRequest } from "@/lib/booking-mail";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes, staff, staffLessonTypes, staffRole } from "@/lib/db/schema";
@@ -310,7 +310,7 @@ export async function deleteStaffAction(formData: FormData): Promise<void> {
         customerEmail: bookings.customerEmail,
       })
       .from(bookings)
-      .where(and(eq(bookings.staffId, id), ne(bookings.status, "abgesagt"), gt(bookings.startsAt, now))),
+      .where(and(eq(bookings.staffId, id), occupiesTime(now), gt(bookings.startsAt, now))),
     db.select().from(lessonTypes),
   ]);
 

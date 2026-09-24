@@ -26,6 +26,8 @@ export type JournalRow = {
   staffName: string;
   amountRappen: number;
   promotionLabel: string | null;
+  /** Nur bei verrechenbaren Ausfällen: warum der Termin nicht stattfand. */
+  reason?: "Absage unter 24 h" | "Nicht erschienen";
 };
 
 export type AccountingReport = {
@@ -36,13 +38,14 @@ export type AccountingReport = {
   openCount: number;
   openRappen: number;
   /**
-   * Absagen innert 24 Stunden vor Beginn. Laut AGB verrechenbar, aber nicht
-   * automatisch verrechnet — deshalb getrennt und nicht im Umsatz enthalten.
-   * Absagen durch die Fahrschule stehen hier ebenfalls drin und gehören von
-   * Hand aussortiert; die Anwendung kennt den Grund einer Absage nicht.
+   * Absagen innert 24 Stunden vor Beginn und Termine, zu denen niemand
+   * erschienen ist. Laut AGB verrechenbar, aber nicht automatisch
+   * verrechnet — deshalb getrennt und nicht im Umsatz enthalten. Absagen
+   * durch die Fahrschule stehen hier ebenfalls drin und gehören von Hand
+   * aussortiert; die Anwendung kennt den Grund einer Absage nicht.
    */
-  lateCancellations: JournalRow[];
-  lateCancelledRappen: number;
+  chargeable: JournalRow[];
+  chargeableRappen: number;
   byMonth: { month: number; count: number; totalRappen: number }[];
   byLessonType: { name: string; count: number; totalRappen: number }[];
 };
@@ -69,6 +72,7 @@ export async function accountingReport(year: number, month?: number): Promise<Ac
       promotionLabel: bookings.appliedPromotionLabel,
       status: bookings.status,
       cancelledAt: bookings.cancelledAt,
+      noShowAt: bookings.noShowAt,
       lessonName: lessonTypes.name,
       staffName: staff.name,
     })
@@ -85,11 +89,11 @@ export async function accountingReport(year: number, month?: number): Promise<Ac
 
   const now = new Date();
   const journal: JournalRow[] = [];
-  const lateCancellations: JournalRow[] = [];
+  const chargeable: JournalRow[] = [];
   let totalRappen = 0;
   let openCount = 0;
   let openRappen = 0;
-  let lateCancelledRappen = 0;
+  let chargeableRappen = 0;
 
   const byMonth = new Map<number, { count: number; totalRappen: number }>();
   const byLessonType = new Map<string, { count: number; totalRappen: number }>();
@@ -105,14 +109,23 @@ export async function accountingReport(year: number, month?: number): Promise<Ac
       promotionLabel: row.promotionLabel,
     };
 
+    // Nie per Mail bestätigt — ist kein Termin zustande gekommen.
+    if (row.status === "angefragt") continue;
+
     if (row.status === "abgesagt") {
       const late =
         row.cancelledAt !== null &&
         row.cancelledAt.getTime() > row.startsAt.getTime() - DAY_BEFORE_MS;
       if (late) {
-        lateCancellations.push(entry);
-        lateCancelledRappen += row.amountRappen;
+        chargeable.push({ ...entry, reason: "Absage unter 24 h" });
+        chargeableRappen += row.amountRappen;
       }
+      continue;
+    }
+
+    if (row.noShowAt) {
+      chargeable.push({ ...entry, reason: "Nicht erschienen" });
+      chargeableRappen += row.amountRappen;
       continue;
     }
 
@@ -143,8 +156,8 @@ export async function accountingReport(year: number, month?: number): Promise<Ac
     totalRappen,
     openCount,
     openRappen,
-    lateCancellations,
-    lateCancelledRappen,
+    chargeable,
+    chargeableRappen,
     byMonth: [...byMonth.entries()]
       .map(([month, value]) => ({ month, ...value }))
       .sort((a, b) => a.month - b.month),

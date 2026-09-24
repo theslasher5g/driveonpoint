@@ -37,8 +37,9 @@ export default async function BestaetigtPage({ searchParams }: { searchParams: P
                 {multiple ? "Die Termine gehören dir." : "Der Termin gehört dir."}
               </h1>
               <p className="text-lead text-slate mt-4 max-w-[54ch]">
-                Wir haben dir eine Bestätigung geschickt. Darin stehen auch die Links, mit denen
-                du bis 24 Stunden vorher kostenlos absagen kannst.
+                Wir haben dir eine Bestätigung geschickt. Darin stehen die Links, mit denen du bis
+                24 Stunden vorher kostenlos absagen kannst, und eine Kalenderdatei für dein Handy.
+                Rund einen Tag vorher erinnern wir dich per Mail.
               </p>
               {failedCount > 0 && (
                 <p className="notice notice-warn mt-4 max-w-[54ch]">

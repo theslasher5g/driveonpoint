@@ -80,16 +80,16 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
             hint={report.openCount === 0 ? undefined : `${report.openCount} gebucht`}
           />
           <Tile
-            label="Kurzfristige Absagen"
+            label="Verrechenbare Ausfälle"
             value={
-              report.lateCancellations.length === 0
+              report.chargeable.length === 0
                 ? "—"
-                : `CHF ${formatPrice(report.lateCancelledRappen)}`
+                : `CHF ${formatPrice(report.chargeableRappen)}`
             }
             hint={
-              report.lateCancellations.length === 0
+              report.chargeable.length === 0
                 ? undefined
-                : `${report.lateCancellations.length} Stück, nicht im Umsatz`
+                : `${report.chargeable.length} Stück, nicht im Umsatz`
             }
           />
         </dl>
@@ -198,16 +198,16 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
           )}
         </div>
 
-        {/* Kurzfristige Absagen */}
-        {report.lateCancellations.length > 0 && (
+        {/* Kurzfristige Absagen und nicht erschienen */}
+        {report.chargeable.length > 0 && (
           <div className="mt-12">
-            <h2 className="text-section mb-2">Kurzfristige Absagen</h2>
+            <h2 className="text-section mb-2">Kurzfristige Absagen und nicht erschienen</h2>
             <p className="text-slate text-fine mb-4 max-w-[62ch]">
-              Innert 24 Stunden abgesagt, laut AGB verrechenbar — oben nicht mitgezählt. Eigene
-              Absagen stehen hier ebenfalls.
+              Innert 24 Stunden abgesagt oder nicht erschienen, laut AGB verrechenbar — oben nicht
+              mitgezählt. Eigene Absagen stehen hier ebenfalls.
             </p>
             <div className="surface bg-paper">
-              {report.lateCancellations.map((row) => (
+              {report.chargeable.map((row) => (
                 <div
                   key={row.reference}
                   className="border-b border-deep/10 px-5 py-3 grid gap-x-5 gap-y-0.5 sm:grid-cols-[7rem_1fr_auto] items-baseline"
@@ -220,6 +220,7 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
                     <span className="font-semibold">{row.lessonName}</span>
                     <span className="text-slate"> · {row.staffName}</span>
                     <span className="nums text-slate"> · {row.reference}</span>
+                    {row.reason && <span className="text-slate"> · {row.reason}</span>}
                   </p>
                   <p className="nums text-slate sm:text-right">
                     CHF {formatPrice(row.amountRappen)}

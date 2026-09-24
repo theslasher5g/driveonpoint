@@ -38,7 +38,7 @@ export function MultiBookingForm({ slug, termine }: { slug: string; termine: str
         name="email"
         type="email"
         label="Mailadresse"
-        hint="Hierhin geht die Bestätigung mit den Absage-Links."
+        hint="Hierhin geht ein Link, mit dem du die Buchung bestätigst."
         autoComplete="email"
         inputMode="email"
         error={state.fieldErrors?.email}

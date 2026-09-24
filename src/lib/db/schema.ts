@@ -269,6 +269,26 @@ export const bookings = pgTable(
      * kurzfristig war und laut AGB verrechnet werden durfte.
      */
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+
+    /**
+     * Bestätigung per Mail (Double-Opt-In) bei Online-Buchungen. Bis zum
+     * Klick auf den Link steht der Termin als "angefragt" und hält den
+     * Platz nur bis confirmExpiresAt frei; danach zählt er nicht mehr und
+     * wird beim nächsten stündlichen Lauf gelöscht. Mehrere gleichzeitig
+     * gebuchte Fahrstunden teilen sich denselben Token — ein Klick
+     * bestätigt alle. Im Team erfasste Termine sind sofort bestätigt.
+     */
+    confirmToken: text("confirm_token"),
+    confirmExpiresAt: timestamp("confirm_expires_at", { withTimezone: true }),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    /** Wann die Erinnerung vor dem Termin verschickt wurde — nie doppelt. */
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+    /**
+     * Im Team als "nicht erschienen" markiert. Laut AGB wie eine
+     * kurzfristige Absage verrechenbar, deshalb in der Buchhaltung getrennt
+     * vom Umsatz aufgeführt.
+     */
+    noShowAt: timestamp("no_show_at", { withTimezone: true }),
     priceRappen: integer("price_rappen").notNull().default(0),
     appliedPromotionLabel: text("applied_promotion_label"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -279,6 +299,7 @@ export const bookings = pgTable(
     uniqueIndex("bookings_cancel_token_unique").on(t.cancelToken),
     index("bookings_staff_start_idx").on(t.staffId, t.startsAt),
     index("bookings_purge_idx").on(t.purgeAfter),
+    index("bookings_confirm_token_idx").on(t.confirmToken),
   ],
 );
 

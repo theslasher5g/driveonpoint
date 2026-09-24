@@ -30,6 +30,39 @@ import {
  * diesen Zeitraum, und die Buchung selbst nimmt nichts ausserhalb an. */
 export const BOOKING_HORIZON_DAYS = 28;
 
+/**
+ * So lange hält eine Online-Buchung den Platz frei, bis sie über den Link in
+ * der Mail bestätigt ist. Lang genug, um die Mail auch mit etwas Verzögerung
+ * zu bekommen, kurz genug, dass ein nie bestätigter Termin nicht den halben
+ * Tag blockiert.
+ */
+export const CONFIRM_WINDOW_MINUTES = 60;
+
+/**
+ * Belegt der Termin die Zeit? Abgesagte nicht, unbestätigte nur, solange
+ * ihre Frist läuft — plus ein paar Minuten Luft. Ohne sie könnte ein Klick
+ * auf "bestätigen" in der letzten Sekunde der Frist gleichzeitig mit einer
+ * neuen Buchung durchgehen, die die Anfrage schon als verfallen sieht: zwei
+ * Termine auf demselben Platz. Bestätigen lässt sich nur innerhalb der
+ * Frist, freigegeben wird erst danach.
+ */
+const RELEASE_GRACE_MS = 5 * 60_000;
+
+export function occupiesTime(now: Date = new Date()) {
+  return and(
+    ne(bookings.status, "abgesagt"),
+    or(
+      ne(bookings.status, "angefragt"),
+      gt(bookings.confirmExpiresAt, new Date(now.getTime() - RELEASE_GRACE_MS)),
+    ),
+  );
+}
+
+/** Nur verbindliche Termine — für Übersichten, Feeds und die Buchhaltung. */
+export function isConfirmed() {
+  return and(ne(bookings.status, "abgesagt"), ne(bookings.status, "angefragt"));
+}
+
 /** Liegt der Tag im online buchbaren Zeitraum ab heute? */
 export function withinBookingHorizon(day: string): boolean {
   const today = todayInZurich();
@@ -201,7 +234,7 @@ export async function findSlots(options: {
       .where(
         and(
           inArray(bookings.staffId, staffIds),
-          ne(bookings.status, "abgesagt"),
+          occupiesTime(),
           gte(bookings.startsAt, zurichToInstant(fromDay, "00:00")),
           lte(bookings.startsAt, zurichToInstant(untilDay, "23:59")),
           options.excludeBookingId ? ne(bookings.id, options.excludeBookingId) : undefined,
@@ -428,6 +461,11 @@ export function newCancelToken(): string {
   return randomBytes(24).toString("base64url");
 }
 
+/** Gleich stark wie der Absage-Token; eigene Funktion nur der Lesbarkeit wegen. */
+export function newConfirmToken(): string {
+  return randomBytes(24).toString("base64url");
+}
+
 /**
  * Legt den Termin an. Die Prüfung auf Doppelbuchung passiert in derselben
  * Transaktion wie das Einfügen — sonst könnten zwei gleichzeitige Anfragen
@@ -445,6 +483,11 @@ export async function createBooking(input: {
   priceRappen: number;
   promotionLabel?: string | null;
   retentionDays: number;
+  /**
+   * Online-Buchung: der Termin bleibt "angefragt", bis der Link in der Mail
+   * angeklickt ist. Ohne diese Angabe (im Team erfasst) gilt er sofort.
+   */
+  confirmation?: { token: string; expiresAt: Date };
 }): Promise<{ reference: string; cancelToken: string } | { error: string }> {
   const endsAt = new Date(input.startsAt.getTime() + input.lessonType.durationMinutes * 60_000);
   const reference = newReference();
@@ -478,7 +521,7 @@ export async function createBooking(input: {
         .where(
           and(
             eq(bookings.staffId, input.staffId),
-            ne(bookings.status, "abgesagt"),
+            occupiesTime(),
             lt(bookings.startsAt, new Date(endsAt.getTime() + reach)),
             gt(bookings.endsAt, new Date(input.startsAt.getTime() - reach)),
           ),
@@ -522,7 +565,10 @@ export async function createBooking(input: {
         lessonTypeId: input.lessonType.id,
         startsAt: input.startsAt,
         endsAt,
-        status: "angefragt",
+        status: input.confirmation ? "angefragt" : "bestaetigt",
+        confirmToken: input.confirmation?.token ?? null,
+        confirmExpiresAt: input.confirmation?.expiresAt ?? null,
+        confirmedAt: input.confirmation ? null : new Date(),
         customerName: input.customerName,
         customerEmail: input.customerEmail || null,
         customerPhone: input.customerPhone,

@@ -80,6 +80,49 @@ export async function cancelByStaffAction(formData: FormData): Promise<void> {
   revalidatePath("/team");
 }
 
+/**
+ * Markiert einen begonnenen Termin als "nicht erschienen" — oder nimmt die
+ * Markierung zurück, falls sie versehentlich gesetzt wurde. Laut AGB ist ein
+ * solcher Termin verrechenbar; die Buchhaltung führt ihn deshalb getrennt
+ * vom Umsatz auf, statt ihn als erbracht zu zählen.
+ */
+export async function toggleNoShowAction(formData: FormData): Promise<void> {
+  const user = await assertPermission("kalender.verwalten");
+
+  const id = String(formData.get("id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Ungültiger Termin.");
+
+  const [entry] = await db
+    .select({
+      reference: bookings.reference,
+      startsAt: bookings.startsAt,
+      status: bookings.status,
+      noShowAt: bookings.noShowAt,
+    })
+    .from(bookings)
+    .where(eq(bookings.id, id))
+    .limit(1);
+
+  // Vor Beginn lässt sich noch nicht sagen, ob jemand kommt.
+  if (!entry || entry.status === "abgesagt" || entry.status === "angefragt") return;
+  if (entry.startsAt.getTime() > Date.now()) return;
+
+  const now = new Date();
+  await db
+    .update(bookings)
+    .set({ noShowAt: entry.noShowAt ? null : now, updatedAt: now })
+    .where(eq(bookings.id, id));
+
+  await record(
+    entry.noShowAt ? "buchung.erschienen" : "buchung.nicht-erschienen",
+    { id: user.id, label: user.name },
+    { referenz: entry.reference },
+  );
+
+  revalidatePath("/team/kalender");
+  revalidatePath("/team/buchhaltung");
+}
+
 export type RescheduleState = { error?: string };
 
 /**
@@ -147,7 +190,16 @@ export async function rescheduleBookingAction(
 
   await db
     .update(bookings)
-    .set({ startsAt: slot.startsAt, endsAt: slot.endsAt, purgeAfter, updatedAt: new Date() })
+    // Neue Zeit, neue Erinnerung: die alte ging (falls schon verschickt) noch
+    // an den früheren Termin.
+    .set({
+      startsAt: slot.startsAt,
+      endsAt: slot.endsAt,
+      purgeAfter,
+      reminderSentAt: null,
+      noShowAt: null,
+      updatedAt: new Date(),
+    })
     .where(eq(bookings.id, id));
 
   const von = `${zurichDay(entry.startsAt)} ${zurichTime(entry.startsAt)}`;

@@ -40,6 +40,7 @@ export type Mail = {
   subject: string;
   text: string;
   html: string;
+  attachments?: { filename: string; content: string; contentType: string }[];
 };
 
 export async function sendMail(mail: Mail): Promise<void> {
@@ -54,6 +55,7 @@ export async function sendMail(mail: Mail): Promise<void> {
     subject,
     text: mail.text,
     html: mail.html,
+    attachments: mail.attachments,
     headers: {
       // Hält automatische Abwesenheitsantworten fern, ohne wie Massenmail
       // auszusehen — "Precedence: bulk" ohne List-Unsubscribe ist bei

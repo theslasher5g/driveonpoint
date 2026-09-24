@@ -1,26 +1,27 @@
 "use server";
 
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { record } from "@/lib/audit";
 import {
   activePromotions,
   applyPromotions,
+  CONFIRM_WINDOW_MINUTES,
   createBooking,
   findSlots,
   lessonTypeBySlug,
+  newConfirmToken,
   withinBookingHorizon,
 } from "@/lib/booking";
-import {
-  sendBookingConfirmation,
-  sendMultiBookingConfirmation,
-  sendNewBookingNotification,
-  sendNewBookingsNotification,
-} from "@/lib/booking-mail";
+import { sendConfirmationRequest } from "@/lib/booking-mail";
 import { redeemSolution } from "@/lib/captcha";
+import { db } from "@/lib/db";
+import { bookings } from "@/lib/db/schema";
 import { env } from "@/lib/env";
 import { blockIp, blockedUntil, consume, hit } from "@/lib/rate-limit";
 import { clientIp, hashIp } from "@/lib/request";
+import { site } from "@/lib/site";
 import { daysBetween, minutesSinceMidnight } from "@/lib/time";
 
 export type BookingState = {
@@ -203,6 +204,7 @@ async function bookSingle(
   }
 
   const priced = applyPromotions(lessonType, await activePromotions());
+  const confirmation = pendingConfirmation();
 
   const result = await createBooking({
     lessonType,
@@ -215,6 +217,7 @@ async function bookSingle(
     priceRappen: priced.finalRappen,
     promotionLabel: priced.promotion?.label ?? null,
     retentionDays: env.retentionDays,
+    confirmation,
   });
 
   if ("error" in result) {
@@ -227,40 +230,56 @@ async function bookSingle(
     { referenz: result.reference, angebot: lessonType.slug },
   );
 
-  try {
-    await sendBookingConfirmation({
-      to: input.email,
-      name: input.name,
-      reference: result.reference,
-      cancelToken: result.cancelToken,
-      lessonName: lessonType.name,
-      day: input.tag,
-      time: input.zeit,
-      durationMinutes: lessonType.durationMinutes,
-      priceRappen: priced.finalRappen,
-    });
-  } catch (error) {
-    // Der Termin steht bereits. Ein Mailproblem darf ihn nicht zurücknehmen —
-    // die Bestätigungsseite zeigt die Angaben ohnehin an.
-    console.error("Bestätigungsmail konnte nicht versendet werden:", error);
-  }
+  const mailError = await requestConfirmation({
+    to: input.email,
+    name: input.name,
+    token: confirmation.token,
+    lessonName: lessonType.name,
+    appointments: [{ day: input.tag, time: input.zeit }],
+  });
+  if (mailError) return { error: mailError };
 
-  try {
-    await sendNewBookingNotification({
-      reference: result.reference,
-      lessonName: lessonType.name,
-      day: input.tag,
-      time: input.zeit,
-      customerName: input.name,
-      customerEmail: input.email,
-      customerPhone: input.telefon,
-      customerNote: input.bemerkung,
-    });
-  } catch (error) {
-    console.error("Benachrichtigung ans Postfach konnte nicht versendet werden:", error);
-  }
+  redirect("/buchen/reserviert");
+}
 
-  redirect(`/buchen/bestaetigt?ref=${encodeURIComponent(result.reference)}`);
+/** Token und Frist für eine neue Online-Buchung, die noch bestätigt werden muss. */
+function pendingConfirmation() {
+  return {
+    token: newConfirmToken(),
+    expiresAt: new Date(Date.now() + CONFIRM_WINDOW_MINUTES * 60_000),
+  };
+}
+
+/**
+ * Schickt die Bitte um Bestätigung. Kommt sie nicht raus, kann niemand den
+ * Termin je bestätigen — dann wird die Anfrage sofort wieder gelöscht, statt
+ * eine Stunde lang einen Platz zu blockieren, und die Person erfährt es
+ * direkt im Formular.
+ */
+async function requestConfirmation(details: {
+  to: string;
+  name: string;
+  token: string;
+  lessonName: string;
+  appointments: { day: string; time: string }[];
+}): Promise<string | null> {
+  try {
+    await sendConfirmationRequest({
+      to: details.to,
+      name: details.name,
+      confirmToken: details.token,
+      lessonName: details.lessonName,
+      appointments: details.appointments,
+      expiresMinutes: CONFIRM_WINDOW_MINUTES,
+    });
+    return null;
+  } catch (error) {
+    console.error("Bitte um Bestätigung konnte nicht versendet werden:", error);
+    await db
+      .delete(bookings)
+      .where(and(eq(bookings.confirmToken, details.token), eq(bookings.status, "angefragt")));
+    return `Wir konnten dir gerade keine Mail schicken. Bitte versuche es in ein paar Minuten noch einmal oder ruf uns an: ${site.contact.phone}`;
+  }
 }
 
 /**
@@ -352,6 +371,7 @@ async function bookSeveral(
   // „Gleiche Fahrlehrerin" steht auf der Startseite: steht die Person der
   // vorigen Lektion auch für diese zur Wahl, bekommt sie den Termin.
   let lastStaffId: string | null = null;
+  const confirmation = pendingConfirmation();
 
   for (const { day, time } of requested) {
     const slot = slots.find((entry) => entry.day === day && entry.time === time);
@@ -374,6 +394,7 @@ async function bookSeveral(
       priceRappen: priced.finalRappen,
       promotionLabel: priced.promotion?.label ?? null,
       retentionDays: env.retentionDays,
+      confirmation,
     });
 
     if ("error" in result) {
@@ -406,34 +427,16 @@ async function bookSeveral(
     { referenzen: booked.map((entry) => entry.reference).join(", "), angebot: lessonType.slug },
   );
 
-  try {
-    await sendMultiBookingConfirmation({
-      to: input.email,
-      name: input.name,
-      lessonName: lessonType.name,
-      durationMinutes: lessonType.durationMinutes,
-      priceRappen: priced.finalRappen,
-      booked,
-      failedCount,
-    });
-  } catch (error) {
-    console.error("Bestätigungsmail konnte nicht versendet werden:", error);
-  }
+  const mailError = await requestConfirmation({
+    to: input.email,
+    name: input.name,
+    token: confirmation.token,
+    lessonName: lessonType.name,
+    appointments: booked.map(({ day, time }) => ({ day, time })),
+  });
+  if (mailError) return { error: mailError };
 
-  try {
-    await sendNewBookingsNotification({
-      lessonName: lessonType.name,
-      customerName: input.name,
-      customerEmail: input.email,
-      customerPhone: input.telefon,
-      customerNote: input.bemerkung,
-      booked,
-    });
-  } catch (error) {
-    console.error("Benachrichtigung ans Postfach konnte nicht versendet werden:", error);
-  }
-
-  const refQuery = booked.map((entry) => `ref=${encodeURIComponent(entry.reference)}`).join("&");
-  const failedQuery = failedCount > 0 ? `&fehlgeschlagen=${failedCount}` : "";
-  redirect(`/buchen/bestaetigt?${refQuery}${failedQuery}`);
+  const params = new URLSearchParams({ anzahl: String(booked.length) });
+  if (failedCount > 0) params.set("fehlgeschlagen", String(failedCount));
+  redirect(`/buchen/reserviert?${params}`);
 }

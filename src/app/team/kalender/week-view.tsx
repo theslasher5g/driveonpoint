@@ -14,6 +14,7 @@ import {
 import { ActionMenu, ActionMenuItem } from "@/components/action-menu";
 import { CancelBookingButton } from "@/components/cancel-booking-button";
 import { DeleteExceptionButton } from "@/components/availability-delete";
+import { withSoftHyphens } from "@/lib/hyphenate";
 
 export async function WeekView({
   start,
@@ -151,7 +152,7 @@ export async function WeekView({
                     className="nums text-fine rounded-[calc(var(--radius-control)-4px)] bg-concrete-dim/60 px-2 py-1"
                   >
                     <span className="text-slate">{block.from}–{block.to}</span>{" "}
-                    <span className="text-deep/70">{block.lessonName}</span>
+                    <span className="text-deep/70">{withSoftHyphens(block.lessonName)}</span>
                   </li>
                 ))}
               </ul>
@@ -191,7 +192,7 @@ export async function WeekView({
                       {entry.customerName ?? "Angaben gelöscht"}
                     </p>
                     <p className="text-fine text-slate leading-snug">
-                      {entry.lessonName}
+                      {entry.lessonName && withSoftHyphens(entry.lessonName)}
                       {seesEveryone && !focus && entry.staffName ? ` · ${entry.staffName}` : ""}
                     </p>
                     {entry.customerPhone && (

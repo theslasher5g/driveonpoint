@@ -74,6 +74,7 @@ export default async function VerschiebenPage({ searchParams }: { searchParams: 
     days: 28,
     staffId: entry.staffId,
     excludeBookingId: id,
+    ignoreLeadTime: true,
   });
 
   const chosenSlot =

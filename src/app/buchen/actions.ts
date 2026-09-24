@@ -21,7 +21,7 @@ import { redeemSolution } from "@/lib/captcha";
 import { env } from "@/lib/env";
 import { blockIp, blockedUntil, consume, hit } from "@/lib/rate-limit";
 import { clientIp, hashIp } from "@/lib/request";
-import { daysBetween } from "@/lib/time";
+import { daysBetween, minutesSinceMidnight } from "@/lib/time";
 
 export type BookingState = {
   error?: string;
@@ -57,6 +57,38 @@ export async function createMultiBookingAction(
   formData: FormData,
 ): Promise<BookingState> {
   return { ...(await bookSeveral(previous, formData)), values: echoValues(formData) };
+}
+
+/** Die Felder, die das Formular sichtbar markieren kann. */
+const PERSON_FIELDS = new Set(["name", "email", "telefon", "bemerkung", "agb"]);
+
+/**
+ * Ein Fehler an einem unsichtbaren Feld (zu viele Termine, ungültiges
+ * Datum) erschien vorher nur als „Bitte prüfe die markierten Felder" — ohne
+ * dass etwas markiert war. Solche Fehler kommen jetzt als eigene Meldung.
+ */
+function validationError(issues: z.ZodIssue[]): BookingState {
+  const fieldErrors: Record<string, string> = {};
+  for (const issue of issues) {
+    const key = String(issue.path[0]);
+    if (!PERSON_FIELDS.has(key)) return { error: issue.message };
+    fieldErrors[key] ??= issue.message;
+  }
+  return { error: "Bitte prüfe die markierten Felder.", fieldErrors };
+}
+
+/** Das erste Paar gewählter Zeiten am selben Tag, das sich überschneidet. */
+function overlappingPick(termine: string[], durationMinutes: number): [string, string] | null {
+  const picked = [...new Set(termine)].sort();
+  for (let index = 1; index < picked.length; index += 1) {
+    const [prevDay, prevTime] = picked[index - 1].split("T");
+    const [day, time] = picked[index].split("T");
+    if (prevDay !== day) continue;
+    if (minutesSinceMidnight(time) - minutesSinceMidnight(prevTime) < durationMinutes) {
+      return [prevTime, time];
+    }
+  }
+  return null;
 }
 
 // Nach jeder Antwort löst das Formular eine neue Aufgabe (siehe
@@ -145,14 +177,7 @@ async function bookSingle(
     agb: formData.get("agb"),
   });
 
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const key = String(issue.path[0]);
-      fieldErrors[key] ??= issue.message;
-    }
-    return { error: "Bitte prüfe die markierten Felder.", fieldErrors };
-  }
+  if (!parsed.success) return validationError(parsed.error.issues);
 
   if (!(await redeemSolution("buchung", formData.get("captcha") as string | null))) {
     return { error: CAPTCHA_FAILED };
@@ -280,23 +305,27 @@ async function bookSeveral(
     agb: formData.get("agb"),
   });
 
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const key = String(issue.path[0]);
-      fieldErrors[key] ??= issue.message;
-    }
-    return { error: "Bitte prüfe die markierten Felder.", fieldErrors };
-  }
-
-  if (!(await redeemSolution("buchung", formData.get("captcha") as string | null))) {
-    return { error: CAPTCHA_FAILED };
-  }
+  if (!parsed.success) return validationError(parsed.error.issues);
 
   const input = parsed.data;
   const lessonType = await lessonTypeBySlug(input.angebot);
   if (!lessonType || !lessonType.active) {
     return { error: "Dieses Angebot gibt es nicht mehr." };
+  }
+
+  // Mehrere Fahrlehrpersonen können versetzte Zeiten haben (08:00 bei der
+  // einen, 08:30 bei der anderen) — beide anzuhaken hiesse, gleichzeitig in
+  // zwei Autos zu sitzen. Vor der Captcha-Einlösung, damit die Lösung bei
+  // diesem Fehler nicht verbraucht ist.
+  const clash = overlappingPick(input.termine, lessonType.durationMinutes);
+  if (clash) {
+    return {
+      error: `${clash[0]} und ${clash[1]} Uhr am selben Tag überschneiden sich. Bitte wähle Zeiten, die nicht gleichzeitig liegen.`,
+    };
+  }
+
+  if (!(await redeemSolution("buchung", formData.get("captcha") as string | null))) {
+    return { error: CAPTCHA_FAILED };
   }
 
   // Doppelt angehakte Zeiten nur einmal zählen, dann nach Tag/Zeit aufteilen.
@@ -320,6 +349,10 @@ async function bookSeveral(
   const booked: { day: string; time: string; reference: string; cancelToken: string }[] = [];
   let failedCount = unique.length - requested.length;
 
+  // „Gleiche Fahrlehrerin" steht auf der Startseite: steht die Person der
+  // vorigen Lektion auch für diese zur Wahl, bekommt sie den Termin.
+  let lastStaffId: string | null = null;
+
   for (const { day, time } of requested) {
     const slot = slots.find((entry) => entry.day === day && entry.time === time);
     if (!slot) {
@@ -327,9 +360,12 @@ async function bookSeveral(
       continue;
     }
 
+    const staffId: string =
+      lastStaffId && slot.staffIds.includes(lastStaffId) ? lastStaffId : slot.staffIds[0];
+
     const result = await createBooking({
       lessonType,
-      staffId: slot.staffIds[0],
+      staffId,
       startsAt: slot.startsAt,
       customerName: input.name,
       customerEmail: input.email,
@@ -345,6 +381,7 @@ async function bookSeveral(
       continue;
     }
 
+    lastStaffId = staffId;
     booked.push({ day, time, reference: result.reference, cancelToken: result.cancelToken });
   }
 

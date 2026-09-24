@@ -44,7 +44,13 @@ export default async function ErfassenPage({ searchParams }: { searchParams: Par
 
   let slots: Awaited<ReturnType<typeof findSlots>> = [];
   if (lessonType) {
-    slots = await findSlots({ lessonType, fromDay: todayInZurich(), days: 28, staffId: person });
+    slots = await findSlots({
+      lessonType,
+      fromDay: todayInZurich(),
+      days: 28,
+      staffId: person,
+      ignoreLeadTime: true,
+    });
   }
 
   const chosenSlot =

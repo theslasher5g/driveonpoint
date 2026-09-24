@@ -13,7 +13,9 @@ set -uo pipefail
 
 cd "$(dirname "$0")/.."
 
-CRON_SECRET="$(grep -E '^CRON_SECRET=' .env | head -n1 | cut -d= -f2-)"
+# Umschliessende Anführungszeichen entfernen — docker compose akzeptiert
+# CRON_SECRET="…" in der .env, curl würde sie sonst mitschicken.
+CRON_SECRET="$(grep -E '^CRON_SECRET=' .env | head -n1 | cut -d= -f2- | sed -E 's/^["'\'']//; s/["'\'']$//')"
 LOG=/var/log/driveonpoint-aufraeumen.log
 
 {
@@ -21,8 +23,10 @@ LOG=/var/log/driveonpoint-aufraeumen.log
 
   if [ -z "$CRON_SECRET" ]; then
     echo "CRON_SECRET fehlt in .env — Aufräumlauf übersprungen."
-  elif curl -fsS -X POST -H "Authorization: Bearer ${CRON_SECRET}" \
-      http://127.0.0.1:3000/api/cron/aufraeumen; then
+  # Kopfzeile über stdin statt als Argument: Argumente stehen für jeden
+  # Benutzer des Servers in der Prozessliste (ps), stdin nicht.
+  elif printf 'Authorization: Bearer %s\n' "$CRON_SECRET" \
+      | curl -fsS -X POST -H @- http://127.0.0.1:3000/api/cron/aufraeumen; then
     echo
     echo "OK"
   else

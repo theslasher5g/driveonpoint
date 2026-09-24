@@ -2,7 +2,7 @@ import "server-only";
 import { env } from "./env";
 import { escapeHtml, mailLayout, sendMail } from "./mail";
 import { site } from "./site";
-import { formatDayLong, formatPrice } from "./time";
+import { formatDayLong, formatPrice, zurichDay, zurichTime } from "./time";
 
 /**
  * Bestätigungsmail für einen neuen Termin.
@@ -136,6 +136,61 @@ export async function sendNewBookingNotification(details: {
   await sendMail({
     to: site.contact.email,
     subject: `Neue Buchung — ${details.reference}`,
+    text,
+    html,
+  });
+}
+
+/**
+ * Meldung ans eigene Postfach, wenn die Kundschaft über den Link aus der
+ * Bestätigung absagt. Ohne sie fiel eine Absage erst auf, wenn jemand den
+ * Kalender öffnete — im schlechtesten Fall stand die Fahrlehrerin schon
+ * am Treffpunkt. Kurzfristige Absagen (unter 24 Stunden) sind laut AGB
+ * verrechenbar und werden deshalb eigens markiert.
+ */
+export async function sendCancellationNotification(details: {
+  reference: string;
+  lessonName: string;
+  startsAt: Date;
+  customerName: string | null;
+  customerPhone: string | null;
+  lateCancellation: boolean;
+}): Promise<void> {
+  const when = `${formatDayLong(zurichDay(details.startsAt))}, ${zurichTime(details.startsAt)} Uhr`;
+  const late = details.lateCancellation
+    ? "Kurzfristig: weniger als 24 Stunden vor Beginn, laut AGB verrechenbar."
+    : "Mehr als 24 Stunden vorher, kostenlos.";
+
+  const text = [
+    `Abgesagt: ${details.lessonName}`,
+    when,
+    "",
+    `Name: ${details.customerName ?? "—"}`,
+    `Telefon: ${details.customerPhone ?? "—"}`,
+    "",
+    late,
+    `Referenz: ${details.reference}`,
+  ].join("\n");
+
+  const html = mailLayout(
+    "Termin von der Kundschaft abgesagt",
+    `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin:0 0 20px;">
+  <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;width:38%;">Angebot</td>
+      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${escapeHtml(details.lessonName)}</td></tr>
+  <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Termin</td>
+      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${escapeHtml(when)}</td></tr>
+  <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Name</td>
+      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;">${escapeHtml(details.customerName ?? "—")}</td></tr>
+  <tr><td style="padding:10px 0;font-size:14px;color:#515052;">Telefon</td>
+      <td style="padding:10px 0;">${escapeHtml(details.customerPhone ?? "—")}</td></tr>
+</table>
+<p style="margin:0 0 8px;font-weight:700;">${escapeHtml(late)}</p>
+<p style="margin:0;color:#515052;font-size:14px;">Referenz ${escapeHtml(details.reference)} — im Kalender bereits als abgesagt markiert, der Platz ist wieder frei.</p>`,
+  );
+
+  await sendMail({
+    to: site.contact.email,
+    subject: `${details.lateCancellation ? "Kurzfristige Absage" : "Absage"} — ${details.reference}`,
     text,
     html,
   });

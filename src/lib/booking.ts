@@ -132,6 +132,12 @@ export async function findSlots(options: {
   staffId?: string;
   /** Beim Verschieben: der eigene, bereits belegte Termin zählt nicht als Sperre. */
   excludeBookingId?: string;
+  /**
+   * Die Vorlaufzeit schützt vor kurzfristigen Online-Buchungen. Trägt das
+   * Team selbst ein (Anruf am Morgen für den Nachmittag), entscheidet die
+   * Fahrlehrperson — dann gilt nur noch: nicht in der Vergangenheit.
+   */
+  ignoreLeadTime?: boolean;
 }): Promise<Slot[]> {
   const { lessonType } = options;
   const fromDay = options.fromDay ?? todayInZurich();
@@ -204,7 +210,9 @@ export async function findSlots(options: {
   ]);
 
   const isGroupCourse = lessonType.capacity > 1;
-  const earliest = new Date(Date.now() + lessonType.leadTimeHours * 60 * 60 * 1000);
+  const earliest = new Date(
+    Date.now() + (options.ignoreLeadTime ? 0 : lessonType.leadTimeHours * 60 * 60 * 1000),
+  );
   const result: Slot[] = [];
 
   for (let offset = 0; offset < days; offset += 1) {
@@ -451,24 +459,46 @@ export async function createBooking(input: {
       // nacheinander prüfen statt gleichzeitig.
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.staffId}))`);
 
-      const clash = await tx
+      // Dieselbe Regel wie in findSlots, inklusive Pause: vorher prüfte diese
+      // letzte, gesperrte Kontrolle nur die reine Überschneidung. Kamen zwei
+      // Anfragen gleichzeitig, konnte ein Termin so direkt an den anderen
+      // anschliessen, ohne die Fahrzeit dazwischen. 120 Minuten ist die
+      // grösste Pause, die sich im Team-Bereich einstellen lässt.
+      const reach = 120 * 60_000;
+      const nearby = await tx
         .select({
           id: bookings.id,
           startsAt: bookings.startsAt,
+          endsAt: bookings.endsAt,
           lessonTypeId: bookings.lessonTypeId,
+          bufferMinutes: lessonTypes.bufferMinutes,
         })
         .from(bookings)
+        .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
         .where(
           and(
             eq(bookings.staffId, input.staffId),
             ne(bookings.status, "abgesagt"),
-            // Echte Überschneidung: ein Termin, der genau dann endet, wenn
-            // dieser beginnt, ist keine — sonst liessen sich zwei Kurse nicht
-            // hintereinander legen.
-            lt(bookings.startsAt, endsAt),
-            gt(bookings.endsAt, input.startsAt),
+            lt(bookings.startsAt, new Date(endsAt.getTime() + reach)),
+            gt(bookings.endsAt, new Date(input.startsAt.getTime() - reach)),
           ),
         );
+
+      const isGroupCourse = input.lessonType.capacity > 1;
+      const clash = nearby.filter((row) => {
+        // Mitanmeldungen und andere Termine desselben Kurses teilen sich
+        // keine Pause, wie in findSlots — nur echte Überschneidung zählt.
+        const shared = isGroupCourse && row.lessonTypeId === input.lessonType.id;
+        const pause = shared
+          ? 0
+          : Math.max(input.lessonType.bufferMinutes, row.bufferMinutes ?? 0) * 60_000;
+        // Ein Termin, der genau dann endet, wenn dieser beginnt, ist keine
+        // Überschneidung — sonst liessen sich zwei Kurse nicht hintereinander legen.
+        return (
+          row.startsAt.getTime() < endsAt.getTime() + pause &&
+          row.endsAt.getTime() > input.startsAt.getTime() - pause
+        );
+      });
 
       if (input.lessonType.capacity <= 1) {
         if (clash.length > 0) return null;
@@ -509,7 +539,8 @@ export async function createBooking(input: {
       return { error: "Dieser Termin wurde eben vergeben. Bitte wähle einen anderen." };
     }
     return created;
-  } catch {
+  } catch (error) {
+    console.error("Termin konnte nicht gespeichert werden:", error);
     return { error: "Der Termin konnte nicht gespeichert werden. Bitte versuche es erneut." };
   }
 }

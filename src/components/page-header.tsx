@@ -1,14 +1,5 @@
 import Link from "next/link";
-
-/**
- * Chromium unter Windows und Linux kennt keine deutsche Silbentrennung —
- * `hyphens: auto` greift dort nicht, und auf dem Telefon brach der Titel als
- * „Verkehrskundeunt / erricht“ um. Ein weiches Trennzeichen an der
- * Wortfuge trennt überall an der richtigen Stelle und bleibt sonst unsichtbar.
- */
-function withSoftHyphens(title: string): string {
-  return title.replace("Verkehrskundeunterricht", "Verkehrskunde­unterricht");
-}
+import { withSoftHyphens } from "@/lib/hyphenate";
 
 export function PageHeader({
   title,

@@ -134,6 +134,7 @@ export async function rescheduleBookingAction(
     days: 1,
     staffId: entry.staffId,
     excludeBookingId: id,
+    ignoreLeadTime: true,
   });
   const slot = slots.find((candidate) => candidate.day === tag && candidate.time === zeit);
   if (!slot) {

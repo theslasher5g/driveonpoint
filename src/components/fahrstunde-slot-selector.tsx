@@ -13,14 +13,37 @@ import { formatDayLong } from "@/lib/time";
  * als wiederholtes "termin"-Feld in der Adresse, kein eigener Zustand nötig,
  * funktioniert auch ohne JavaScript (dann eben ohne die laufende Anzahl).
  */
+/** Gleich wie MAX_TERMINE in src/app/buchen/actions.ts. */
+const MAX_SELECTED = 6;
+
 export function FahrstundeSlotSelector({ slots, slug }: { slots: Slot[]; slug: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const byDay = new Map<string, Slot[]>();
+  const byValue = new Map<string, Slot>();
   for (const slot of slots) {
     const list = byDay.get(slot.day) ?? [];
     list.push(slot);
     byDay.set(slot.day, list);
+    byValue.set(`${slot.day}T${slot.time}`, slot);
+  }
+
+  const full = selected.size >= MAX_SELECTED;
+
+  // Bei mehreren Fahrlehrpersonen liegen Zeiten versetzt (08:00 und 08:30).
+  // Wer eine davon wählt, kann die überlappende nicht zusätzlich nehmen.
+  function overlapsSelection(slot: Slot): boolean {
+    for (const value of selected) {
+      const other = byValue.get(value);
+      if (!other || other === slot) continue;
+      if (
+        new Date(slot.startsAt) < new Date(other.endsAt) &&
+        new Date(slot.endsAt) > new Date(other.startsAt)
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function toggle(value: string) {
@@ -47,11 +70,16 @@ export function FahrstundeSlotSelector({ slots, slug }: { slots: Slot[]; slug: s
               {entries.map((slot) => {
                 const value = `${slot.day}T${slot.time}`;
                 const checked = selected.has(value);
+                const blocked = !checked && (full || overlapsSelection(slot));
                 return (
                   <li key={slot.time}>
                     <label
-                      className={`nums block rounded-[var(--radius-control)] px-4 py-2.5 font-bold cursor-pointer transition-colors select-none ${
-                        checked ? "bg-signal text-deep" : "bg-concrete hover:bg-signal-tint"
+                      className={`nums block rounded-[var(--radius-control)] px-4 py-2.5 font-bold select-none transition-colors ${
+                        checked
+                          ? "bg-signal text-deep cursor-pointer"
+                          : blocked
+                            ? "bg-concrete text-deep/30 line-through cursor-not-allowed"
+                            : "bg-concrete hover:bg-signal-tint cursor-pointer"
                       }`}
                     >
                       <input
@@ -59,6 +87,7 @@ export function FahrstundeSlotSelector({ slots, slug }: { slots: Slot[]; slug: s
                         name="termin"
                         value={value}
                         checked={checked}
+                        disabled={blocked}
                         onChange={() => toggle(value)}
                         className="sr-only"
                       />
@@ -81,7 +110,9 @@ export function FahrstundeSlotSelector({ slots, slug }: { slots: Slot[]; slug: s
           <p className="text-fine text-deep">
             {selected.size === 0
               ? "Eine oder mehrere Lektionen auswählen"
-              : `${selected.size} ${selected.size === 1 ? "Lektion" : "Lektionen"} ausgewählt`}
+              : full
+                ? `${MAX_SELECTED} Lektionen ausgewählt — mehr geht auf einmal nicht`
+                : `${selected.size} ${selected.size === 1 ? "Lektion" : "Lektionen"} ausgewählt`}
           </p>
           <button type="submit" className="btn btn-primary py-2.5 px-5" disabled={selected.size === 0}>
             Weiter

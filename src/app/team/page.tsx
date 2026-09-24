@@ -148,7 +148,7 @@ export default async function TeamDashboard({
             braucht, ist eingefärbt. */}
         <dl className="grid gap-px bg-deep/12 border border-deep/12 rounded-[var(--radius-surface)] overflow-hidden grid-cols-2 sm:grid-cols-3 mt-7">
           <StatTile label="Heute" value={todays.length} />
-          <StatTile label={seesEveryone ? "Diese Woche, alle" : "Diese Woche"} value={weekTotal} />
+          <StatTile label={seesEveryone ? "Nächste 7 Tage, alle" : "Nächste 7 Tage"} value={weekTotal} />
           <StatTile
             label="Ohne Verfügbarkeit"
             value={uncovered.length}
@@ -196,7 +196,7 @@ export default async function TeamDashboard({
 
         {upcoming.length === 0 ? (
           <p className="text-slate text-fine">
-            Diese Woche ist nichts gebucht.{" "}
+            In den nächsten 7 Tagen ist nichts gebucht.{" "}
             <Link
               href="/team/verfuegbarkeit"
               className="font-semibold text-signal-ink underline underline-offset-4"

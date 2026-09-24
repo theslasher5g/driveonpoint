@@ -287,6 +287,42 @@ async function main() {
   const n2 = await book("nothilfekurs", personB.id, anschluss, "F2");
   check("direkt anschliessender Kurs ist keine Überschneidung", n2.ok, true);
 
+  // ===================================================================
+  console.log("\nSZENARIO G — Pause gilt auch in der letzten Prüfung beim Speichern");
+  // ===================================================================
+  // 09:00–09:45 steht bei Person A, danach 15 Minuten Pause. Zwei gleichzeitige
+  // Anfragen sehen beide dieselbe freie Liste; createBooking muss den Termin
+  // in der Pause selbst abweisen, nicht nur findSlots.
+  const inPause = new Date(nine.startsAt.getTime() + 50 * 60_000);
+  const g1 = await book("fahrstunde", personA.id, inPause, "G1");
+  check("Fahrstunde um 09:50 (in der Pause) wird abgewiesen", g1.ok, false);
+  const nachPause = new Date(nine.startsAt.getTime() + 60 * 60_000);
+  const g2 = await book("fahrstunde", personA.id, nachPause, "G2");
+  check("Fahrstunde um 10:00 (nach der Pause) gelingt", g2.ok, true);
+
+  // ===================================================================
+  console.log("\nSZENARIO H — Vorlaufzeit gilt online, nicht beim Erfassen im Team");
+  // ===================================================================
+  const heute = todayInZurich();
+  const morgen = addDays(heute, 1);
+  await addRule(personB.id, fahrstunde.id, zurichWeekday(heute), "00:00", "23:45");
+  await addRule(personB.id, fahrstunde.id, zurichWeekday(morgen), "00:00", "23:45");
+  const online = await findSlots({ lessonType: fahrstunde, fromDay: heute, days: 2, staffId: personB.id });
+  const team = await findSlots({
+    lessonType: fahrstunde,
+    fromDay: heute,
+    days: 2,
+    staffId: personB.id,
+    ignoreLeadTime: true,
+  });
+  note("online / im Team", [online.length, team.length]);
+  check("im Team sind kurzfristigere Zeiten wählbar", team.length > online.length, true);
+  check(
+    "auch im Team nichts in der Vergangenheit",
+    team.every((slot) => slot.startsAt.getTime() > Date.now()),
+    true,
+  );
+
   console.log(`\n${failures === 0 ? "Alle Prüfungen bestanden." : `${failures} Prüfung(en) fehlgeschlagen.`}`);
 
   await cleanup();

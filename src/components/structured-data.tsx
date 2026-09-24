@@ -67,7 +67,9 @@ export async function StructuredData() {
       // Unterschied, obwohl das Skript zu dem Zeitpunkt längst ausgeführt
       // ist — reine Konsolenwarnung, keine Funktionsänderung.
       suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      // "<" maskiert: ein "</script>" in einem Text aus site.ts würde sonst
+      // das Skript vorzeitig beenden.
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
     />
   );
 }

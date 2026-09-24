@@ -104,7 +104,15 @@ async function createManualBooking(
 
   // Dieselbe Prüfung wie bei der Online-Buchung: der Termin muss tatsächlich
   // noch frei sein, unabhängig davon, was das Formular zuvor anzeigte.
-  const slots = await findSlots({ lessonType, fromDay: input.tag, days: 1, staffId: input.person });
+  // Ohne Vorlaufzeit: wer im Team selbst erfasst, darf auch den Anruf vom
+  // Morgen für den Nachmittag eintragen.
+  const slots = await findSlots({
+    lessonType,
+    fromDay: input.tag,
+    days: 1,
+    staffId: input.person,
+    ignoreLeadTime: true,
+  });
   const slot = slots.find((entry) => entry.day === input.tag && entry.time === input.zeit);
   if (!slot) {
     return { error: "Dieser Termin ist nicht mehr frei. Bitte wähle einen anderen." };

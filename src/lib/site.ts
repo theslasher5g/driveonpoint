@@ -20,6 +20,11 @@ export type TeamMember = {
   photo: string;
 };
 
+// Ausserhalb von `site`, damit auch die Texte weiter unten (Gründe, Fragen)
+// die Orte nennen können, ohne die Liste ein zweites Mal zu pflegen.
+const region = ["Basel", "Allschwil", "Binningen", "Muttenz", "Pratteln", "Liestal"]; // ###
+const regionText = `${region.join(", ")} und Umgebung`;
+
 const team: TeamMember[] = [
   {
     name: "Christina",
@@ -62,13 +67,15 @@ export const site = {
     { days: "Sonntag", time: "geschlossen" },
   ],
 
-  region: ["Basel", "Allschwil", "Binningen", "Muttenz", "Pratteln", "Liestal"], // ###
+  region,
 
   languages: ["Deutsch", "Englisch"], // ###
 
   hero: {
     headline: ["Fahren lernen,", "ohne Druck."],
-    lead: "Deine Fahrlehrerin in Basel, dein Tempo. Wir sagen dir ehrlich, wo du stehst — und melden dich erst zur Prüfung an, wenn du wirklich bereit bist.",
+    // Steht auch als Beschreibung in den Suchergebnissen, deshalb vorne
+    // die Suchbegriffe und insgesamt unter 160 Zeichen.
+    lead: "Deine Fahrschule in Basel und Baselland: eine Fahrlehrerin, dein Tempo. Zur Prüfung melden wir dich erst an, wenn du wirklich bereit bist.",
   },
 
   philosophy: {
@@ -97,7 +104,7 @@ export const site = {
     fahrstunden: {
       step: "Praxis",
       title: "Fahrstunden",
-      lead: "Flexible Pakete für deine praktische Ausbildung – vom Schnuppern bis zum kompletten Abo.",
+      lead: "Für den Führerausweis Kategorie B, mit Abholung in Basel und Baselland – flexible Pakete vom Schnuppern bis zum kompletten Abo.",
       note: "Alle Preise inklusive Versicherung und Administration.",
     },
   },
@@ -149,6 +156,10 @@ export const site = {
       body: "Nothilfekurs, Verkehrskunde und Praxis bei denselben Leuten — du musst nichts zweimal organisieren.",
     },
     {
+      title: "Abholung in Basel und Baselland",
+      body: `Zuhause, an der Schule oder am Arbeitsplatz — in ${regionText}. Die Anfahrt zählt nicht zur Lektion.`,
+    },
+    {
       title: "Absagen bis 24 Stunden vorher",
       body: "Kostenlos und ohne Rückfragen. Der Link dazu steht in deiner Bestätigungsmail.",
     },
@@ -162,7 +173,7 @@ export const site = {
   images: {
     hero: {
       src: "/images/fahrzeug-tucson.jpg",
-      alt: "Schulfahrzeug von DriveOnPoint",
+      alt: "Schulfahrzeug der Fahrschule DriveOnPoint in Basel",
       width: 738,
       height: 497,
     },
@@ -174,6 +185,14 @@ export const site = {
     {
       q: "Wie viele Fahrstunden brauche ich?",
       a: "Das lässt sich vorher nicht sagen — und wir raten dir von jeder Fahrschule ab, die dir eine Zahl nennt. Wer regelmässig privat mitfährt, braucht erfahrungsgemäss weniger. Wir schauen nach jeder Lektion gemeinsam, wo du stehst.",
+    },
+    {
+      q: "Wo finden die Fahrstunden statt?",
+      a: `Wir holen dich ab, wo es dir passt — in ${regionText}. Wohnst du knapp ausserhalb, frag trotzdem, meistens lässt es sich einrichten.`,
+    },
+    {
+      q: "Ich wohne in Baselland — wo mache ich die Prüfung?",
+      a: "Die praktische Prüfung legst du beim Strassenverkehrsamt deines Wohnkantons ab, also in Basel-Stadt oder Basel-Landschaft. Bei uns fahren kannst du so oder so.",
     },
     {
       q: "Kann ich eine Lektion absagen?",

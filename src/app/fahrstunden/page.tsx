@@ -18,7 +18,7 @@ export default function FahrstundenPage() {
   return (
     <>
       <PageHeader
-        title="Fahrstunden"
+        title={`Fahrstunden in ${site.contact.city}`}
         lead={`${offer.lead} Du fährst immer bei derselben Person, und wir melden dich erst zur Prüfung an, wenn du sie bestehst.`}
         action={{ href: "/buchen?angebot=schnupperstunde", label: "Schnupperstunde buchen" }}
       />

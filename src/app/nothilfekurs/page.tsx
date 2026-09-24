@@ -18,7 +18,7 @@ export default function NothilfekursPage() {
   return (
     <>
       <PageHeader
-        title="Nothilfekurs"
+        title={`Nothilfekurs in ${site.contact.city}`}
         lead={offer.lead}
         action={{ href: "/buchen?angebot=nothilfekurs", label: "Kursdaten ansehen" }}
       />

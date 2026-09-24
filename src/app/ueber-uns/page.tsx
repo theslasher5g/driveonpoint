@@ -7,7 +7,7 @@ import { site, type TeamMember } from "@/lib/site";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Über uns",
+  title: `Über uns — Fahrlehrerin in ${site.contact.city}`,
   description: `Die Fahrschule ${site.name} in ${site.contact.city} — wer unterrichtet, wie wir arbeiten und wo wir fahren.`,
   alternates: { canonical: "/ueber-uns" },
 };
@@ -17,7 +17,7 @@ export default function UeberUnsPage() {
     <>
       <PageHeader
         title="Wer dir das Fahren beibringt"
-        lead={`Eine kleine Fahrschule in ${site.contact.city}. Klein genug, dass du immer bei derselben Person fährst — und dass wir uns an dich erinnern, wenn du anrufst.`}
+        lead={`Eine kleine Fahrschule in ${site.contact.city}, unterwegs in Basel-Stadt und Baselland. Klein genug, dass du immer bei derselben Person fährst — und dass wir uns an dich erinnern, wenn du anrufst.`}
       />
 
       <Section>

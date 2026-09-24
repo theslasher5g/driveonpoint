@@ -37,7 +37,7 @@ export default function VkuPage() {
   return (
     <>
       <PageHeader
-        title="Verkehrskundeunterricht"
+        title={`Verkehrskundeunterricht in ${site.contact.city}`}
         lead={offer.lead}
         action={{ href: "/buchen?angebot=vku", label: "Kursdaten ansehen" }}
       />

@@ -26,7 +26,7 @@ export default async function PreisePage() {
     <>
       <PageHeader
         title="Preise"
-        lead="Keine Anmeldegebühr, keine Verwaltungspauschale, kein Aufschlag für Abholung im Einzugsgebiet. Du zahlst, was du fährst."
+        lead={`Fahrstunden, VKU und Nothilfekurs in ${site.contact.city} — ohne Anmeldegebühr, ohne Verwaltungspauschale und ohne Aufschlag für die Abholung im Einzugsgebiet. Du zahlst, was du fährst.`}
         action={{ href: "/buchen", label: "Termin buchen" }}
       />
 

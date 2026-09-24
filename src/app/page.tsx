@@ -108,8 +108,9 @@ export default function HomePage() {
         <div className="lane">
           <h2 className="text-title max-w-[16ch]">Drei Stufen zum Ausweis.</h2>
           <p className="text-slate text-lead mt-3 max-w-[46ch]">
-            Sie bauen aufeinander auf, und bei uns bekommst du alle drei aus einer Hand — du
-            musst nichts davon zweimal organisieren.
+            Nothilfekurs, Verkehrskunde und Fahrstunden bauen aufeinander auf. Bei uns in{" "}
+            {site.contact.city} bekommst du alle drei aus einer Hand — du musst nichts davon
+            zweimal organisieren.
           </p>
 
           <ol className="mt-10 md:mt-14 border-t border-deep/10">

@@ -18,7 +18,7 @@ export default function AusbildungswegPage() {
     <>
       <PageHeader
         title="Der Weg zum Führerausweis"
-        lead="Sieben Schritte, und sie bauen aufeinander auf. Wer die Reihenfolge kennt, spart sich Monate — der häufigste Fehler ist, den VKU zu spät zu buchen."
+        lead="Sieben Schritte zum Führerausweis Kategorie B, ob du in Basel-Stadt oder Basel-Landschaft wohnst. Sie bauen aufeinander auf. Wer die Reihenfolge kennt, spart sich Monate — der häufigste Fehler ist, den VKU zu spät zu buchen."
         action={{ href: "/buchen", label: "Mit Schritt eins beginnen" }}
       />
 

@@ -26,11 +26,11 @@ export default function NothilfekursPage() {
       <Section title="Was geübt wird" tone="paper">
         <div className="grid gap-x-10 gap-y-6 sm:grid-cols-2 max-w-4xl">
           {[
-            ["Unfallstelle sichern", "Warnblinker, Weste, Pannendreieck — und wie du dich selbst nicht zum zweiten Opfer machst."],
+            ["Unfallstelle sichern", "Warnblinker, Weste, Pannendreieck, und wie du dich dabei selbst schützt."],
             ["Notruf richtig absetzen", "144, 117, 118. Welche Angaben die Leitstelle braucht und in welcher Reihenfolge."],
             ["Bewusstlose Person", "Atmung prüfen, stabile Seitenlage, Atemwege freihalten."],
             ["Wiederbelebung", "Herzdruckmassage und Beatmung an der Puppe, bis der Ablauf sitzt."],
-            ["Defibrillator", "Wie ein AED bedient wird. Er spricht mit dir und lässt sich nicht falsch anwenden."],
+            ["Defibrillator", "Wie ein AED funktioniert. Das Gerät sagt dir jeden Schritt an."],
             ["Blutungen und Schock", "Druckverband anlegen, Lagerung, Wärmeerhalt bis der Rettungsdienst da ist."],
           ].map(([title, body]) => (
             <div key={title}>
@@ -51,7 +51,7 @@ export default function NothilfekursPage() {
             ["Wie lange gültig?", "Sechs Jahre. Danach musst du ihn erneuern, falls du ihn noch brauchst."],
             ["Kleidung", "Bequem. Es wird auf dem Boden gearbeitet."],
             ["Anerkennung", "Der Ausweis wird in der ganzen Schweiz anerkannt, auch bei anderen Fahrschulen."],
-            ["Abwesenheit", "Wer einen Teil verpasst, muss ihn nachholen — die Stundenzahl ist vorgeschrieben."],
+            ["Abwesenheit", "Verpasst du einen Teil, musst du ihn nachholen. Die Stundenzahl ist vorgeschrieben."],
           ].map(([q, a]) => (
             <li key={q}>
               <h3 className="text-base">{q}</h3>

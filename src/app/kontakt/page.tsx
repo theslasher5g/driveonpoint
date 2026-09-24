@@ -19,7 +19,7 @@ export default function KontaktPage() {
     <>
       <PageHeader
         title="Schreib uns"
-        lead="Für einen Termin brauchst du das Formular nicht — den buchst du direkt im Kalender. Für alles andere sind wir hier."
+        lead="Einen Termin buchst du am einfachsten direkt im Kalender. Für alle anderen Fragen kannst du uns hier schreiben."
         action={{ href: "/buchen", label: "Lieber direkt buchen" }}
       />
 
@@ -74,7 +74,7 @@ export default function KontaktPage() {
 
             <p className="text-slate mt-7 max-w-[46ch]">
               Während einer Fahrstunde gehen wir nicht ans Telefon. Sprich auf die Combox oder
-              schreib — wir melden uns am selben Tag zurück.
+              schreib uns, wir melden uns am selben Tag.
             </p>
 
             <Link href="/ueber-uns" className="btn btn-outline mt-7">

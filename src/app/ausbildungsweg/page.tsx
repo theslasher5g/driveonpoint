@@ -18,7 +18,7 @@ export default function AusbildungswegPage() {
     <>
       <PageHeader
         title="Der Weg zum Führerausweis"
-        lead="Sieben Schritte zum Führerausweis Kategorie B, ob du in Basel-Stadt oder Basel-Landschaft wohnst. Sie bauen aufeinander auf. Wer die Reihenfolge kennt, spart sich Monate — der häufigste Fehler ist, den VKU zu spät zu buchen."
+        lead="Sieben Schritte zum Führerausweis Kategorie B, ob du in Basel-Stadt oder Basel-Landschaft wohnst. Sie bauen aufeinander auf. Wer die Reihenfolge kennt, spart Zeit. Am häufigsten wird der VKU zu spät gebucht."
         action={{ href: "/buchen", label: "Mit Schritt eins beginnen" }}
       />
 
@@ -71,8 +71,8 @@ export default function AusbildungswegPage() {
               <div>
                 <h3 className="text-lg">Der VKU ist ausgebucht</h3>
                 <p className="text-slate mt-2">
-                  Kurse sind besonders vor den Sommerferien früh voll. Buche den VKU, sobald du
-                  den Lernfahrausweis beantragt hast — nicht erst, wenn die Fahrstunden laufen.
+                  Vor den Sommerferien sind die Kurse schnell voll. Buche den VKU am besten, sobald
+                  du den Lernfahrausweis beantragt hast, und nicht erst, wenn die Fahrstunden laufen.
                 </p>
               </div>
             </div>

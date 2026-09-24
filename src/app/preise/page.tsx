@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: `Preise — Fahrschule in ${site.contact.city}`,
-  description: `Alle Preise für Fahrstunden, Verkehrskundeunterricht und Nothilfekurs in ${site.contact.city} — ohne Anmeldegebühr und ohne Kleingedrucktes.`,
+  description: `Alle Preise für Fahrstunden, Verkehrskundeunterricht und Nothilfekurs in ${site.contact.city}. Ohne Anmeldegebühr.`,
   alternates: { canonical: "/preise" },
 };
 
@@ -26,7 +26,7 @@ export default async function PreisePage() {
     <>
       <PageHeader
         title="Preise"
-        lead={`Fahrstunden, VKU und Nothilfekurs in ${site.contact.city} — ohne Anmeldegebühr, ohne Verwaltungspauschale und ohne Aufschlag für die Abholung im Einzugsgebiet. Du zahlst, was du fährst.`}
+        lead={`Was Fahrstunden, VKU und Nothilfekurs bei uns in ${site.contact.city} kosten. Es gibt keine Anmeldegebühr, keine Verwaltungspauschale und keinen Aufschlag für die Abholung. Du zahlst, was du fährst.`}
         action={{ href: "/buchen", label: "Termin buchen" }}
       />
 

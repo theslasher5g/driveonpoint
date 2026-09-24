@@ -54,7 +54,7 @@ export default async function ReserviertPage({ searchParams }: { searchParams: P
         <div className="lane max-w-2xl">
           <h2 className="text-section">Keine Mail bekommen?</h2>
           <p className="text-slate mt-4">
-            Schau im Spam-Ordner nach — die Mail kommt von {site.name}. Steht sie auch
+            Schau im Spam-Ordner nach, die Mail kommt von {site.name}. Steht sie auch
             dort nicht, hast du dich vielleicht bei der Adresse vertippt. Nach{" "}
             {CONFIRM_WINDOW_MINUTES} Minuten wird der Termin wieder frei, und du kannst ihn neu
             buchen. Oder ruf uns an, dann tragen wir ihn direkt ein.

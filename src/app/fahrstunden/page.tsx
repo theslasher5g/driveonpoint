@@ -19,21 +19,20 @@ export default function FahrstundenPage() {
     <>
       <PageHeader
         title={`Fahrstunden in ${site.contact.city}`}
-        lead={`${offer.lead} Du fährst immer bei derselben Person, und wir melden dich erst zur Prüfung an, wenn du sie bestehst.`}
+        lead={`${offer.lead} Du fährst immer bei derselben Fahrlehrerin, und zur Prüfung melden wir dich an, wenn du so weit bist.`}
         action={{ href: "/buchen?angebot=schnupperstunde", label: "Schnupperstunde buchen" }}
       />
 
       <Section title="Wie eine Lektion abläuft">
         <div className="prose-column space-y-4 text-slate">
           <p>
-            45 Minuten, wir holen dich ab — zuhause, Schule oder Arbeitsplatz, im Einzugsgebiet.
-            Die Anfahrt zählt nicht zur Lektion. Von ruhigem Gelände bis zu den Strecken im
-            Prüfungsgebiet: wir steigern Schritt für Schritt, in deinem Tempo.
+            Eine Lektion dauert 45 Minuten. Wir holen dich ab, zuhause, an der Schule oder bei
+            der Arbeit, und die Fahrt zu dir zählt nicht zur Lektion. Am Anfang übst du auf
+            ruhigen Strassen, später fahren wir die Strecken im Prüfungsgebiet.
           </p>
           <p>
-            Deine Fahrlehrperson meldet sich vor der ersten Lektion telefonisch bei dir und
-            vereinbart den genauen Treffpunkt — deshalb ist deine Telefonnummer bei der Buchung
-            Pflicht.
+            Vor der ersten Lektion ruft dich deine Fahrlehrperson an und macht mit dir den
+            genauen Treffpunkt ab. Deshalb brauchen wir bei der Buchung deine Telefonnummer.
           </p>
           <p>
             Nach jeder Lektion weisst du, woran du arbeitest und wo du stehst.
@@ -46,8 +45,8 @@ export default function FahrstundenPage() {
           <div className="surface bg-concrete p-6">
             <h3 className="text-lg">Schnupperstunde</h3>
             <p className="text-slate mt-2">
-              Eine einzelne Lektion zum Kennenlernen. Danach weisst du, ob es zwischen euch
-              passt — ohne dass du dich auf irgendetwas festgelegt hast.
+              Eine einzelne Lektion zum Kennenlernen. Danach weisst du, ob es passt, und musst
+              dich zu nichts verpflichten.
             </p>
             <Link href="/buchen?angebot=schnupperstunde" className="btn btn-outline mt-4">
               Schnupperstunde buchen

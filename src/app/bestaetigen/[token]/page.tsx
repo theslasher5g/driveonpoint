@@ -94,7 +94,7 @@ export default async function BestaetigenPage({ params }: { params: Params }) {
       <Shell title="Dieser Link ist abgelaufen">
         <p className="text-slate max-w-[54ch]">
           Die Bestätigung war nur {CONFIRM_WINDOW_MINUTES} Minuten lang möglich, danach haben wir
-          den Termin wieder freigegeben. Buch ihn einfach neu — ist er noch frei, siehst du ihn im Kalender.
+          den Termin wieder freigegeben. Buch ihn einfach neu. Ist er noch frei, siehst du ihn im Kalender.
         </p>
         <div className="flex flex-wrap gap-3 mt-7">
           <Link href="/buchen" className="btn btn-primary">

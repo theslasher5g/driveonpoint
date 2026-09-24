@@ -17,7 +17,7 @@ export default function UeberUnsPage() {
     <>
       <PageHeader
         title="Wer dir das Fahren beibringt"
-        lead={`Eine kleine Fahrschule in ${site.contact.city}, unterwegs in Basel-Stadt und Baselland. Klein genug, dass du immer bei derselben Person fährst — und dass wir uns an dich erinnern, wenn du anrufst.`}
+        lead={`Wir sind eine kleine Fahrschule in ${site.contact.city} und fahren in Basel-Stadt und Baselland. Du fährst immer bei derselben Person, und wenn du anrufst, wissen wir, wer du bist.`}
       />
 
       <Section>
@@ -32,9 +32,9 @@ export default function UeberUnsPage() {
         <div className="prose-column space-y-4 text-slate max-w-2xl">
           <p>{site.philosophy.body}</p>
           <p>
-            In der Praxis heisst das: Wir sagen dir ehrlich, wann du bereit bist. Eine Anmeldung
-            zur Prüfung, die absehbar scheitert, kostet dich Geld und Nerven. Und umgekehrt
-            melden wir dich an, sobald es reicht — nicht erst nach einer Wunschzahl an Lektionen.
+            Konkret heisst das: Wir sagen dir offen, wann du bereit bist. Eine Prüfung, die
+            absehbar schiefgeht, kostet dich Geld und Nerven. Umgekehrt melden wir dich an,
+            sobald es reicht, und nicht erst nach einer bestimmten Anzahl Lektionen.
           </p>
           <p>
             Unterrichtet wird in {site.languages.join(" und ")}. Wir fahren in{" "}
@@ -53,7 +53,7 @@ export default function UeberUnsPage() {
             ))}
           </ul>
           <p className="text-slate mt-6">
-            Wohnst du knapp ausserhalb? Frag trotzdem — meistens lässt es sich einrichten.
+            Wohnst du etwas ausserhalb? Frag trotzdem, meistens geht es.
           </p>
           <Link href="/kontakt" className="btn btn-outline mt-7">
             Frage stellen

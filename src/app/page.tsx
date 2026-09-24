@@ -41,7 +41,7 @@ const STAGES = [
     step: site.offers.fahrstunden.step,
     title: site.offers.fahrstunden.title,
     meta: "45 Minuten je Lektion",
-    body: "Einzeln oder im Abo, in deinem Tempo — von der ersten Stunde bis zur Prüfung.",
+    body: "Einzeln oder im Abo, von der ersten Stunde bis zur Prüfung.",
   },
 ];
 
@@ -83,7 +83,7 @@ export default function HomePage() {
               </p>
 
               <p className="text-fine text-paper/70 mt-6 max-w-[48ch]">
-                Lieber zuerst reden? {site.contact.phone} — oder{" "}
+                Lieber zuerst reden? Ruf an unter {site.contact.phone} oder{" "}
                 <Link href="/kontakt" className="underline underline-offset-4 hover:text-paper">
                   schreib uns
                 </Link>
@@ -108,9 +108,8 @@ export default function HomePage() {
         <div className="lane">
           <h2 className="text-title max-w-[16ch]">Drei Stufen zum Ausweis.</h2>
           <p className="text-slate text-lead mt-3 max-w-[46ch]">
-            Nothilfekurs, Verkehrskunde und Fahrstunden bauen aufeinander auf. Bei uns in{" "}
-            {site.contact.city} bekommst du alle drei aus einer Hand — du musst nichts davon
-            zweimal organisieren.
+            Nothilfekurs, Verkehrskunde und Fahrstunden bauen aufeinander auf. Du kannst alle
+            drei bei uns in {site.contact.city} machen.
           </p>
 
           <ol className="mt-10 md:mt-14 border-t border-deep/10">
@@ -203,7 +202,7 @@ export default function HomePage() {
             <h2 className="text-title max-w-[15ch]">Vom ersten Kurs bis zum Ausweis.</h2>
             <p className="text-slate text-fine mt-3 max-w-[38ch]">
               Sieben Schritte, in dieser Reihenfolge. Die meisten brauchen dafür sechs bis zwölf
-              Monate — bei dir so lange, wie du brauchst.
+              Monate.
             </p>
             <Link href="/ausbildungsweg" className="btn btn-outline mt-5 py-2.5 px-4 text-fine">
               Alle sieben Schritte
@@ -243,8 +242,8 @@ export default function HomePage() {
             <div>
               <h2 className="text-title max-w-[15ch]">Such dir einen Termin aus.</h2>
               <p className="text-paper/80 mt-3 max-w-[50ch]">
-                Du siehst direkt, wann Christina frei ist. Keine Rückrufe, keine
-                Warteschleife — und absagen kannst du bis 24 Stunden vorher kostenlos.
+                Im Kalender siehst du, wann Christina frei ist, und buchst gleich selbst.
+                Absagen kannst du bis 24 Stunden vorher kostenlos.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 mt-6 md:mt-0 shrink-0">

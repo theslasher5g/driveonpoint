@@ -72,7 +72,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
         <>
           <PageHeader
             title="Deine Angaben"
-            lead={`${sorted.length} ${sorted.length === 1 ? "Fahrstunde" : "Fahrstunden"}. Noch drei Felder, dann sind die Termine dir.`}
+            lead={`${sorted.length} ${sorted.length === 1 ? "Fahrstunde" : "Fahrstunden"}. Jetzt noch deine Angaben.`}
           />
           <section className="shell band">
             <div className="lane max-w-2xl">
@@ -129,7 +129,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
         <>
           <PageHeader
             title="Deine Angaben"
-            lead={`${lessonType.name} am ${formatDayLong(chosen.day)} um ${chosen.time} Uhr. Noch drei Felder, dann ist der Termin dir.`}
+            lead={`${lessonType.name} am ${formatDayLong(chosen.day)} um ${chosen.time} Uhr. Jetzt noch deine Angaben.`}
           />
           <section className="shell band">
             <div className="lane max-w-2xl">
@@ -178,8 +178,8 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
         lead={
           slots.length > 0
             ? allowsMulti
-              ? "Wähle einen oder mehrere Termine — heute gleich drei hintereinander, oder verteilt auf mehrere Tage. Alles, was hier steht, ist tatsächlich frei."
-              : `Wähle einen Termin. Alles, was hier steht, ist tatsächlich frei — die Liste kommt direkt aus dem Kalender der Fahrlehrerinnen und Fahrlehrer.`
+              ? "Wähle einen oder mehrere Termine, hintereinander am selben Tag oder verteilt auf mehrere Tage. Alle Zeiten hier sind wirklich frei."
+              : `Wähle einen Termin. Alle Zeiten hier sind wirklich frei, sie kommen direkt aus unserem Kalender.`
             : "Für die nächsten vier Wochen ist online nichts frei."
         }
       />
@@ -199,8 +199,8 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
             <div className="surface bg-paper p-6 md:p-7 max-w-xl">
               <p className="font-display text-xl font-bold">Ruf uns an</p>
               <p className="text-slate mt-2">
-                Oft lässt sich trotzdem etwas einrichten, auch wenn online gerade nichts frei
-                ist — ruf uns an oder schreib uns kurz.
+                Online ist gerade nichts frei, aber oft finden wir trotzdem einen Termin. Ruf
+                uns an oder schreib uns kurz.
               </p>
               <div className="flex flex-wrap gap-3 mt-5">
                 <a href={`tel:${site.contact.phoneHref}`} className="btn btn-primary">
@@ -284,7 +284,7 @@ async function ChooseOffer({ unknown }: { unknown?: string } = {}) {
     <>
       <PageHeader
         title="Was möchtest du buchen?"
-        lead="Wähle dein Angebot. Danach siehst du sofort, welche Termine frei sind — ohne Anruf und ohne Warten auf eine Antwort."
+        lead="Wähle dein Angebot. Danach siehst du sofort, welche Termine noch frei sind."
       />
       <section className="shell band">
         <div className="lane">

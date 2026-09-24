@@ -73,7 +73,7 @@ export default async function BestaetigtPage({ searchParams }: { searchParams: P
         <div className="lane max-w-2xl">
           <h2 className="text-section">Keine Mail bekommen?</h2>
           <p className="text-slate mt-4">
-            Schau zuerst im Spam-Ordner nach. Kommt trotzdem nichts an, ruf uns an — der Termin
+            Schau zuerst im Spam-Ordner nach. Kommt trotzdem nichts an, ruf uns an. Der Termin
             steht auch ohne Mail, wir brauchen dann nur deine Referenz.
           </p>
           <div className="flex flex-wrap gap-3 mt-8">

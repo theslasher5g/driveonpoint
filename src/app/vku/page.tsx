@@ -17,15 +17,15 @@ export const metadata: Metadata = {
 const EVENINGS = [
   [
     "Wahrnehmung und Blicktechnik",
-    "Warum man Dinge übersieht, die eigentlich sichtbar sind — und wie man den Blick systematisch führt.",
+    "Warum man Dinge übersieht, die eigentlich gut sichtbar sind, und wie du deinen Blick besser führst.",
   ],
   [
     "Physikalische Grundlagen",
-    "Reaktionsweg, Bremsweg, Fliehkraft. Was die Physik im Strassenverkehr erzwingt und was nicht verhandelbar ist.",
+    "Reaktionsweg, Bremsweg, Fliehkraft: was die Physik beim Fahren vorgibt.",
   ],
   [
     "Partnerkunde",
-    "Wie sich Velofahrende, Kinder, ältere Menschen und Lastwagen verhalten — und wo sie dich nicht sehen können.",
+    "Wie sich Velofahrende, Kinder, ältere Menschen und Lastwagen verhalten und wo sie dich nicht sehen.",
   ],
   [
     "Umwelt und Verantwortung",
@@ -57,8 +57,8 @@ export default function VkuPage() {
           ))}
         </ol>
         <p className="text-fine text-slate mt-6 max-w-[58ch]">
-          Die Abende bauen aufeinander auf. Wer einen verpasst, holt ihn im nächsten Kurs nach —
-          die Bescheinigung gibt es erst, wenn alle vier besucht sind.
+          Die Abende bauen aufeinander auf. Verpasst du einen, holst du ihn im nächsten Kurs
+          nach. Die Bescheinigung bekommst du, wenn du alle vier besucht hast.
         </p>
       </Section>
 

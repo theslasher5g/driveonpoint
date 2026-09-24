@@ -30,7 +30,7 @@ const team: TeamMember[] = [
     name: "Christina",
     role: "Sozialpädagogin HF & Fahrlehrerin",
     owner: true,
-    body: "Ich bin Sozialpädagogin HF und seit einigen Jahren auch Fahrlehrerin, dazu Nothelfer- und BLS-AED-Instruktorin. Aus der Sozialpädagogik habe ich gelernt, wie man etwas erklärt, ohne jemanden zu überfordern — das hilft auch auf der Autobahn.",
+    body: "Ich bin Sozialpädagogin HF und seit einigen Jahren auch Fahrlehrerin, dazu Nothelfer- und BLS-AED-Instruktorin. In der Sozialpädagogik habe ich gelernt, Dinge so zu erklären, dass niemand überfordert ist. Das hilft auch auf der Autobahn.",
     tags: ["Fahrlehrerin", "Sozialpädagogin HF", "BLS-AED Instruktorin"],
     photo: "/images/team-christina.jpg",
   },
@@ -38,7 +38,7 @@ const team: TeamMember[] = [
     name: "Jolanda",
     role: "Nothelferinstruktorin & FaBe",
     owner: false,
-    body: "Hauptberuflich bin ich Fachfrau Betreuung, daneben unterrichte ich den Nothilfekurs. Erste Hilfe ist mir wichtig, weil ich weiss, wie schnell man im Ernstfall überfordert ist — genau dann soll der Kurs greifen, ganz automatisch.",
+    body: "Hauptberuflich bin ich Fachfrau Betreuung, daneben gebe ich den Nothilfekurs. Erste Hilfe liegt mir am Herzen, weil ich weiss, wie schnell man im Ernstfall überfordert ist. Deshalb üben wir im Kurs so lange, bis die Handgriffe sitzen.",
     tags: ["Nothelferinstruktorin", "FaBe"],
     photo: "/images/team-jolanda.jpg",
   },
@@ -75,13 +75,13 @@ export const site = {
     headline: ["Fahren lernen,", "ohne Druck."],
     // Steht auch als Beschreibung in den Suchergebnissen, deshalb vorne
     // die Suchbegriffe und insgesamt unter 160 Zeichen.
-    lead: "Deine Fahrschule in Basel und Baselland: eine Fahrlehrerin, dein Tempo. Zur Prüfung melden wir dich erst an, wenn du wirklich bereit bist.",
+    lead: "Fahrschule in Basel und Baselland. Du lernst bei einer Fahrlehrerin und in deinem Tempo, und zur Prüfung gehst du erst, wenn du bereit bist.",
   },
 
   philosophy: {
-    title: "Unsere Philosophie",
-    body: "Wie schnell du vorankommst, bestimmst du. Die einen brauchen zehn Fahrstunden, die anderen vierzig — beides ist normal, und es gibt keinen Lehrplan, der dich in ein festes Tempo zwingt.",
-    tags: ["Gleiche Fahrlehrerin", "Kein Standardtempo", "Ehrliche Rückmeldung"],
+    title: "So arbeiten wir",
+    body: "Wie schnell du vorankommst, bestimmst du. Manche brauchen zehn Fahrstunden, andere vierzig. Beides ist normal, und niemand drängt dich in ein festes Tempo.",
+    tags: ["Immer dieselbe Fahrlehrerin", "Dein Tempo", "Offene Rückmeldung"],
   },
 
   /** Kurzbeschreibungen der drei Stufen, wie sie auf der Startseite stehen. */
@@ -89,22 +89,22 @@ export const site = {
     nothilfekurs: {
       step: "Voraussetzung",
       title: "Nothilfekurs",
-      lead: "In unserem Nothilfekurs lernst du praxisnah, wie du in Notsituationen ruhig bleibst und richtig handelst – vom Absichern der Unfallstelle bis zur Wiederbelebung.",
+      lead: "Im Nothilfekurs lernst du, was bei einem Unfall zu tun ist: die Unfallstelle sichern, Hilfe rufen, jemanden wiederbeleben. Und du übst, dabei ruhig zu bleiben.",
       duration: "10 Stunden",
       minAge: "14 Jahre",
-      note: "Pflicht vor der Theorieprüfung – damit du im Ernstfall Leben retten kannst",
+      note: "Pflicht, bevor du zur Theorieprüfung darfst",
     },
     vku: {
       step: "VKU",
       title: "Verkehrskundeunterricht",
-      lead: "Der VKU bereitet dich auf die Verantwortung im Strassenverkehr vor – mit Themen wie Gefahrenwahrnehmung, physikalische Grundlagen, Reaktionszeit und sicheres Verhalten.",
+      lead: "Im VKU geht es um das, was beim Fahren im Kopf passiert: Gefahren früh sehen, Bremswege einschätzen, Reaktionszeit und sicheres Verhalten im Verkehr.",
       topics: ["Gefahrenwahrnehmung", "Physikalische Grundlagen", "Sicheres Verhalten"],
       note: "Pflicht vor der praktischen Prüfung, egal bei welcher Fahrschule du fährst",
     },
     fahrstunden: {
       step: "Praxis",
       title: "Fahrstunden",
-      lead: "Für den Führerausweis Kategorie B, mit Abholung in Basel und Baselland – flexible Pakete vom Schnuppern bis zum kompletten Abo.",
+      lead: "Für den Führerausweis Kategorie B. Wir holen dich in Basel und Baselland ab. Du kannst mit einer Schnupperstunde anfangen und danach einzeln oder mit einem Abo weiterfahren.",
       note: "Alle Preise inklusive Versicherung und Administration.",
     },
   },
@@ -133,12 +133,12 @@ export const site = {
     },
     {
       title: "Fahrstunden",
-      body: "So viele, wie du brauchst — in deinem eigenen Lerntempo. Wir sagen dir ehrlich, wann du bereit bist, und melden dich erst dann an.",
+      body: "So viele, wie du brauchst. Wir sagen dir, wann du so weit bist, und melden dich dann an.",
       meta: "45 Minuten pro Lektion",
     },
     {
       title: "Praktische Prüfung",
-      body: "Rund 60 Minuten mit dem Experten. Bestanden heisst: Führerausweis auf Probe, drei Jahre lang.",
+      body: "Rund 60 Minuten mit dem Experten. Wenn du bestehst, bekommst du den Führerausweis auf Probe für drei Jahre.",
       meta: "Mit unserem Schulfahrzeug",
     },
     {
@@ -152,16 +152,16 @@ export const site = {
   // wiederholen — "eigenes Tempo" und "gleiche Person" stehen schon dort.
   reasons: [
     {
-      title: "Kurse und Fahrstunden aus einer Hand",
-      body: "Nothilfekurs, Verkehrskunde und Praxis bei denselben Leuten — du musst nichts zweimal organisieren.",
+      title: "Kurse und Fahrstunden bei uns",
+      body: "Nothilfekurs, VKU und Fahrstunden machst du bei denselben Leuten. Du musst dich nicht an drei Orten anmelden.",
     },
     {
       title: "Abholung in Basel und Baselland",
-      body: `Zuhause, an der Schule oder am Arbeitsplatz — in ${regionText}. Die Anfahrt zählt nicht zur Lektion.`,
+      body: `Zuhause, an der Schule oder bei der Arbeit, in ${regionText}. Die Fahrt zu dir zählt nicht zur Lektion.`,
     },
     {
       title: "Absagen bis 24 Stunden vorher",
-      body: "Kostenlos und ohne Rückfragen. Der Link dazu steht in deiner Bestätigungsmail.",
+      body: "Kostenlos, und du musst keinen Grund angeben. Den Link findest du in der Bestätigungsmail.",
     },
   ],
 
@@ -184,14 +184,14 @@ export const site = {
   faq: [
     {
       q: "Wie viele Fahrstunden brauche ich?",
-      a: "Das lässt sich vorher nicht sagen — und wir raten dir von jeder Fahrschule ab, die dir eine Zahl nennt. Wer regelmässig privat mitfährt, braucht erfahrungsgemäss weniger. Wir schauen nach jeder Lektion gemeinsam, wo du stehst.",
+      a: "Das kann vorher niemand seriös sagen. Wer privat oft mitfährt, braucht meistens weniger. Nach jeder Lektion schauen wir zusammen, wo du stehst.",
     },
     {
       q: "Wo finden die Fahrstunden statt?",
-      a: `Wir holen dich ab, wo es dir passt — in ${regionText}. Deine Fahrlehrperson ruft dich vorher an und vereinbart den genauen Treffpunkt mit dir. Wohnst du knapp ausserhalb, frag trotzdem, meistens lässt es sich einrichten.`,
+      a: `Wir holen dich ab, wo es dir passt, in ${regionText}. Vor der ersten Lektion rufen wir dich an und machen den genauen Treffpunkt ab. Wohnst du etwas ausserhalb? Frag trotzdem, meistens geht es.`,
     },
     {
-      q: "Ich wohne in Baselland — wo mache ich die Prüfung?",
+      q: "Ich wohne in Baselland. Wo mache ich die Prüfung?",
       a: "Die praktische Prüfung legst du beim Strassenverkehrsamt deines Wohnkantons ab, also in Basel-Stadt oder Basel-Landschaft. Bei uns fahren kannst du so oder so.",
     },
     {

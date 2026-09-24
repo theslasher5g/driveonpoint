@@ -47,11 +47,11 @@ export function MultiBookingForm({ slug, termine }: { slug: string; termine: str
         required
       />
       {/* Mehrfachbuchungen gibt es nur für Fahrstunden — immer Abholung. */}
-      <PhoneField
-        hint="Deine Fahrlehrperson meldet sich vor der Lektion telefonisch, um den Treffpunkt zu vereinbaren."
-        error={state.fieldErrors?.telefon}
-        defaultValue={state.values?.telefon}
-      />
+      <PhoneField error={state.fieldErrors?.telefon} defaultValue={state.values?.telefon} />
+      <p className="notice notice-quiet">
+        Deine Fahrlehrperson meldet sich vor der Lektion telefonisch, um den Treffpunkt zu
+        vereinbaren.
+      </p>
 
       <div>
         <label className="field-label" htmlFor="bemerkung">

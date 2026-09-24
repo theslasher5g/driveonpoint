@@ -57,14 +57,16 @@ export function BookingForm({
         required
       />
       <PhoneField
-        hint={
-          pickup
-            ? "Deine Fahrlehrperson meldet sich vor der Lektion telefonisch, um den Treffpunkt zu vereinbaren."
-            : "Falls wir kurzfristig etwas verschieben müssen."
-        }
+        hint={pickup ? undefined : "Falls wir kurzfristig etwas verschieben müssen."}
         error={state.fieldErrors?.telefon}
         defaultValue={state.values?.telefon}
       />
+      {pickup && (
+        <p className="notice notice-quiet">
+          Deine Fahrlehrperson meldet sich vor der Lektion telefonisch, um den Treffpunkt zu
+          vereinbaren.
+        </p>
+      )}
 
       <div>
         <label className="field-label" htmlFor="bemerkung">

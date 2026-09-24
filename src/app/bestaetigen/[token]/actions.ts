@@ -70,13 +70,20 @@ export async function confirmBookingAction(formData: FormData): Promise<void> {
 
   const [offering] = first.lessonTypeId
     ? await db
-        .select({ name: lessonTypes.name, durationMinutes: lessonTypes.durationMinutes })
+        .select({
+          name: lessonTypes.name,
+          durationMinutes: lessonTypes.durationMinutes,
+          capacity: lessonTypes.capacity,
+        })
         .from(lessonTypes)
         .where(eq(lessonTypes.id, first.lessonTypeId))
         .limit(1)
     : [];
   const lessonName = offering?.name ?? "Termin";
   const durationMinutes = offering?.durationMinutes ?? 45;
+  // Ohne Angebot (gelöscht) im Zweifel als Einzellektion behandeln — das
+  // zeigt "wird telefonisch vereinbart" statt einer erfundenen Adresse.
+  const capacity = offering?.capacity ?? 1;
 
   const appointments = confirmed.map((entry) => ({
     day: zurichDay(entry.startsAt),
@@ -97,6 +104,7 @@ export async function confirmBookingAction(formData: FormData): Promise<void> {
           lessonName,
           durationMinutes,
           priceRappen: first.priceRappen,
+          capacity,
         });
       } else {
         await sendMultiBookingConfirmation({

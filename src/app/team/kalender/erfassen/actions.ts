@@ -155,6 +155,7 @@ async function createManualBooking(
         time: input.zeit,
         durationMinutes: lessonType.durationMinutes,
         priceRappen: priced.finalRappen,
+        capacity: lessonType.capacity,
       });
     } catch (error) {
       console.error("Bestätigungsmail konnte nicht versendet werden:", error);

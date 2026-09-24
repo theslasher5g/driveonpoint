@@ -53,7 +53,12 @@ export async function sendDueReminders(): Promise<number> {
   if (due.length === 0) return 0;
 
   const offerings = await db
-    .select({ id: lessonTypes.id, name: lessonTypes.name, durationMinutes: lessonTypes.durationMinutes })
+    .select({
+      id: lessonTypes.id,
+      name: lessonTypes.name,
+      durationMinutes: lessonTypes.durationMinutes,
+      capacity: lessonTypes.capacity,
+    })
     .from(lessonTypes);
   const offeringById = new Map(offerings.map((offering) => [offering.id, offering]));
 
@@ -69,6 +74,8 @@ export async function sendDueReminders(): Promise<number> {
         lessonName: offering?.name ?? "Termin",
         startsAt: entry.startsAt,
         durationMinutes: offering?.durationMinutes ?? null,
+        // Ohne Angebot (gelöscht) im Zweifel als Einzellektion behandeln.
+        capacity: offering?.capacity ?? 1,
       });
       sent += 1;
     } catch (error) {

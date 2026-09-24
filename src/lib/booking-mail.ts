@@ -5,7 +5,41 @@ import { escapeHtml, mailLayout, sendMail, type Mail } from "./mail";
 import { site } from "./site";
 import { formatDayLong, formatPrice, zurichDay, zurichTime, zurichToInstant } from "./time";
 
-const meetingPoint = () => `${site.contact.street}, ${site.contact.zip} ${site.contact.city}`;
+/**
+ * Fahrstunden und Schnupperstunden werden abgeholt: die Fahrlehrperson ruft
+ * vorher an und vereinbart telefonisch, wo. VKU und Nothilfekurs finden
+ * dagegen an einem festen Kursort statt. `capacity` unterscheidet die
+ * beiden zuverlässig — mehr als ein Platz heisst Kurs, nicht Einzellektion.
+ */
+function isPickup(capacity: number): boolean {
+  return capacity <= 1;
+}
+
+function meetingPointLines(capacity: number): string[] {
+  if (isPickup(capacity)) {
+    return [
+      "Treffpunkt: wird telefonisch vereinbart",
+      "Die Fahrlehrperson ruft dich vor der Lektion an und sagt dir, wo sie dich abholt.",
+    ];
+  }
+  return [`Kursort: ${site.contact.street}, ${site.contact.zip} ${site.contact.city}`];
+}
+
+function meetingPointHtml(capacity: number): string {
+  if (isPickup(capacity)) {
+    return `<p style="margin:0 0 8px;font-weight:700;">Treffpunkt</p>
+<p style="margin:0 0 20px;color:#515052;">Die Fahrlehrperson ruft dich vor der Lektion an und sagt dir, wo sie dich abholt.</p>`;
+  }
+  return `<p style="margin:0 0 8px;font-weight:700;">Kursort</p>
+<p style="margin:0 0 20px;color:#515052;">${escapeHtml(site.contact.street)}, ${escapeHtml(site.contact.zip)} ${escapeHtml(site.contact.city)}</p>`;
+}
+
+/** Nur ein Kursort taugt als Kalender-Ort; ein Treffpunkt steht erst nach dem Anruf fest. */
+function meetingPointLocation(capacity: number): string | undefined {
+  return isPickup(capacity)
+    ? undefined
+    : `${site.contact.street}, ${site.contact.zip} ${site.contact.city}`;
+}
 
 /**
  * Kalenderdatei für die Bestätigung. Die UID hängt an der Referenz, damit
@@ -16,6 +50,7 @@ function calendarAttachment(
   appointments: { day: string; time: string; reference: string; cancelToken: string }[],
   lessonName: string,
   durationMinutes: number,
+  location: string | undefined,
 ): NonNullable<Mail["attachments"]> {
   const now = new Date();
   const ics = buildInvite(
@@ -31,7 +66,7 @@ function calendarAttachment(
           `Absagen bis 24 Stunden vorher kostenlos: ${env.appUrl}/absagen/${entry.cancelToken}`,
           `Fragen: ${site.contact.phone}`,
         ].join("\n"),
-        location: meetingPoint(),
+        location,
         cancelled: false,
         updatedAt: now,
         alarmMinutesBefore: 60,
@@ -66,6 +101,8 @@ export async function sendBookingConfirmation(details: {
   time: string;
   durationMinutes: number;
   priceRappen: number;
+  /** Ein Platz oder mehrere — entscheidet zwischen Treffpunkt und Kursort. */
+  capacity: number;
 }): Promise<void> {
   const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
   const cancelUrl = `${env.appUrl}/absagen/${details.cancelToken}`;
@@ -80,8 +117,7 @@ export async function sendBookingConfirmation(details: {
     `Preis: CHF ${formatPrice(details.priceRappen)}`,
     `Referenz: ${details.reference}`,
     "",
-    `Treffpunkt: ${site.contact.street}, ${site.contact.zip} ${site.contact.city}`,
-    "Einen abweichenden Treffpunkt im Einzugsgebiet vereinbaren wir telefonisch.",
+    ...meetingPointLines(details.capacity),
     "",
     "Absagen bis 24 Stunden vorher ist kostenlos:",
     cancelUrl,
@@ -106,8 +142,7 @@ export async function sendBookingConfirmation(details: {
   <tr><td style="padding:10px 0;font-size:14px;color:#515052;">Referenz</td>
       <td style="padding:10px 0;font-weight:700;">${escapeHtml(details.reference)}</td></tr>
 </table>
-<p style="margin:0 0 8px;font-weight:700;">Treffpunkt</p>
-<p style="margin:0 0 20px;color:#515052;">${escapeHtml(site.contact.street)}, ${escapeHtml(site.contact.zip)} ${escapeHtml(site.contact.city)}<br>Einen abweichenden Treffpunkt im Einzugsgebiet vereinbaren wir telefonisch.</p>
+${meetingPointHtml(details.capacity)}
 <p style="margin:0 0 20px;">
   <a href="${escapeHtml(cancelUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;">Termin absagen</a>
 </p>
@@ -123,6 +158,7 @@ export async function sendBookingConfirmation(details: {
       [details],
       details.lessonName,
       details.durationMinutes,
+      meetingPointLocation(details.capacity),
     ),
   });
 }
@@ -337,8 +373,9 @@ export async function sendMultiBookingConfirmation(details: {
         ]
       : []),
     "",
-    `Treffpunkt: ${site.contact.street}, ${site.contact.zip} ${site.contact.city}`,
-    "Einen abweichenden Treffpunkt im Einzugsgebiet vereinbaren wir telefonisch.",
+    // Mehrfachbuchungen gibt es nur für Fahrstunden (siehe buchen/page.tsx),
+    // also immer Abholung, nie ein Kursort.
+    ...meetingPointLines(1),
     "",
     "Jeder Termin ist einzeln bis 24 Stunden vorher kostenlos absagbar, über den jeweiligen Link oben.",
     "",
@@ -372,8 +409,7 @@ ${
     ? `<p style="margin:0 0 20px;color:#515052;">${details.failedCount} der gewählten Termine ${details.failedCount === 1 ? "war" : "waren"} leider nicht mehr frei und ${details.failedCount === 1 ? "ist" : "sind"} nicht dabei.</p>`
     : ""
 }
-<p style="margin:0 0 8px;font-weight:700;">Treffpunkt</p>
-<p style="margin:0 0 20px;color:#515052;">${escapeHtml(site.contact.street)}, ${escapeHtml(site.contact.zip)} ${escapeHtml(site.contact.city)}<br>Einen abweichenden Treffpunkt im Einzugsgebiet vereinbaren wir telefonisch.</p>
+${meetingPointHtml(1)}
 <p style="margin:0;color:#515052;font-size:14px;">Jeder Termin lässt sich einzeln bis 24 Stunden vorher kostenlos absagen, über den Link in der Tabelle oben. Alle Termine für deinen Kalender findest du im Anhang. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
   );
 
@@ -382,7 +418,7 @@ ${
     subject: `${details.booked.length} Termine bestätigt — ${sorted[0]?.reference}`,
     text,
     html,
-    attachments: calendarAttachment(sorted, details.lessonName, details.durationMinutes),
+    attachments: calendarAttachment(sorted, details.lessonName, details.durationMinutes, meetingPointLocation(1)),
   });
 }
 
@@ -521,6 +557,8 @@ export async function sendBookingReminder(details: {
   lessonName: string;
   startsAt: Date;
   durationMinutes: number | null;
+  /** Ein Platz oder mehrere — entscheidet zwischen Treffpunkt und Kursort. */
+  capacity: number;
 }): Promise<void> {
   const day = zurichDay(details.startsAt);
   const time = zurichTime(details.startsAt);
@@ -543,7 +581,7 @@ export async function sendBookingReminder(details: {
     `${when}${details.durationMinutes ? ` (${details.durationMinutes} Minuten)` : ""}`,
     `Referenz: ${details.reference}`,
     "",
-    `Treffpunkt: ${meetingPoint()}`,
+    ...meetingPointLines(details.capacity),
     "",
     cancelHint,
     ...(freeCancellation ? [cancelUrl] : []),
@@ -556,8 +594,7 @@ export async function sendBookingReminder(details: {
     `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
 <p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
 <p style="margin:0 0 20px;">${escapeHtml(when)}${details.durationMinutes ? ` · ${details.durationMinutes} Minuten` : ""}<br><span style="color:#515052;font-size:14px;">Referenz ${escapeHtml(details.reference)}</span></p>
-<p style="margin:0 0 8px;font-weight:700;">Treffpunkt</p>
-<p style="margin:0 0 20px;color:#515052;">${escapeHtml(meetingPoint())}<br>Einen abweichenden Treffpunkt im Einzugsgebiet vereinbaren wir telefonisch.</p>
+${meetingPointHtml(details.capacity)}
 <p style="margin:0 0 ${freeCancellation ? "12" : "0"}px;color:#515052;">${escapeHtml(cancelHint)}</p>
 ${
   freeCancellation

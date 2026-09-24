@@ -85,9 +85,6 @@ export function PhoneField({
         />
       </div>
       <input type="hidden" name={name} value={combined} />
-      {/* Ohne diesen Hinweis blieb die führende 0 einer gewohnt eingetippten
-          Nummer (079 …) stehen, obwohl die Vorwahl sie bereits ersetzt. */}
-      <p className="field-hint text-slate">Ohne die 0 davor, also 79 statt 079.</p>
       {(hint || error) && (
         <p id={hintId} className={`field-hint ${error ? "text-danger font-semibold" : ""}`}>
           {error ?? hint}

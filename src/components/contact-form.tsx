@@ -72,11 +72,7 @@ export function ContactForm() {
         )}
       </div>
 
-      <PhoneField
-        hint="Falls wir dich für eine Antwort lieber kurz anrufen."
-        error={state.fieldErrors?.telefon}
-        defaultValue={state.values?.telefon}
-      />
+      <PhoneField error={state.fieldErrors?.telefon} defaultValue={state.values?.telefon} />
 
       <div>
         <label className="field-label" htmlFor="nachricht">

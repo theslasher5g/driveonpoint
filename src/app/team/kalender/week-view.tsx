@@ -1,6 +1,13 @@
 import { and, eq, gte, inArray, lte, or } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { availabilityExceptions, availabilityRules, bookings, lessonTypes, staff } from "@/lib/db/schema";
+import {
+  availabilityExceptions,
+  availabilityRules,
+  bookings,
+  lessonTypes,
+  staff,
+  staffLessonTypes,
+} from "@/lib/db/schema";
 import { occupiesTime } from "@/lib/booking";
 import { toggleNoShowAction } from "./actions";
 import {
@@ -76,7 +83,7 @@ export async function WeekView({
   const today = todayInZurich();
   const now = Date.now();
 
-  const [entries, rules, exceptions, people] = await Promise.all([
+  const [entries, rules, exceptions, people, offerings] = await Promise.all([
     db
       .select({
         id: bookings.id,
@@ -116,7 +123,24 @@ export async function WeekView({
       })
       .from(availabilityRules)
       .innerJoin(lessonTypes, eq(lessonTypes.id, availabilityRules.lessonTypeId))
-      .where(inArray(availabilityRules.staffId, visibleIds)),
+      // Nur was auch buchbar ist, dieselben Bedingungen wie in findSlots:
+      // Angebot aktiv und der Person zugeteilt, und keine Wochenregel für
+      // Kurse (die laufen über einzelne Kurstermine). Vorher erschienen hier
+      // Zeiten, die auf der Seite Verfügbarkeit gar nicht mehr zu sehen waren.
+      .innerJoin(
+        staffLessonTypes,
+        and(
+          eq(staffLessonTypes.staffId, availabilityRules.staffId),
+          eq(staffLessonTypes.lessonTypeId, availabilityRules.lessonTypeId),
+        ),
+      )
+      .where(
+        and(
+          inArray(availabilityRules.staffId, visibleIds),
+          eq(lessonTypes.active, true),
+          lte(lessonTypes.capacity, 1),
+        ),
+      ),
     db
       .select({
         id: availabilityExceptions.id,
@@ -126,7 +150,9 @@ export async function WeekView({
         endTime: availabilityExceptions.endTime,
         available: availabilityExceptions.available,
         note: availabilityExceptions.note,
+        lessonTypeId: availabilityExceptions.lessonTypeId,
         lessonName: lessonTypes.name,
+        lessonActive: lessonTypes.active,
       })
       .from(availabilityExceptions)
       .leftJoin(lessonTypes, eq(lessonTypes.id, availabilityExceptions.lessonTypeId))
@@ -138,7 +164,13 @@ export async function WeekView({
         ),
       ),
     db.select({ id: staff.id, name: staff.name }).from(staff).where(inArray(staff.id, visibleIds)),
+    db
+      .select({ staffId: staffLessonTypes.staffId, lessonTypeId: staffLessonTypes.lessonTypeId })
+      .from(staffLessonTypes)
+      .where(inArray(staffLessonTypes.staffId, visibleIds)),
   ]);
+
+  const assigned = new Set(offerings.map((row) => `${row.staffId}|${row.lessonTypeId}`));
 
   const nameOf = new Map(people.map((person) => [person.id, person.name]));
   // Wer nur den eigenen Kalender sieht, muss seinen Namen nicht auf jeder Karte lesen.
@@ -174,6 +206,14 @@ export async function WeekView({
           }
           for (const entry of exceptions) {
             if (entry.day !== day || !entry.available) continue;
+            // Kurstermin oder Zusatzzeit für ein bestimmtes Angebot: nur,
+            // wenn die Person es anbietet und es aktiv ist.
+            if (
+              entry.lessonTypeId &&
+              (!entry.lessonActive || !assigned.has(`${entry.staffId}|${entry.lessonTypeId}`))
+            ) {
+              continue;
+            }
             addFree(
               entry.staffId,
               entry.startTime.slice(0, 5),

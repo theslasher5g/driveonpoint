@@ -17,7 +17,7 @@ export function ContactForm() {
       <div className="notice notice-success max-w-xl" role="status">
         <h2 className="text-lg font-bold">Nachricht ist angekommen</h2>
         <p className="text-slate mt-2">
-          Wir melden uns innert eines Werktags. Eine Kopie deiner Nachricht liegt in deinem
+          Wir melden uns innert zwei Werktagen. Eine Kopie deiner Nachricht liegt in deinem
           Postfach.
         </p>
       </div>

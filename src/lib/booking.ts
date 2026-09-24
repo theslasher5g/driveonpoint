@@ -255,7 +255,10 @@ export async function findSlots(options: {
 
     for (const id of staffIds) plan.set(id, []);
 
-    for (const rule of rules) {
+    // Kurse (VKU, Nothilfekurs) laufen nur über einzelne Kurstermine. Eine
+    // wöchentliche Regel dafür lässt sich im Team-Bereich weder sehen noch
+    // löschen (siehe Verfügbarkeit) — sie darf also auch nichts anbieten.
+    for (const rule of isGroupCourse ? [] : rules) {
       if (rule.weekday !== weekday) continue;
       if (rule.validFrom && day < rule.validFrom) continue;
       if (rule.validUntil && day > rule.validUntil) continue;

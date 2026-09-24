@@ -15,6 +15,7 @@
 import { and, eq, inArray, like } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
+  availabilityExceptions,
   availabilityRules,
   bookings,
   lessonTypes,
@@ -32,6 +33,7 @@ let failures = 0;
 
 /** Alles, was der Lauf angelegt hat — auch auf bestehenden Konten. */
 const createdRules: string[] = [];
+const createdCourseDates: string[] = [];
 const createdOfferings: { staffId: string; lessonTypeId: string }[] = [];
 
 async function addRule(staffId: string, lessonTypeId: string, weekday: number, from: string, to: string) {
@@ -40,6 +42,15 @@ async function addRule(staffId: string, lessonTypeId: string, weekday: number, f
     .values({ staffId, lessonTypeId, weekday, startTime: from, endTime: to })
     .returning({ id: availabilityRules.id });
   createdRules.push(row.id);
+}
+
+/** Kurse laufen über einzelne Kurstermine, nicht über Wochenregeln. */
+async function addCourseDate(staffId: string, lessonTypeId: string, day: string, from: string, to: string) {
+  const [row] = await db
+    .insert(availabilityExceptions)
+    .values({ staffId, lessonTypeId, day, startTime: from, endTime: to, available: true })
+    .returning({ id: availabilityExceptions.id });
+  createdCourseDates.push(row.id);
 }
 
 /** Merkt sich die Zuordnung nur, wenn sie hier wirklich neu entstanden ist. */
@@ -69,6 +80,10 @@ async function cleanup() {
   if (createdRules.length > 0) {
     await db.delete(availabilityRules).where(inArray(availabilityRules.id, createdRules));
     createdRules.length = 0;
+  }
+  if (createdCourseDates.length > 0) {
+    await db.delete(availabilityExceptions).where(inArray(availabilityExceptions.id, createdCourseDates));
+    createdCourseDates.length = 0;
   }
   for (const entry of createdOfferings) {
     await db
@@ -196,7 +211,7 @@ async function main() {
   // ===================================================================
   console.log("\nSZENARIO C — VKU, mehrere Plätze");
   // ===================================================================
-  await addRule(personA.id, vku.id, weekday, "18:00", "21:00");
+  await addCourseDate(personA.id, vku.id, day, "18:00", "21:00");
 
   let vkuSlots = await findSlots({ lessonType: vku, fromDay: day, days: 1 });
   check("genau ein Kurstermin (18:00)", vkuSlots.map((s) => s.time), ["18:00"]);
@@ -223,7 +238,7 @@ async function main() {
   // ===================================================================
   // Person B: Fahrstunde-Fenster, das das VKU-Fenster überlappt.
   await addRule(personB.id, fahrstunde.id, weekday, "18:00", "21:00");
-  await addRule(personB.id, vku.id, weekday, "18:00", "21:00");
+  await addCourseDate(personB.id, vku.id, day, "18:00", "21:00");
 
   const fahrAbends = await findSlots({ lessonType: fahrstunde, fromDay: day, days: 1, staffId: personB.id });
   const sechs = fahrAbends.find((s) => s.time === "18:00")!;
@@ -254,6 +269,7 @@ async function main() {
 
   // Eigener Tag, damit die ausgebuchten Kurse aus Szenario C nicht stören.
   const tagE = addDays(day, 7);
+  await addCourseDate(personA.id, vku.id, tagE, "18:00", "21:00");
 
   const vorKurs = await findSlots({ lessonType: fahrstunde, fromDay: tagE, days: 1, staffId: personA.id });
   const abendsVorher = vorKurs.filter((s) => s.time >= "18:00").map((s) => s.time);
@@ -277,9 +293,8 @@ async function main() {
   // ===================================================================
   const nothilfe = (await lessonTypeBySlug("nothilfekurs"))!;
   await addOffering(personB.id, nothilfe.id);
-  await addRule(personB.id, nothilfe.id, weekday, "08:00", "13:00");
-
   const tagZwei = addDays(day, 7);
+  await addCourseDate(personB.id, nothilfe.id, tagZwei, "08:00", "13:00");
   const nothilfeSlot = (await findSlots({ lessonType: nothilfe, fromDay: tagZwei, days: 1, staffId: personB.id }))[0];
   check("Nothilfekurs-Termin vorhanden", nothilfeSlot?.time, "08:00");
   const n1 = await book("nothilfekurs", personB.id, nothilfeSlot.startsAt, "F1");
@@ -431,6 +446,16 @@ async function main() {
     inUmsatz(nieBestaetigt.reference) || bericht.chargeable.some((row) => row.reference === nieBestaetigt.reference),
     false,
   );
+
+  // ===================================================================
+  console.log("\nSZENARIO K — Wochenregel für einen Kurs bietet nichts an");
+  // ===================================================================
+  // Kurse laufen nur über Kurstermine. Eine alte Wochenregel für den VKU
+  // war im Team-Bereich unsichtbar, bot den Kurs aber jede Woche an.
+  const tagK = addDays(todayInZurich(), 16);
+  await addRule(personA.id, vku.id, zurichWeekday(tagK), "18:00", "21:00");
+  const vkuK = await findSlots({ lessonType: vku, fromDay: tagK, days: 1, staffId: personA.id });
+  check("Wochenregel für VKU erzeugt keinen Kurstermin", vkuK.length, 0);
 
   console.log(`\n${failures === 0 ? "Alle Prüfungen bestanden." : `${failures} Prüfung(en) fehlgeschlagen.`}`);
 

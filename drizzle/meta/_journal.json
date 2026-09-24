@@ -43,6 +43,13 @@
       "when": 1790239338832,
       "tag": "0005_sticky_raza",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790251946493,
+      "tag": "0006_verwaiste_verfuegbarkeit",
+      "breakpoints": true
     }
   ]
 }

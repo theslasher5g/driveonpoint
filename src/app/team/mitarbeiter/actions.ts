@@ -1,7 +1,7 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { and, count, eq, gt, inArray, ne } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNotNull, ne, notInArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -11,7 +11,15 @@ import { destroyAllSessions, hashPassword, newCalendarToken } from "@/lib/auth/s
 import { findSlots, occupiesTime } from "@/lib/booking";
 import { sendRebookRequest } from "@/lib/booking-mail";
 import { db } from "@/lib/db";
-import { bookings, lessonTypes, staff, staffLessonTypes, staffRole } from "@/lib/db/schema";
+import {
+  availabilityExceptions,
+  availabilityRules,
+  bookings,
+  lessonTypes,
+  staff,
+  staffLessonTypes,
+  staffRole,
+} from "@/lib/db/schema";
 import { zurichDay, zurichTime } from "@/lib/time";
 
 export type StaffState = { error?: string; ok?: string; password?: string };
@@ -197,6 +205,29 @@ export async function setLessonTypesAction(formData: FormData): Promise<void> {
         .insert(staffLessonTypes)
         .values(chosen.map((lessonTypeId) => ({ staffId: id, lessonTypeId })));
     }
+
+    // Zeiten für Angebote, die der Person nicht mehr zugeteilt sind, mit
+    // wegräumen. Sonst blieben sie unsichtbar in der Datenbank liegen: die
+    // Seite Verfügbarkeit zeigt nur zugeteilte Angebote, der Kalender zeigte
+    // sie aber weiter an — und bei einer späteren Zuteilung wären sie
+    // unbemerkt wieder aktiv geworden.
+    await tx
+      .delete(availabilityRules)
+      .where(
+        and(
+          eq(availabilityRules.staffId, id),
+          chosen.length > 0 ? notInArray(availabilityRules.lessonTypeId, chosen) : undefined,
+        ),
+      );
+    await tx
+      .delete(availabilityExceptions)
+      .where(
+        and(
+          eq(availabilityExceptions.staffId, id),
+          isNotNull(availabilityExceptions.lessonTypeId),
+          chosen.length > 0 ? notInArray(availabilityExceptions.lessonTypeId, chosen) : undefined,
+        ),
+      );
   });
 
   await record("mitarbeiter.angebote-gesetzt", { id: admin.id, label: admin.name }, {

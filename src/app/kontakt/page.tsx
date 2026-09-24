@@ -74,7 +74,7 @@ export default function KontaktPage() {
 
             <p className="text-slate mt-7 max-w-[46ch]">
               Während einer Fahrstunde gehen wir nicht ans Telefon. Sprich auf die Combox oder
-              schreib uns, wir melden uns am selben Tag.
+              schreib uns, wir melden uns innert zwei Werktagen.
             </p>
 
             <Link href="/ueber-uns" className="btn btn-outline mt-7">

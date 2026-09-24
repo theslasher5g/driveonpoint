@@ -137,7 +137,7 @@ async function sendContact(
       text: [
         `Hallo ${input.name}`,
         "",
-        `Wir haben deine Nachricht erhalten und melden uns innert eines Werktags.`,
+        `Wir haben deine Nachricht erhalten und melden uns innert zwei Werktagen.`,
         "",
         "Deine Nachricht:",
         input.nachricht,
@@ -147,7 +147,7 @@ async function sendContact(
       html: mailLayout(
         "Deine Anfrage ist angekommen",
         `<p style="margin:0 0 16px;">Hallo ${escapeHtml(input.name)}</p>
-<p style="margin:0 0 16px;">Wir haben deine Nachricht erhalten und melden uns innert eines Werktags.</p>
+<p style="margin:0 0 16px;">Wir haben deine Nachricht erhalten und melden uns innert zwei Werktagen.</p>
 <p style="margin:0 0 8px;font-weight:700;">Deine Nachricht</p>
 <p style="margin:0;white-space:pre-wrap;color:#515052;">${escapeHtml(input.nachricht)}</p>`,
       ),

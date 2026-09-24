@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OfferBookingCard } from "@/components/offer-booking-card";
 import { PageHeader, Section } from "@/components/page-header";
 import { PriceTable } from "@/components/price-table";
 import { site } from "@/lib/site";
@@ -20,7 +21,7 @@ export default function NothilfekursPage() {
       <PageHeader
         title={`Nothilfekurs in ${site.contact.city}`}
         lead={offer.lead}
-        action={{ href: "/buchen?angebot=nothilfekurs", label: "Kursdaten ansehen" }}
+        aside={<OfferBookingCard slug="nothilfekurs" />}
       />
 
       <Section title="Was geübt wird" tone="paper">

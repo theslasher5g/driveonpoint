@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OfferBookingCard } from "@/components/offer-booking-card";
 import { PageHeader, Section } from "@/components/page-header";
 import { PriceTable } from "@/components/price-table";
 import { site } from "@/lib/site";
@@ -39,7 +40,7 @@ export default function VkuPage() {
       <PageHeader
         title={`Verkehrskundeunterricht in ${site.contact.city}`}
         lead={offer.lead}
-        action={{ href: "/buchen?angebot=vku", label: "Kursdaten ansehen" }}
+        aside={<OfferBookingCard slug="vku" />}
       />
 
       <Section title="Die vier Abende" tone="paper">

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { OfferBookingCard } from "@/components/offer-booking-card";
 import { PageHeader, Section } from "@/components/page-header";
 import { PriceTable } from "@/components/price-table";
 import { site } from "@/lib/site";
@@ -20,7 +21,7 @@ export default function FahrstundenPage() {
       <PageHeader
         title={`Fahrstunden in ${site.contact.city}`}
         lead={`${offer.lead} Du fährst immer bei derselben Fahrlehrerin, und zur Prüfung melden wir dich an, wenn du so weit bist.`}
-        action={{ href: "/buchen?angebot=schnupperstunde", label: "Schnupperstunde buchen" }}
+        aside={<OfferBookingCard slug="fahrstunde" trialSlug="schnupperstunde" />}
       />
 
       <Section title="Wie eine Lektion abläuft">

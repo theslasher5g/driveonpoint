@@ -5,11 +5,41 @@ export function PageHeader({
   title,
   lead,
   action,
+  aside,
 }: {
   title: string;
   lead: string;
   action?: { href: string; label: string };
+  /**
+   * Karte rechts neben Titel und Einleitung, z. B. die Buchungskarte der
+   * Angebotsseiten. Dann stehen Titel und Einleitung links untereinander.
+   */
+  aside?: React.ReactNode;
 }) {
+  if (aside) {
+    return (
+      <section className="relative overflow-hidden bg-concrete border-b border-deep/10">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-32 right-[-8rem] w-[26rem] h-[26rem] rounded-full opacity-[0.16] blur-3xl"
+          style={{ background: "var(--color-signal)" }}
+        />
+        <div className="shell pt-24 pb-12 md:pt-32 md:pb-16 relative">
+          <div className="lane lg:grid lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-14 lg:items-center">
+            <div>
+              <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
+              <h1 className="font-display text-4xl md:text-6xl font-bold leading-[1.02]">
+                {withSoftHyphens(title)}
+              </h1>
+              <p className="text-lead text-slate max-w-[52ch] mt-5">{lead}</p>
+            </div>
+            <div className="mt-8 lg:mt-0">{aside}</div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="relative overflow-hidden bg-concrete border-b border-deep/10">
       {/* Derselbe weiche Lichtpunkt wie im Aufmacher der Startseite, nur

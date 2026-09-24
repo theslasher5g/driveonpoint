@@ -2,7 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { NextSlotPanel, NextSlotSkeleton } from "@/components/next-slot";
+import { activePromotions } from "@/lib/booking";
 import { site } from "@/lib/site";
+import { formatDayShort } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +47,17 @@ const STAGES = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Eine laufende Aktion als kleiner Hinweis im Aufmacher. Fällt die
+  // Datenbank kurz aus, fehlt nur der Hinweis, nicht die Seite.
+  let promotions: Awaited<ReturnType<typeof activePromotions>> = [];
+  try {
+    promotions = await activePromotions();
+  } catch (error) {
+    console.error("Aktionen konnten nicht geladen werden:", error);
+  }
+  const promotion = promotions[0];
+
   return (
     <>
       {/* Aufmacher und der nächste freie Termin stehen ab 1024px nebeneinander.
@@ -70,6 +82,15 @@ export default function HomePage() {
         <div className="shell pt-24 pb-14 md:pt-32 md:pb-20 lg:pt-36 lg:pb-24">
           <div className="lane text-paper lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14 lg:items-center">
             <div className="min-w-0">
+              {promotion && (
+                <Link
+                  href="/preise"
+                  className="promo-tag mb-6 hover:brightness-105 transition-[filter]"
+                >
+                  {promotion.label}, bis {formatDayShort(promotion.endsOn)}
+                  {promotions.length > 1 && ` (und ${promotions.length - 1} weitere)`}
+                </Link>
+              )}
               {/* Keine zweite Marke neben der Schlagzeile: seit die Kopfzeile
                   schwebt, steht das Zeichen direkt darüber schon einmal. */}
               <h1 className="text-display max-w-[15ch] min-w-0">

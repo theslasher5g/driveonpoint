@@ -1,5 +1,6 @@
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
+import { markError, markOk } from "./checks";
 import { env } from "./env";
 import { site } from "./site";
 
@@ -48,6 +49,19 @@ export async function sendMail(mail: Mail): Promise<void> {
   const to = mail.to.replace(/[\r\n]/g, "").trim();
   const subject = mail.subject.replace(/[\r\n]/g, " ").trim();
 
+  try {
+    await deliver(mail, to, subject);
+  } catch (error) {
+    // Festhalten, damit ein gestörter Mailversand in der Team-Übersicht
+    // auffällt (monitoring.ts). Der Aufrufer entscheidet weiter selbst,
+    // wie schlimm der Fehler für ihn ist.
+    await markError("mail", error);
+    throw error;
+  }
+  await markOk("mail");
+}
+
+async function deliver(mail: Mail, to: string, subject: string): Promise<void> {
   await transport().sendMail({
     from: env.mailFrom,
     replyTo: env.mailReplyTo,

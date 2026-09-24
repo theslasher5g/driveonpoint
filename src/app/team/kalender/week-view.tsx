@@ -40,6 +40,7 @@ type Entry = {
   staffId: string | null;
   staffName: string | null;
   lessonName: string | null;
+  lessonCapacity: number | null;
 };
 
 /** Ein Verfügbarkeitsfenster einer Person — mehrere Angebote zur selben Zeit zusammengefasst. */
@@ -103,6 +104,7 @@ export async function WeekView({
         staffId: bookings.staffId,
         staffName: staff.name,
         lessonName: lessonTypes.name,
+        lessonCapacity: lessonTypes.capacity,
       })
       .from(bookings)
       .leftJoin(staff, eq(staff.id, bookings.staffId))
@@ -365,6 +367,11 @@ export async function WeekView({
                               </form>
                             )}
                             <CancelBookingButton bookingId={entry.id} />
+                            {(entry.lessonCapacity ?? 1) > 1 && !started && (
+                              <ActionMenuItem href={`/team/kalender/kurs-absagen?id=${entry.id}`} danger>
+                                Ganzen Kurs absagen
+                              </ActionMenuItem>
+                            )}
                           </ActionMenu>
                         )}
                       </div>
@@ -382,7 +389,10 @@ export async function WeekView({
                       <p className="text-[0.85rem] font-semibold leading-snug pr-1.5">
                         {entry.customerName ?? "Angaben gelöscht"}
                       </p>
-                      <HistoryLine history={histories.get(entry.id)} />
+                      <HistoryLine
+                        history={histories.get(entry.id)}
+                        course={(entry.lessonCapacity ?? 1) > 1}
+                      />
                       <p className="text-fine text-slate leading-snug pr-1.5">
                         {entry.lessonName && shortLesson(entry.lessonName)}
                       </p>
@@ -481,12 +491,18 @@ function firstName(name: string | null | undefined): string {
  * "Erster Termin" / "4. Termin" und Warnungen wie "1× nicht erschienen" —
  * damit man beim Blick in den Kalender weiss, mit wem man es zu tun hat.
  */
-function HistoryLine({ history }: { history: CustomerHistory | undefined }) {
-  const { label, warnings } = describeHistory(history);
-  if (!label) return null;
+function HistoryLine({
+  history,
+  course,
+}: {
+  history: CustomerHistory | undefined;
+  course: boolean;
+}) {
+  const { label, warnings } = describeHistory(history, { course });
+  if (!label && warnings.length === 0) return null;
   return (
     <>
-      <p className="text-fine text-slate leading-snug pr-1.5">{label}</p>
+      {label && <p className="text-fine text-slate leading-snug pr-1.5">{label}</p>}
       {warnings.map((warning) => (
         <p key={warning} className="text-fine font-semibold text-danger leading-snug pr-1.5">
           {warning}

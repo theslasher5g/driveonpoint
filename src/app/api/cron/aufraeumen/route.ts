@@ -1,3 +1,4 @@
+import { markError, markOk } from "@/lib/checks";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { runRetention } from "@/lib/retention";
 
@@ -16,9 +17,11 @@ export async function POST(request: Request) {
 
   try {
     const result = await runRetention();
+    await markOk("aufraeumen");
     return Response.json({ status: "ok", anonymisierteBuchungen: result.bookings });
   } catch (error) {
     console.error("Aufräumlauf fehlgeschlagen:", error);
+    await markError("aufraeumen", error);
     return Response.json({ status: "fehlgeschlagen" }, { status: 500 });
   }
 }

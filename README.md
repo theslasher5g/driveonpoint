@@ -157,7 +157,7 @@ keine sonstigen Aktualisierungen. Protokoll unter
 
 | Wann | Skript | Macht |
 |---|---|---|
-| stündlich, :07 | `deploy/stuendlich.sh` | Verschickt die Erinnerungen vor dem Termin und löscht Online-Buchungen, die nie bestätigt wurden |
+| stündlich, :07 | `deploy/stuendlich.sh` | Verschickt die Erinnerungen vor dem Termin, löscht Online-Buchungen, die nie bestätigt wurden, und Wartelisten vergangener Kurse |
 | täglich 03:17 | `deploy/aufraeumen.sh` | Löscht Kundendaten nach Ablauf der Frist, entfernt abgelaufene Sitzungen und alte Zähler ([Aufbewahrung](#rechtliches)) |
 | wöchentlich, So 04:00 | `deploy/docker-updates.sh` | Holt Sicherheitskorrekturen der Docker-Basisabbilder (siehe unten) |
 
@@ -187,6 +187,25 @@ sudo deploy/stuendlich.sh && sudo tail -5 /var/log/driveonpoint-stuendlich.log
 sudo deploy/aufraeumen.sh && sudo tail -5 /var/log/driveonpoint-aufraeumen.log
 sudo deploy/docker-updates.sh && sudo tail -20 /var/log/driveonpoint-docker-updates.log
 ```
+
+### Wenn etwas stillsteht
+
+Die Anwendung merkt selbst, wenn der Mailversand scheitert oder einer der
+beiden Cron-Läufe ausbleibt (stündlich: länger als 3 Stunden, täglich:
+länger als 30 Stunden) oder fehlschlägt. Dann:
+
+- steht ein roter Hinweis oben in der Team-Übersicht (für Leitung und
+  Administration) — der funktioniert auch, wenn gerade keine Mail rausgeht;
+- geht eine Warnmail an `ALERT_EMAIL` aus der `.env` (leer: die
+  Kontaktadresse der Website), höchstens alle 12 Stunden, und eine
+  Entwarnung, sobald alles wieder läuft. Am besten eine Adresse bei einem
+  anderen Anbieter als dem eigenen Mailserver;
+- antwortet `https://deine-domain.ch/api/betrieb` mit Status 503 statt 200.
+
+Die letzte Stelle ist für einen externen Monitor gedacht, etwa den
+kostenlosen von [UptimeRobot](https://uptimerobot.com): dort diese Adresse
+alle 5 Minuten prüfen lassen. Er meldet sich auch dann, wenn der ganze
+Server ausgefallen ist — das kann die Anwendung selbst nicht.
 
 ---
 

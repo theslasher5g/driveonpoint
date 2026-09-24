@@ -29,6 +29,7 @@ export async function MonthView({
   const gridStart = days[0];
   const gridEnd = days[days.length - 1];
   const today = todayInZurich();
+  const now = Date.now();
 
   const [entries, absenceRows] = await Promise.all([
     db
@@ -43,6 +44,7 @@ export async function MonthView({
         staffId: bookings.staffId,
         staffName: staff.name,
         lessonName: lessonTypes.name,
+        lessonCapacity: lessonTypes.capacity,
       })
       .from(bookings)
       .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
@@ -112,7 +114,10 @@ export async function MonthView({
             customerNote: entry.customerNote,
             lessonName: entry.lessonName,
             staffName: seesEveryone && !focus ? entry.staffName : null,
-            history: describeHistory(histories.get(entry.id)),
+            history: describeHistory(histories.get(entry.id), {
+              course: (entry.lessonCapacity ?? 1) > 1,
+            }),
+            cancellableCourse: (entry.lessonCapacity ?? 1) > 1 && entry.startsAt.getTime() > now,
           }));
 
           const dayAbsences: DayAbsence[] = absenceRows

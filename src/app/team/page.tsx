@@ -5,7 +5,15 @@ import { isConfirmed } from "@/lib/booking";
 import { PASSWORD_CHANGE_PAGE, requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
-import { availabilityRules, bookings, lessonTypes, staff, staffLessonTypes } from "@/lib/db/schema";
+import {
+  availabilityExceptions,
+  availabilityRules,
+  bookings,
+  lessonTypes,
+  staff,
+  staffLessonTypes,
+} from "@/lib/db/schema";
+import { currentProblems, type Problem } from "@/lib/monitoring";
 import {
   addDays,
   formatDayLong,
@@ -90,7 +98,7 @@ export default async function TeamDashboard({
     seesEveryone ? undefined : eq(bookings.staffId, user.id),
   );
 
-  const [upcoming, weekTotal, ownOfferings, coveredOfferingIds] = await Promise.all([
+  const [upcoming, weekTotal, ownOfferings, coveredOfferingIds, courseDateIds] = await Promise.all([
     db
       .select({
         id: bookings.id,
@@ -117,7 +125,7 @@ export default async function TeamDashboard({
     // Die eigenen Angebote, um sie gegen die eingetragene Verfügbarkeit
     // abzugleichen — ohne Zeiten kann dort niemand buchen.
     db
-      .select({ id: lessonTypes.id, name: lessonTypes.name })
+      .select({ id: lessonTypes.id, name: lessonTypes.name, capacity: lessonTypes.capacity })
       .from(staffLessonTypes)
       .innerJoin(lessonTypes, eq(lessonTypes.id, staffLessonTypes.lessonTypeId))
       .where(and(eq(staffLessonTypes.staffId, user.id), eq(lessonTypes.active, true))),
@@ -126,9 +134,37 @@ export default async function TeamDashboard({
       .from(availabilityRules)
       .where(eq(availabilityRules.staffId, user.id))
       .then((rows) => rows.map((row) => row.id)),
+    // Kurse laufen nicht über Wochenzeiten, sondern über einzelne
+    // Kurstermine — gedeckt ist ein Kurs, wenn ein künftiger eingetragen ist.
+    db
+      .selectDistinct({ id: availabilityExceptions.lessonTypeId })
+      .from(availabilityExceptions)
+      .where(
+        and(
+          eq(availabilityExceptions.staffId, user.id),
+          eq(availabilityExceptions.available, true),
+          gte(availabilityExceptions.day, today),
+        ),
+      )
+      .then((rows) => rows.map((row) => row.id)),
   ]);
 
-  const uncovered = ownOfferings.filter((offering) => !coveredOfferingIds.includes(offering.id));
+  const uncovered = ownOfferings.filter((offering) =>
+    offering.capacity > 1
+      ? !courseDateIds.includes(offering.id)
+      : !coveredOfferingIds.includes(offering.id),
+  );
+
+  // Stillstand beim Mailversand oder bei den Cron-Läufen — nur für die, die
+  // etwas dagegen tun können. Fällt die Abfrage aus, fehlt nur der Hinweis.
+  let problems: Problem[] = [];
+  if (seesEveryone) {
+    try {
+      problems = await currentProblems();
+    } catch (error) {
+      console.error("Betriebsstatus konnte nicht gelesen werden:", error);
+    }
+  }
 
   const todays = upcoming.filter((entry) => zurichDay(entry.startsAt) === today);
 
@@ -144,6 +180,19 @@ export default async function TeamDashboard({
         )}
 
         <h1 className="text-title">Guten Tag, {user.name.split(" ")[0]}.</h1>
+
+        {problems.length > 0 && (
+          <div role="alert" className="notice notice-error mt-6 max-w-[70ch]">
+            <p className="font-bold">Auf der Website läuft etwas nicht wie vorgesehen</p>
+            <ul className="mt-2 space-y-2">
+              {problems.map((problem) => (
+                <li key={problem.key}>
+                  <span className="font-semibold">{problem.title}.</span> {problem.detail}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Gelb trägt hier Bedeutung: nur die Kachel, die eine Reaktion
             braucht, ist eingefärbt. */}

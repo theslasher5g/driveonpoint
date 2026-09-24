@@ -1,3 +1,4 @@
+import { markError, markOk } from "@/lib/checks";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { deleteExpiredRequests, sendDueReminders } from "@/lib/reminders";
 import { pruneWaitlist } from "@/lib/waitlist";
@@ -29,6 +30,12 @@ export async function POST(request: Request) {
   }
 
   const ok = reminders.status === "fulfilled" && expired.status === "fulfilled";
+  if (ok) {
+    await markOk("stuendlich");
+  } else {
+    const failed = [reminders, expired].find((outcome) => outcome.status === "rejected");
+    await markError("stuendlich", failed?.status === "rejected" ? failed.reason : "unbekannt");
+  }
   return Response.json(
     {
       status: ok ? "ok" : "fehlgeschlagen",

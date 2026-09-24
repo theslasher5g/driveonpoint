@@ -21,12 +21,16 @@ import {
   lessonTypes,
   staff,
   staffLessonTypes,
+  systemChecks,
   waitlistEntries,
 } from "@/lib/db/schema";
 import { randomBytes } from "node:crypto";
 import { accountingReport } from "@/lib/accounting";
 import { createBooking, findSlots, lessonTypeBySlug, newConfirmToken } from "@/lib/booking";
-import { customerHistories } from "@/lib/customer-history";
+import { markError, markOk } from "@/lib/checks";
+import { cancelCourseSession } from "@/lib/course-cancel";
+import { customerHistories, describeHistory } from "@/lib/customer-history";
+import { currentProblems } from "@/lib/monitoring";
 import { deleteExpiredRequests, sendDueReminders } from "@/lib/reminders";
 import { addDays, todayInZurich, zurichDay, zurichWeekday } from "@/lib/time";
 import { fullCourseSessions, isSessionFull, notifyWaitlist, removeFromWaitlist } from "@/lib/waitlist";
@@ -562,6 +566,84 @@ async function main() {
   };
   check("kurzfristige Absage der Kundschaft wird verrechnet", await ausfaelle(kundeAbgesagt.reference, kundeAbgesagt.startsAt), "Absage unter 24 h");
   check("kurzfristige Absage der Fahrschule nicht", await ausfaelle(schuleAbgesagt.reference, schuleAbgesagt.startsAt), null);
+
+  check(
+    "Kurs: keine Terminzählung, nur Warnungen",
+    describeHistory({ position: 1, noShows: 1, lateCancellations: 0 }, { course: true }),
+    { label: null, warnings: ["1× nicht erschienen"] },
+  );
+
+  // ===================================================================
+  console.log("\nSZENARIO N — Ganzen Kurstermin absagen");
+  // ===================================================================
+  const tagN = addDays(todayInZurich(), 19);
+  await addCourseDate(personA.id, vku.id, tagN, "18:00", "21:00");
+  const kursN = (await findSlots({ lessonType: vku, fromDay: tagN, days: 1, staffId: personA.id })).find(
+    (slot) => slot.time === "18:00",
+  )!;
+  for (const who of ["N1", "N2", "N3"]) await book("vku", personA.id, kursN.startsAt, who);
+  await db.insert(waitlistEntries).values({
+    lessonTypeId: vku.id,
+    startsAt: kursN.startsAt,
+    name: `${MARK} Wartend N`,
+    email: "pruefstand-n@example.invalid",
+    phone: "079 000 00 02",
+    token: randomBytes(24).toString("base64url"),
+  });
+  const ergebnisN = await cancelCourseSession({ lessonTypeId: vku.id, startsAt: kursN.startsAt, message: "Prüfstand" });
+  check("alle drei Anmeldungen abgesagt", ergebnisN.cancelled.length, 3);
+  check("Warteliste mitgezählt", ergebnisN.waitlist, 1);
+  const nachN = await db
+    .select({ status: bookings.status, by: bookings.cancelledBy })
+    .from(bookings)
+    .where(and(eq(bookings.lessonTypeId, vku.id), eq(bookings.startsAt, kursN.startsAt)));
+  check(
+    "alle abgesagt, von der Fahrschule",
+    nachN.every((row) => row.status === "abgesagt" && row.by === "fahrschule"),
+    true,
+  );
+  const wartendN = await db
+    .select({ id: waitlistEntries.id })
+    .from(waitlistEntries)
+    .where(and(eq(waitlistEntries.lessonTypeId, vku.id), eq(waitlistEntries.startsAt, kursN.startsAt)));
+  check("Warteliste gelöscht", wartendN.length, 0);
+  check(
+    "Kurstermin nicht mehr buchbar",
+    (await findSlots({ lessonType: vku, fromDay: tagN, days: 1 })).some((slot) => slot.time === "18:00"),
+    false,
+  );
+
+  // ===================================================================
+  console.log("\nSZENARIO O — Überwachung erkennt Stillstand");
+  // ===================================================================
+  // Den Zustand der Entwicklungsdatenbank sichern und am Ende zurückschreiben.
+  const vorher = await db.select().from(systemChecks);
+  try {
+    await db.delete(systemChecks);
+    const keys = async () => (await currentProblems()).map((problem) => problem.key).sort();
+
+    await markOk("stuendlich");
+    await markOk("aufraeumen");
+    check("alles frisch: keine Probleme", await keys(), []);
+
+    await markError("mail", new Error("Verbindung abgelehnt"));
+    check("Mailfehler wird gemeldet", await keys(), ["mail"]);
+    await markOk("mail");
+    check("nach erfolgreicher Mail wieder in Ordnung", await keys(), []);
+
+    await db
+      .update(systemChecks)
+      .set({ lastOkAt: new Date(Date.now() - 4 * HOUR) })
+      .where(eq(systemChecks.key, "stuendlich"));
+    check("stündlicher Lauf seit 4 h aus: gemeldet", await keys(), ["stuendlich"]);
+
+    await markOk("stuendlich");
+    await markError("aufraeumen", new Error("Datenbank weg"));
+    check("fehlgeschlagener Aufräumlauf: gemeldet", await keys(), ["aufraeumen"]);
+  } finally {
+    await db.delete(systemChecks);
+    if (vorher.length > 0) await db.insert(systemChecks).values(vorher);
+  }
 
   console.log(`\n${failures === 0 ? "Alle Prüfungen bestanden." : `${failures} Prüfung(en) fehlgeschlagen.`}`);
 

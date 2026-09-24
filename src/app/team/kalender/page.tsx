@@ -18,6 +18,8 @@ type Params = {
   person?: string;
   erfasst?: string;
   verschoben?: string;
+  kursAbgesagt?: string;
+  mailFehler?: string;
 };
 
 export default async function KalenderPage({
@@ -75,6 +77,15 @@ export default async function KalenderPage({
         {params.verschoben && (
           <p role="status" className="notice notice-success mb-6">
             Termin {params.verschoben} verschoben.
+          </p>
+        )}
+        {params.kursAbgesagt && /^\d+$/.test(params.kursAbgesagt) && (
+          <p role="status" className="notice notice-success mb-6">
+            Kurstermin abgesagt ({params.kursAbgesagt}{" "}
+            {params.kursAbgesagt === "1" ? "Anmeldung" : "Anmeldungen"}). Wer eine Mailadresse
+            hinterlegt hat, ist informiert.
+            {params.mailFehler && /^\d+$/.test(params.mailFehler) &&
+              ` ${params.mailFehler} Mail${params.mailFehler === "1" ? "" : "s"} konnte${params.mailFehler === "1" ? "" : "n"} nicht verschickt werden — bitte diese Personen anrufen.`}
           </p>
         )}
 

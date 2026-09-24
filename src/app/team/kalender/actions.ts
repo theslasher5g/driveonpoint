@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { record } from "@/lib/audit";
 import { assertPermission } from "@/lib/auth/guard";
 import { findSlots } from "@/lib/booking";
+import { cancelCourseSession } from "@/lib/course-cancel";
 import { notifyWaitlist } from "@/lib/waitlist";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes } from "@/lib/db/schema";
@@ -252,5 +253,63 @@ export async function rescheduleBookingAction(
   revalidatePath("/team");
   redirect(
     `/team/kalender?ansicht=woche&woche=${tag}&verschoben=${encodeURIComponent(entry.reference)}`,
+  );
+}
+
+export type CourseCancelState = { error?: string };
+
+/**
+ * Sagt einen ganzen Kurstermin ab: alle Angemeldeten und die Warteliste
+ * bekommen eine Mail, der Termin verschwindet aus der Verfügbarkeit.
+ * Ausgelöst von einer beliebigen Buchung dieses Termins.
+ */
+export async function cancelCourseAction(
+  _previous: CourseCancelState,
+  formData: FormData,
+): Promise<CourseCancelState> {
+  const user = await assertPermission("kalender.verwalten");
+
+  const id = String(formData.get("id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "Ungültiger Termin." };
+  const message = String(formData.get("nachricht") ?? "").trim().slice(0, 500) || null;
+
+  const [entry] = await db
+    .select({
+      lessonTypeId: bookings.lessonTypeId,
+      startsAt: bookings.startsAt,
+      capacity: lessonTypes.capacity,
+      lessonName: lessonTypes.name,
+    })
+    .from(bookings)
+    .innerJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
+    .where(eq(bookings.id, id))
+    .limit(1);
+
+  if (!entry || !entry.lessonTypeId || entry.capacity <= 1) {
+    return { error: "Das ist kein Kurstermin." };
+  }
+  if (entry.startsAt.getTime() <= Date.now()) {
+    return { error: "Der Kurs hat schon begonnen und lässt sich nicht mehr absagen." };
+  }
+
+  const result = await cancelCourseSession({
+    lessonTypeId: entry.lessonTypeId,
+    startsAt: entry.startsAt,
+    message,
+  });
+
+  const day = zurichDay(entry.startsAt);
+  await record("kurs.abgesagt", { id: user.id, label: user.name }, {
+    angebot: entry.lessonName,
+    termin: `${day} ${zurichTime(entry.startsAt)}`,
+    referenzen: result.cancelled,
+    warteliste: result.waitlist,
+  });
+
+  revalidatePath("/team/kalender");
+  revalidatePath("/team");
+  redirect(
+    `/team/kalender?ansicht=woche&woche=${day}&kursAbgesagt=${result.cancelled.length}` +
+      (result.mailsFailed > 0 ? `&mailFehler=${result.mailsFailed}` : ""),
   );
 }

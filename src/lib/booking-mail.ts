@@ -690,3 +690,61 @@ export async function sendWaitlistNotification(details: {
 
   await sendMail({ to: details.to, subject: `Platz frei: ${details.lessonName} am ${formatDayLong(details.day)}`, text, html });
 }
+
+/**
+ * Ein ganzer Kurstermin fällt aus. Geht an alle Angemeldeten und an alle auf
+ * der Warteliste, mit dem Weg zu den nächsten Kursdaten.
+ */
+export async function sendCourseCancellation(details: {
+  to: string;
+  name: string;
+  lessonName: string;
+  slug: string;
+  day: string;
+  time: string;
+  /** Referenz der Buchung; fehlt bei Einträgen auf der Warteliste. */
+  reference: string | null;
+  /** Freitext aus dem Team, etwa der Grund. */
+  message: string | null;
+}): Promise<void> {
+  const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
+  const nextUrl = `${env.appUrl}/buchen?angebot=${encodeURIComponent(details.slug)}`;
+  const intro = details.reference
+    ? "Wir müssen deinen Kurs leider absagen. Es entstehen dir keine Kosten."
+    : "Der Kurs, für den du auf der Warteliste stehst, findet nicht statt. Deinen Eintrag haben wir gelöscht.";
+
+  const text = [
+    `Hallo ${details.name}`.trim(),
+    "",
+    intro,
+    "",
+    `${details.lessonName}, ${when}`,
+    ...(details.reference ? [`Referenz: ${details.reference}`] : []),
+    ...(details.message ? ["", details.message] : []),
+    "",
+    "Die nächsten Kursdaten findest du hier:",
+    nextUrl,
+    "",
+    `Fragen? ${site.contact.phone}`,
+  ].join("\n");
+
+  const html = mailLayout(
+    details.reference ? "Dein Kurs fällt aus" : "Der Kurs findet nicht statt",
+    `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
+<p style="margin:0 0 16px;">${escapeHtml(intro)}</p>
+<p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
+<p style="margin:0 0 20px;">${escapeHtml(when)}${details.reference ? `<br><span style="color:#515052;font-size:14px;">Referenz ${escapeHtml(details.reference)}</span>` : ""}</p>
+${details.message ? `<p style="margin:0 0 20px;white-space:pre-line;">${escapeHtml(details.message)}</p>` : ""}
+<p style="margin:0 0 20px;">
+  <a href="${escapeHtml(nextUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;">Nächste Kursdaten ansehen</a>
+</p>
+<p style="margin:0;color:#515052;font-size:14px;">Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
+  );
+
+  await sendMail({
+    to: details.to,
+    subject: `Kurs abgesagt: ${details.lessonName} am ${formatDayLong(details.day)}`,
+    text,
+    html,
+  });
+}

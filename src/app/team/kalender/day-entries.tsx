@@ -14,6 +14,8 @@ export type DayBooking = {
   lessonName: string | null;
   staffName: string | null;
   history: { label: string | null; warnings: string[] };
+  /** Kurstermin, der noch nicht begonnen hat — dann lässt er sich als Ganzes absagen. */
+  cancellableCourse: boolean;
 };
 
 export type DayAbsence = {
@@ -111,12 +113,12 @@ export function DayEntries({
             <>
               <p className="nums text-fine font-bold">{booking.timeLabel}</p>
               <p className="text-base leading-snug mt-1">{booking.customerName}</p>
-              {booking.history.label && (
+              {(booking.history.label || booking.history.warnings.length > 0) && (
                 <p className="text-fine text-slate leading-snug mt-0.5">
                   {booking.history.label}
                   {booking.history.warnings.length > 0 && (
                     <span className="font-semibold text-danger">
-                      {" · "}
+                      {booking.history.label && " · "}
                       {booking.history.warnings.join(" · ")}
                     </span>
                   )}
@@ -145,6 +147,11 @@ export function DayEntries({
                       Verschieben
                     </ActionMenuItem>
                     <CancelBookingButton bookingId={booking.id} />
+                    {booking.cancellableCourse && (
+                      <ActionMenuItem href={`/team/kalender/kurs-absagen?id=${booking.id}`} danger>
+                        Ganzen Kurs absagen
+                      </ActionMenuItem>
+                    )}
                   </ActionMenu>
                 )}
               </DialogActions>

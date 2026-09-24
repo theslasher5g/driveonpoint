@@ -101,8 +101,15 @@ export async function customerHistories(entries: Entry[]): Promise<Map<string, C
   return result;
 }
 
-/** Kurzfassung für Kalenderkarte und Dialog. */
-export function describeHistory(history: CustomerHistory | undefined): {
+/**
+ * Kurzfassung für Kalenderkarte und Dialog. Bei Kursen ohne "Erster Termin":
+ * in einem Kurs mit zwölf Neuen steht das sonst auf jeder Karte und sagt
+ * nichts — nur die Warnungen bleiben.
+ */
+export function describeHistory(
+  history: CustomerHistory | undefined,
+  { course = false }: { course?: boolean } = {},
+): {
   label: string | null;
   warnings: string[];
 } {
@@ -110,6 +117,7 @@ export function describeHistory(history: CustomerHistory | undefined): {
   const warnings: string[] = [];
   if (history.noShows > 0) warnings.push(`${history.noShows}× nicht erschienen`);
   if (history.lateCancellations > 0) warnings.push(`${history.lateCancellations}× kurzfristig abgesagt`);
+  if (course) return { label: null, warnings };
   return {
     label: history.position === 1 ? "Erster Termin" : `${history.position}. Termin`,
     warnings,

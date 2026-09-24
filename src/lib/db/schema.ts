@@ -339,6 +339,18 @@ export const waitlistEntries = pgTable(
   ],
 );
 
+/**
+ * Letzter Erfolg und letzter Fehler je Betriebsteil (Mailversand, Cron-Läufe)
+ * — damit auffällt, wenn etwas stillsteht. Siehe lib/monitoring.ts.
+ */
+export const systemChecks = pgTable("system_checks", {
+  key: text("key").primaryKey(),
+  lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
+  lastErrorAt: timestamp("last_error_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  alertedAt: timestamp("alerted_at", { withTimezone: true }),
+});
+
 /** Gleitendes Zeitfenster für die Anfragebegrenzung. */
 export const rateLimitHits = pgTable(
   "rate_limit_hits",

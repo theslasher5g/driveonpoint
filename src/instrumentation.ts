@@ -30,5 +30,9 @@ export async function register() {
       // nächste Neustart versucht es erneut.
       console.error("Datenbank konnte nicht vorbereitet werden:", error);
     }
+
+    // Meldet per Mail, wenn Mailversand oder Cron-Läufe stillstehen.
+    const { startWatchdog } = await import("./lib/monitoring");
+    startWatchdog();
   }
 }

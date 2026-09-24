@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { createMultiBookingAction, type BookingState } from "@/app/buchen/actions";
 import { CaptchaField } from "./captcha-field";
 import { Honeypot } from "./honeypot";
+import { PhoneField } from "./phone-field";
 
 const EMPTY: BookingState = {};
 
@@ -45,16 +46,11 @@ export function MultiBookingForm({ slug, termine }: { slug: string; termine: str
         defaultValue={state.values?.email}
         required
       />
-      <Field
-        name="telefon"
-        type="tel"
-        label="Telefonnummer"
-        hint="Falls wir kurzfristig etwas verschieben müssen."
-        autoComplete="tel"
-        inputMode="tel"
+      {/* Mehrfachbuchungen gibt es nur für Fahrstunden — immer Abholung. */}
+      <PhoneField
+        hint="Deine Fahrlehrperson meldet sich vor der Lektion telefonisch, um den Treffpunkt zu vereinbaren."
         error={state.fieldErrors?.telefon}
         defaultValue={state.values?.telefon}
-        required
       />
 
       <div>

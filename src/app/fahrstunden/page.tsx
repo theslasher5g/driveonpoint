@@ -31,6 +31,11 @@ export default function FahrstundenPage() {
             Prüfungsgebiet: wir steigern Schritt für Schritt, in deinem Tempo.
           </p>
           <p>
+            Deine Fahrlehrperson meldet sich vor der ersten Lektion telefonisch bei dir und
+            vereinbart den genauen Treffpunkt — deshalb ist deine Telefonnummer bei der Buchung
+            Pflicht.
+          </p>
+          <p>
             Nach jeder Lektion weisst du, woran du arbeitest und wo du stehst.
           </p>
         </div>

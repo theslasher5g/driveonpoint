@@ -147,6 +147,7 @@ export default async function ErfassenPage({ searchParams }: { searchParams: Par
               person={person}
               day={chosenSlot.day}
               time={chosenSlot.time}
+              pickup={lessonType.capacity <= 1}
             />
           </div>
         )}

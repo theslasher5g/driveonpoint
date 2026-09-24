@@ -156,7 +156,12 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
               </div>
 
               <div className="surface bg-paper p-5 md:p-6">
-                <BookingForm slug={lessonType.slug} day={chosen.day} time={chosen.time} />
+                <BookingForm
+                  slug={lessonType.slug}
+                  day={chosen.day}
+                  time={chosen.time}
+                  pickup={lessonType.capacity <= 1}
+                />
               </div>
             </div>
           </section>

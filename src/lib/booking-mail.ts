@@ -19,7 +19,7 @@ function meetingPointLines(capacity: number): string[] {
   if (isPickup(capacity)) {
     return [
       "Treffpunkt: wird telefonisch vereinbart",
-      "Die Fahrlehrperson ruft dich vor der Lektion an und sagt dir, wo sie dich abholt.",
+      "Deine Fahrlehrperson kontaktiert dich vor der Lektion, um einen Treffpunkt mit dir zu vereinbaren.",
     ];
   }
   return [`Kursort: ${site.contact.street}, ${site.contact.zip} ${site.contact.city}`];
@@ -28,7 +28,7 @@ function meetingPointLines(capacity: number): string[] {
 function meetingPointHtml(capacity: number): string {
   if (isPickup(capacity)) {
     return `<p style="margin:0 0 8px;font-weight:700;">Treffpunkt</p>
-<p style="margin:0 0 20px;color:#515052;">Die Fahrlehrperson ruft dich vor der Lektion an und sagt dir, wo sie dich abholt.</p>`;
+<p style="margin:0 0 20px;color:#515052;">Deine Fahrlehrperson kontaktiert dich vor der Lektion, um einen Treffpunkt mit dir zu vereinbaren.</p>`;
   }
   return `<p style="margin:0 0 8px;font-weight:700;">Kursort</p>
 <p style="margin:0 0 20px;color:#515052;">${escapeHtml(site.contact.street)}, ${escapeHtml(site.contact.zip)} ${escapeHtml(site.contact.city)}</p>`;

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { createManualBookingAction, type ManualBookingState } from "@/app/team/kalender/erfassen/actions";
+import { PhoneField } from "./phone-field";
 
 const EMPTY: ManualBookingState = {};
 
@@ -11,11 +12,14 @@ export function ManualBookingForm({
   person,
   day,
   time,
+  pickup,
 }: {
   angebot: string;
   person: string;
   day: string;
   time: string;
+  /** Abholung statt fester Kursort — nur als Hinweistext relevant. */
+  pickup: boolean;
 }) {
   const [state, action] = useActionState(createManualBookingAction, EMPTY);
 
@@ -40,15 +44,10 @@ export function ManualBookingForm({
         defaultValue={state.values?.name}
         required
       />
-      <Field
-        name="telefon"
-        type="tel"
-        label="Telefonnummer"
-        autoComplete="tel"
-        inputMode="tel"
+      <PhoneField
+        hint={pickup ? "Die Fahrlehrperson meldet sich telefonisch, um den Treffpunkt zu vereinbaren." : undefined}
         error={state.fieldErrors?.telefon}
         defaultValue={state.values?.telefon}
-        required
       />
       <Field
         name="email"

@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { createBookingAction, type BookingState } from "@/app/buchen/actions";
 import { CaptchaField } from "./captcha-field";
 import { Honeypot } from "./honeypot";
+import { PhoneField } from "./phone-field";
 
 const EMPTY: BookingState = {};
 
@@ -13,10 +14,13 @@ export function BookingForm({
   slug,
   day,
   time,
+  pickup,
 }: {
   slug: string;
   day: string;
   time: string;
+  /** Abholung statt fester Kursort — die Fahrlehrperson ruft an, um den Treffpunkt zu vereinbaren. */
+  pickup: boolean;
 }) {
   const [state, action] = useActionState(createBookingAction, EMPTY);
 
@@ -52,16 +56,14 @@ export function BookingForm({
         defaultValue={state.values?.email}
         required
       />
-      <Field
-        name="telefon"
-        type="tel"
-        label="Telefonnummer"
-        hint="Falls wir kurzfristig etwas verschieben müssen."
-        autoComplete="tel"
-        inputMode="tel"
+      <PhoneField
+        hint={
+          pickup
+            ? "Deine Fahrlehrperson meldet sich vor der Lektion telefonisch, um den Treffpunkt zu vereinbaren."
+            : "Falls wir kurzfristig etwas verschieben müssen."
+        }
         error={state.fieldErrors?.telefon}
         defaultValue={state.values?.telefon}
-        required
       />
 
       <div>

@@ -188,7 +188,7 @@ export const site = {
     },
     {
       q: "Wo finden die Fahrstunden statt?",
-      a: `Wir holen dich ab, wo es dir passt — in ${regionText}. Wohnst du knapp ausserhalb, frag trotzdem, meistens lässt es sich einrichten.`,
+      a: `Wir holen dich ab, wo es dir passt — in ${regionText}. Deine Fahrlehrperson ruft dich vorher an und vereinbart den genauen Treffpunkt mit dir. Wohnst du knapp ausserhalb, frag trotzdem, meistens lässt es sich einrichten.`,
     },
     {
       q: "Ich wohne in Baselland — wo mache ich die Prüfung?",

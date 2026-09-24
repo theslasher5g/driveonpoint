@@ -496,6 +496,48 @@
     font-weight: 650;
   }
 
+  /* --- Wochenkalender ---------------------------------------------------
+     Freie Zeit und gebuchte Termine sahen vorher gleich aus: graue Kästen
+     untereinander. Jetzt spricht jede Art ihre eigene Sprache:
+     - verfügbar: schraffiert und gestrichelt, wie eine Sperrfläche auf der
+       Strasse — Zeit, die gebucht werden kann;
+     - gebucht: volle Karte mit roter Kante, das einzige Rot in der Spalte;
+     - unbestätigt: dieselbe Karte, Kante in Bernstein;
+     - abgesagt: nur noch eine durchgestrichene Zeile, ohne Kasten. */
+  .cal-free {
+    border: 1px dashed color-mix(in srgb, var(--color-deep) 28%, transparent);
+    background-image: repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-deep) 6%, transparent) 0 1.5px,
+      transparent 1.5px 7px
+    );
+    color: var(--color-slate);
+  }
+
+  .cal-booking {
+    background: var(--color-paper);
+    border: 1px solid color-mix(in srgb, var(--color-deep) 12%, transparent);
+    border-left: 3px solid var(--color-signal);
+  }
+
+  .cal-booking-pending {
+    border-left-color: var(--color-amber);
+  }
+
+  .cal-absent {
+    background: var(--color-concrete-dim);
+    color: var(--color-deep);
+  }
+
+  /* Legende: dieselben Flächen im Kleinformat. */
+  .cal-swatch {
+    display: inline-block;
+    width: 1.1rem;
+    height: 0.8rem;
+    border-radius: 3px;
+    vertical-align: -0.1em;
+  }
+
   .skip-link {
     position: absolute;
     left: -9999px;

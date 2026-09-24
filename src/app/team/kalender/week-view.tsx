@@ -16,12 +16,50 @@ import {
 import { ActionMenu, ActionMenuItem } from "@/components/action-menu";
 import { CancelBookingButton } from "@/components/cancel-booking-button";
 import { DeleteExceptionButton } from "@/components/availability-delete";
-import { withSoftHyphens } from "@/lib/hyphenate";
 
+type Entry = {
+  id: string;
+  startsAt: Date;
+  endsAt: Date;
+  status: string;
+  noShowAt: Date | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  customerNote: string | null;
+  staffId: string | null;
+  staffName: string | null;
+  lessonName: string | null;
+};
+
+/** Ein Verfügbarkeitsfenster einer Person — mehrere Angebote zur selben Zeit zusammengefasst. */
+type FreeBlock = { staffId: string; from: string; to: string; lessons: string[] };
+
+type Item =
+  | { kind: "frei"; start: number; block: FreeBlock }
+  | { kind: "abwesend"; start: number; absence: Absence }
+  | { kind: "termin"; start: number; entry: Entry };
+
+type Absence = {
+  id: string;
+  staffId: string;
+  startTime: string;
+  endTime: string;
+  note: string | null;
+};
+
+/**
+ * Die Wochenansicht im Team-Kalender.
+ *
+ * Freie Zeit, Abwesenheit und gebuchte Termine stehen chronologisch in einer
+ * Spalte, sehen aber grundverschieden aus (siehe .cal-* in globals.css) —
+ * vorher waren Verfügbarkeit und Termine beides graue Kästen und kaum
+ * auseinanderzuhalten. Abgesagte Termine rutschen als einzelne Zeile ans
+ * Ende des Tages, statt mitten im Tag so viel Platz zu brauchen wie ein
+ * echter Termin.
+ */
 export async function WeekView({
   start,
   visibleIds,
-  focus,
   seesEveryone,
   manages,
   mayEditAvailability,
@@ -38,11 +76,10 @@ export async function WeekView({
   const today = todayInZurich();
   const now = Date.now();
 
-  const [entries, rules, exceptions] = await Promise.all([
+  const [entries, rules, exceptions, people] = await Promise.all([
     db
       .select({
         id: bookings.id,
-        reference: bookings.reference,
         startsAt: bookings.startsAt,
         endsAt: bookings.endsAt,
         status: bookings.status,
@@ -60,8 +97,8 @@ export async function WeekView({
       .where(
         and(
           inArray(bookings.staffId, visibleIds),
-          // Abgesagte bleiben durchgestrichen sichtbar, verfallene
-          // Anfragen (nie per Mail bestätigt) dagegen nicht.
+          // Abgesagte bleiben sichtbar, verfallene Anfragen (nie per Mail
+          // bestätigt) dagegen nicht.
           or(eq(bookings.status, "abgesagt"), occupiesTime()),
           gte(bookings.startsAt, zurichToInstant(start, "00:00")),
           lte(bookings.startsAt, zurichToInstant(end, "23:59")),
@@ -100,165 +137,291 @@ export async function WeekView({
           lte(availabilityExceptions.day, end),
         ),
       ),
+    db.select({ id: staff.id, name: staff.name }).from(staff).where(inArray(staff.id, visibleIds)),
   ]);
 
+  const nameOf = new Map(people.map((person) => [person.id, person.name]));
+  // Wer nur den eigenen Kalender sieht, muss seinen Namen nicht auf jeder Karte lesen.
+  const showPerson = seesEveryone;
+
   return (
-    <div className="grid gap-3 md:grid-cols-7">
-      {days.map((day) => {
-        const weekday = zurichWeekday(day);
-        const isToday = day === today;
+    <div>
+      <Legend />
 
-        const dayEntries = entries
-          .filter((entry) => zurichDay(entry.startsAt) === day)
-          .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+      {/* Ab md sieben Spalten mit Mindestbreite und bei Bedarf seitlich
+          scrollbar: bei md:grid-cols-7 wurden die Spalten auf einem Tablet
+          so schmal, dass Namen mitten im Wort umbrachen. */}
+      <div className="mt-4 md:overflow-x-auto md:pb-2">
+      <div className="grid gap-2.5 md:grid-cols-[repeat(7,minmax(9.25rem,1fr))]">
+        {days.map((day) => {
+          const weekday = zurichWeekday(day);
+          const isToday = day === today;
 
-        const openBlocks = [
-          ...rules
-            .filter((rule) => {
-              if (rule.weekday !== weekday) return false;
-              if (rule.validFrom && day < rule.validFrom) return false;
-              if (rule.validUntil && day > rule.validUntil) return false;
-              return true;
-            })
-            .map((rule) => ({
-              from: rule.startTime.slice(0, 5),
-              to: rule.endTime.slice(0, 5),
-              lessonName: rule.lessonName,
-            })),
-          ...exceptions
-            .filter((entry) => entry.day === day && entry.available)
-            .map((entry) => ({
-              from: entry.startTime.slice(0, 5),
-              to: entry.endTime.slice(0, 5),
-              lessonName: entry.lessonName ?? "alle Angebote",
-            })),
-        ].sort((a, b) => minutesSinceMidnight(a.from) - minutesSinceMidnight(b.from));
+          // Freie Fenster je Person und Zeit zusammenfassen: dieselbe Person
+          // von 8 bis 12 für drei Angebote ist ein Block, nicht drei.
+          const free = new Map<string, FreeBlock>();
+          const addFree = (staffId: string, from: string, to: string, lesson: string) => {
+            const key = `${staffId}|${from}|${to}`;
+            const block = free.get(key) ?? { staffId, from, to, lessons: [] };
+            if (!block.lessons.includes(lesson)) block.lessons.push(lesson);
+            free.set(key, block);
+          };
+          for (const rule of rules) {
+            if (rule.weekday !== weekday) continue;
+            if (rule.validFrom && day < rule.validFrom) continue;
+            if (rule.validUntil && day > rule.validUntil) continue;
+            addFree(rule.staffId, rule.startTime.slice(0, 5), rule.endTime.slice(0, 5), rule.lessonName);
+          }
+          for (const entry of exceptions) {
+            if (entry.day !== day || !entry.available) continue;
+            addFree(
+              entry.staffId,
+              entry.startTime.slice(0, 5),
+              entry.endTime.slice(0, 5),
+              entry.lessonName ?? "alle Angebote",
+            );
+          }
 
-        const absences = exceptions.filter((entry) => entry.day === day && !entry.available);
+          const dayEntries = entries.filter((entry) => zurichDay(entry.startsAt) === day);
+          const cancelled = dayEntries
+            .filter((entry) => entry.status === "abgesagt")
+            .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
-        return (
-          <div
-            key={day}
-            className={`rounded-[var(--radius-surface)] border p-3.5 md:min-h-56 ${
-              isToday ? "bg-paper border-signal/40" : "bg-concrete border-deep/10"
-            }`}
-          >
-            <h2 className={`text-base font-bold flex items-baseline gap-1.5 ${isToday ? "text-signal-ink" : ""}`}>
-              {isToday && <span className="w-1.5 h-1.5 rounded-full bg-signal" aria-hidden="true" />}
-              {weekdayName(weekday, true)}
-              <span className="nums font-normal text-slate">
-                {Number(day.slice(8))}.{Number(day.slice(5, 7))}.
-              </span>
-            </h2>
+          const items: Item[] = [
+            ...[...free.values()].map(
+              (block): Item => ({ kind: "frei", start: minutesSinceMidnight(block.from), block }),
+            ),
+            ...exceptions
+              .filter((entry) => entry.day === day && !entry.available)
+              .map(
+                (absence): Item => ({
+                  kind: "abwesend",
+                  start: minutesSinceMidnight(absence.startTime.slice(0, 5)),
+                  absence,
+                }),
+              ),
+            ...dayEntries
+              .filter((entry) => entry.status !== "abgesagt")
+              .map(
+                (entry): Item => ({
+                  kind: "termin",
+                  start: minutesSinceMidnight(zurichTime(entry.startsAt)),
+                  entry,
+                }),
+              ),
+          ].sort((a, b) => a.start - b.start || order(a) - order(b));
 
-            {openBlocks.length > 0 && (
-              <ul className="mt-2.5 space-y-1">
-                {openBlocks.map((block, index) => (
-                  <li
-                    key={index}
-                    className="nums text-fine rounded-[calc(var(--radius-control)-4px)] bg-concrete-dim/60 px-2 py-1"
-                  >
-                    <span className="text-slate">{block.from}–{block.to}</span>{" "}
-                    <span className="text-deep/70">{withSoftHyphens(block.lessonName)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+          const empty = items.length === 0 && cancelled.length === 0;
 
-            {absences.map((absence) => (
-              <div
-                key={absence.id}
-                className="rounded-[var(--radius-control)] bg-concrete-dim px-2.5 py-2 mt-2.5"
-              >
-                <p className="nums text-fine">
-                  Abwesend {absence.startTime.slice(0, 5)}–{absence.endTime.slice(0, 5)}
-                  {absence.note ? ` · ${absence.note}` : ""}
-                </p>
-                {mayEditAvailability && (
-                  <DeleteExceptionButton id={absence.id} person={absence.staffId} />
-                )}
-              </div>
-            ))}
+          return (
+            <section
+              key={day}
+              aria-label={`${weekdayName(weekday)}, ${Number(day.slice(8))}.${Number(day.slice(5, 7))}.`}
+              className={`rounded-[var(--radius-surface)] border p-2.5 md:min-h-56 [&_p]:hyphens-manual ${
+                isToday ? "bg-paper border-signal/40" : "bg-concrete border-deep/10"
+              }`}
+            >
+              <h2 className={`text-base font-bold flex items-baseline gap-1.5 ${isToday ? "text-signal-ink" : ""}`}>
+                {isToday && <span className="w-1.5 h-1.5 rounded-full bg-signal" aria-hidden="true" />}
+                {weekdayName(weekday, true)}
+                <span className="nums font-normal text-slate">
+                  {Number(day.slice(8))}.{Number(day.slice(5, 7))}.
+                </span>
+              </h2>
 
-            <ul className="mt-3 space-y-2">
-              {dayEntries.map((entry) => {
-                const cancelled = entry.status === "abgesagt";
-                const pending = entry.status === "angefragt";
-                const started = entry.startsAt.getTime() <= now;
-                return (
-                  <li
-                    key={entry.id}
-                    className={`relative rounded-[var(--radius-control)] px-3 py-2.5 pr-9 border ${
-                      cancelled
-                        ? "bg-concrete-dim/60 border-transparent text-slate line-through"
-                        : pending
-                          ? "bg-paper border-dashed border-deep/25"
-                          : "bg-paper border-deep/12"
-                    }`}
-                  >
-                    <p className="nums text-fine font-bold">
-                      {zurichTime(entry.startsAt)}–{zurichTime(entry.endsAt)}
-                    </p>
-                    {/* Unter der Zeit und bis unter das Menü hinein (-mr-6):
-                        die Spalten sind schmal, und in der Zeile neben dem
-                        Menüknopf brach der Hinweis mitten im Wort um. */}
-                    {pending && (
-                      <p
-                        className="text-fine font-semibold text-slate -mr-6 break-normal"
-                        title="Online gebucht, der Link in der Mail ist noch nicht angeklickt. Ohne Bestätigung wird der Platz nach einer Stunde wieder frei."
+              {empty && <p className="text-fine text-slate/70 mt-3">Nichts eingetragen</p>}
+
+              <ul className="mt-3 space-y-2">
+                {items.map((item) => {
+                  if (item.kind === "frei") {
+                    const { block } = item;
+                    return (
+                      <li
+                        key={`frei-${block.staffId}-${block.from}-${block.to}`}
+                        className="cal-free rounded-[var(--radius-control)] px-2.5 py-2"
                       >
-                        Unbestätigt
-                      </p>
-                    )}
-                    {entry.noShowAt && !cancelled && (
-                      <p className="text-fine font-semibold text-danger -mr-6 break-normal">
-                        Nicht erschienen
-                      </p>
-                    )}
-                    <p className="text-[0.85rem] leading-snug">
-                      {entry.customerName ?? "Angaben gelöscht"}
-                    </p>
-                    <p className="text-fine text-slate leading-snug">
-                      {entry.lessonName && withSoftHyphens(entry.lessonName)}
-                      {seesEveryone && !focus && entry.staffName ? ` · ${entry.staffName}` : ""}
-                    </p>
-                    {entry.customerPhone && (
-                      <a
-                        href={`tel:${entry.customerPhone}`}
-                        className="nums text-fine text-signal-ink font-semibold block mt-0.5"
-                      >
-                        {entry.customerPhone}
-                      </a>
-                    )}
-                    {entry.customerNote && (
-                      <p className="text-fine text-slate mt-1">{entry.customerNote}</p>
-                    )}
+                        <p className="tabular-nums text-fine font-bold text-deep/80">
+                          {block.from}–{block.to}
+                        </p>
+                        <p className="text-fine leading-snug mt-0.5">
+                          Verfügbar für {block.lessons.map(shortLesson).join(", ")}
+                        </p>
+                        {showPerson && (
+                          <p className="text-fine leading-snug font-semibold text-deep/80 mt-0.5">
+                            {firstName(nameOf.get(block.staffId))}
+                          </p>
+                        )}
+                      </li>
+                    );
+                  }
 
-                    {manages && !cancelled && (
-                      <div className="absolute top-1 right-1">
-                        <ActionMenu label={`Termin von ${entry.customerName ?? "Kundschaft"} verwalten`}>
-                          <ActionMenuItem href={`/team/kalender/verschieben?id=${entry.id}`}>
-                            Verschieben
-                          </ActionMenuItem>
-                          {started && !pending && (
-                            <form action={toggleNoShowAction}>
-                              <input type="hidden" name="id" value={entry.id} />
-                              <ActionMenuItem type="submit">
-                                {entry.noShowAt ? "Doch erschienen" : "Nicht erschienen"}
-                              </ActionMenuItem>
-                            </form>
-                          )}
-                          <CancelBookingButton bookingId={entry.id} />
-                        </ActionMenu>
+                  if (item.kind === "abwesend") {
+                    const { absence } = item;
+                    return (
+                      <li
+                        key={`abwesend-${absence.id}`}
+                        className="cal-absent rounded-[var(--radius-control)] px-2.5 py-2"
+                      >
+                        <p className="tabular-nums text-fine font-bold">
+                          {absence.startTime.slice(0, 5)}–{absence.endTime.slice(0, 5)}
+                        </p>
+                        <p className="text-fine leading-snug mt-0.5">
+                          Abwesend{absence.note ? ` · ${absence.note}` : ""}
+                        </p>
+                        {showPerson && (
+                          <p className="text-fine leading-snug font-semibold mt-0.5">
+                            {firstName(nameOf.get(absence.staffId))}
+                          </p>
+                        )}
+                        {mayEditAvailability && (
+                          <DeleteExceptionButton id={absence.id} person={absence.staffId} />
+                        )}
+                      </li>
+                    );
+                  }
+
+                  const { entry } = item;
+                  const pending = entry.status === "angefragt";
+                  const started = entry.startsAt.getTime() <= now;
+                  return (
+                    <li
+                      key={entry.id}
+                      className={`cal-booking rounded-[var(--radius-control)] pl-2.5 pr-1 py-2 ${
+                        pending ? "cal-booking-pending" : ""
+                      }`}
+                    >
+                      {/* Zeit und Menü in einer Zeile: vorher hielt das Menü
+                          rechts einen breiten Streifen frei, und Namen brachen
+                          in der schmalen Spalte mitten im Wort um. */}
+                      <div className="flex items-start justify-between gap-1">
+                        <p className="tabular-nums text-fine font-bold pt-1.5 whitespace-nowrap">
+                          {zurichTime(entry.startsAt)}–{zurichTime(entry.endsAt)}
+                        </p>
+                        {manages && (
+                          <ActionMenu label={`Termin von ${entry.customerName ?? "Kundschaft"} verwalten`}>
+                            <ActionMenuItem href={`/team/kalender/verschieben?id=${entry.id}`}>
+                              Verschieben
+                            </ActionMenuItem>
+                            {started && !pending && (
+                              <form action={toggleNoShowAction}>
+                                <input type="hidden" name="id" value={entry.id} />
+                                <ActionMenuItem type="submit">
+                                  {entry.noShowAt ? "Doch erschienen" : "Nicht erschienen"}
+                                </ActionMenuItem>
+                              </form>
+                            )}
+                            <CancelBookingButton bookingId={entry.id} />
+                          </ActionMenu>
+                        )}
                       </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        );
-      })}
+                      {pending && (
+                        <p
+                          className="text-fine font-semibold text-amber-ink"
+                          title="Online gebucht, der Link in der Mail ist noch nicht angeklickt. Ohne Bestätigung wird der Platz nach einer Stunde wieder frei."
+                        >
+                          Unbestätigt
+                        </p>
+                      )}
+                      {entry.noShowAt && (
+                        <p className="text-fine font-semibold text-danger">Nicht erschienen</p>
+                      )}
+                      <p className="text-[0.85rem] font-semibold leading-snug pr-1.5">
+                        {entry.customerName ?? "Angaben gelöscht"}
+                      </p>
+                      <p className="text-fine text-slate leading-snug pr-1.5">
+                        {entry.lessonName && shortLesson(entry.lessonName)}
+                      </p>
+                      {showPerson && entry.staffName && (
+                        <p className="text-fine text-slate leading-snug pr-1.5">bei {firstName(entry.staffName)}</p>
+                      )}
+                      {entry.customerPhone && (
+                        <a
+                          href={`tel:${entry.customerPhone.replace(/\s+/g, "")}`}
+                          className="tabular-nums text-fine text-signal-ink font-semibold block mt-1 break-normal pr-1.5"
+                        >
+                          {entry.customerPhone}
+                        </a>
+                      )}
+                      {entry.customerNote && (
+                        <p className="text-fine text-slate mt-1 pr-1.5">{entry.customerNote}</p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {cancelled.length > 0 && (
+                <ul className="mt-3 pt-2 border-t border-deep/10 space-y-0.5">
+                  {cancelled.map((entry) => (
+                    <li
+                      key={entry.id}
+                      className="text-fine text-slate/80 leading-snug"
+                      title={[entry.lessonName, entry.customerPhone].filter(Boolean).join(" · ")}
+                    >
+                      <span className="line-through">
+                        <span className="nums">{zurichTime(entry.startsAt)}</span>{" "}
+                        {entry.customerName ?? "Angaben gelöscht"}
+                      </span>{" "}
+                      <span className="whitespace-nowrap">abgesagt</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+      </div>
+      </div>
     </div>
+  );
+}
+
+/**
+ * In der schmalen Tagesspalte die übliche Kurzform — "Verkehrskundeunterricht"
+ * brach dort sonst über drei Zeilen um.
+ */
+function shortLesson(name: string): string {
+  if (name === "Verkehrskundeunterricht") return "VKU";
+  // Weiche Trennstellen an der Wortfuge: die Spalte trennt nur dort
+  // (hyphens: manual), statt "Schnupperstun-de".
+  return name
+    .replace("Schnupperstunde", "Schnupper\u00ADstunde")
+    .replace("Nothilfekurs", "Nothilfe\u00ADkurs")
+    .replace("Fahrstunde", "Fahr\u00ADstunde");
+}
+
+/** Vorname genügt im kleinen Team und passt in die Spalte. */
+function firstName(name: string | null | undefined): string {
+  return name?.trim().split(/\s+/)[0] || "Unbekannt";
+}
+
+/** Bei gleicher Startzeit: erst die freie Zeit, dann Abwesenheit, dann der Termin darin. */
+function order(item: Item): number {
+  return item.kind === "frei" ? 0 : item.kind === "abwesend" ? 1 : 2;
+}
+
+function Legend() {
+  return (
+    <ul className="flex flex-wrap gap-x-5 gap-y-2 text-fine text-slate" aria-label="Legende">
+      <li>
+        <span className="cal-swatch cal-free mr-1.5" aria-hidden="true" />
+        Verfügbar – hier kann gebucht werden
+      </li>
+      <li>
+        <span className="cal-swatch cal-booking mr-1.5" aria-hidden="true" />
+        Gebuchter Termin
+      </li>
+      <li>
+        <span className="cal-swatch cal-booking cal-booking-pending mr-1.5" aria-hidden="true" />
+        Unbestätigt
+      </li>
+      <li>
+        <span className="cal-swatch cal-absent mr-1.5" aria-hidden="true" />
+        Abwesend
+      </li>
+      <li>
+        <span className="line-through">Durchgestrichen</span> = abgesagt
+      </li>
+    </ul>
   );
 }

@@ -269,6 +269,13 @@ export const bookings = pgTable(
      * kurzfristig war und laut AGB verrechnet werden durfte.
      */
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    /**
+     * Wer abgesagt hat. Nur eine kurzfristige Absage der Kundschaft ist laut
+     * AGB verrechenbar; sagt die Fahrschule ab (Krankheit, Wetter), zählt
+     * sie in der Buchhaltung nicht als Ausfall. Leer bei Absagen aus der
+     * Zeit, bevor das erfasst wurde und die sich nicht zuordnen liessen.
+     */
+    cancelledBy: text("cancelled_by").$type<"kundschaft" | "fahrschule">(),
 
     /**
      * Bestätigung per Mail (Double-Opt-In) bei Online-Buchungen. Bis zum
@@ -300,6 +307,35 @@ export const bookings = pgTable(
     index("bookings_staff_start_idx").on(t.staffId, t.startsAt),
     index("bookings_purge_idx").on(t.purgeAfter),
     index("bookings_confirm_token_idx").on(t.confirmToken),
+  ],
+);
+
+/**
+ * Warteliste für ausgebuchte Kurstermine (VKU, Nothilfekurs).
+ *
+ * Wird ein Platz frei, bekommen alle Eingetragenen eine Mail; wer zuerst
+ * bucht, hat den Platz. Die Einträge verschwinden nach dem Kurstermin
+ * (Aufräumlauf) oder sobald die Person den Kurs bucht.
+ */
+export const waitlistEntries = pgTable(
+  "waitlist_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    lessonTypeId: uuid("lesson_type_id")
+      .notNull()
+      .references(() => lessonTypes.id, { onDelete: "cascade" }),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone").notNull(),
+    // Für den Link "von der Warteliste streichen" in jeder Mail.
+    token: text("token").notNull(),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("waitlist_token_unique").on(t.token),
+    index("waitlist_session_idx").on(t.lessonTypeId, t.startsAt),
   ],
 );
 

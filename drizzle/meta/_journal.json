@@ -50,6 +50,13 @@
       "when": 1790251946493,
       "tag": "0006_verwaiste_verfuegbarkeit",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790257045914,
+      "tag": "0007_absage_warteliste",
+      "breakpoints": true
     }
   ]
 }

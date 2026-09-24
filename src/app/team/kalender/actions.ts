@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { record } from "@/lib/audit";
 import { assertPermission } from "@/lib/auth/guard";
 import { findSlots } from "@/lib/booking";
+import { notifyWaitlist } from "@/lib/waitlist";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes } from "@/lib/db/schema";
 import { env } from "@/lib/env";
@@ -27,6 +28,7 @@ export async function cancelByStaffAction(formData: FormData): Promise<void> {
       customerName: bookings.customerName,
       customerEmail: bookings.customerEmail,
       lessonName: lessonTypes.name,
+      lessonTypeId: bookings.lessonTypeId,
       status: bookings.status,
     })
     .from(bookings)
@@ -39,8 +41,11 @@ export async function cancelByStaffAction(formData: FormData): Promise<void> {
   const now = new Date();
   await db
     .update(bookings)
-    .set({ status: "abgesagt", cancelledAt: now, updatedAt: now })
+    .set({ status: "abgesagt", cancelledAt: now, cancelledBy: "fahrschule", updatedAt: now })
     .where(eq(bookings.id, id));
+
+  // Ein Platz im Kurs ist frei — die Warteliste erfährt es.
+  await notifyWaitlist(entry.lessonTypeId, entry.startsAt);
 
   await record("buchung.abgesagt-intern", { id: user.id, label: user.name }, {
     referenz: entry.reference,
@@ -201,6 +206,9 @@ export async function rescheduleBookingAction(
       updatedAt: new Date(),
     })
     .where(eq(bookings.id, id));
+
+  // Beim alten Kurstermin ist jetzt ein Platz frei.
+  await notifyWaitlist(entry.lessonTypeId, entry.startsAt);
 
   const von = `${zurichDay(entry.startsAt)} ${zurichTime(entry.startsAt)}`;
   await record("buchung.verschoben", { id: user.id, label: user.name }, {

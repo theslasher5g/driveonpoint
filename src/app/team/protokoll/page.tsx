@@ -29,6 +29,8 @@ const ACTION_LABELS: Record<string, string> = {
   "buchung.abgesagt": "Termin von Kundschaft abgesagt",
   "buchung.abgesagt-intern": "Termin von der Fahrschule abgesagt",
   "buchung.verschoben": "Termin verschoben",
+  "warteliste.eingetragen": "Auf die Warteliste eines Kurses eingetragen",
+  "warteliste.ausgetragen": "Von einer Warteliste gestrichen",
   "buchung.manuell-erstellt": "Termin von Hand erfasst",
   "verfuegbarkeit.regel-erstellt": "Wöchentliche Verfügbarkeit eingetragen",
   "verfuegbarkeit.regel-geloescht": "Wöchentliche Verfügbarkeit gelöscht",

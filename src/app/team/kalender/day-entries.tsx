@@ -13,6 +13,7 @@ export type DayBooking = {
   customerNote: string | null;
   lessonName: string | null;
   staffName: string | null;
+  history: { label: string | null; warnings: string[] };
 };
 
 export type DayAbsence = {
@@ -110,6 +111,17 @@ export function DayEntries({
             <>
               <p className="nums text-fine font-bold">{booking.timeLabel}</p>
               <p className="text-base leading-snug mt-1">{booking.customerName}</p>
+              {booking.history.label && (
+                <p className="text-fine text-slate leading-snug mt-0.5">
+                  {booking.history.label}
+                  {booking.history.warnings.length > 0 && (
+                    <span className="font-semibold text-danger">
+                      {" · "}
+                      {booking.history.warnings.join(" · ")}
+                    </span>
+                  )}
+                </p>
+              )}
               <p className="text-fine text-slate leading-snug mt-0.5">
                 {booking.lessonName}
                 {booking.staffName ? ` · ${booking.staffName}` : ""}

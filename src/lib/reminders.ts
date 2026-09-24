@@ -4,6 +4,7 @@ import { record } from "./audit";
 import { sendBookingReminder } from "./booking-mail";
 import { db } from "./db";
 import { bookings, lessonTypes } from "./db/schema";
+import { notifyWaitlist } from "./waitlist";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -103,10 +104,14 @@ export async function deleteExpiredRequests(): Promise<number> {
   const removed = await db
     .delete(bookings)
     .where(and(eq(bookings.status, "angefragt"), lt(bookings.confirmExpiresAt, sql`now()`)))
-    .returning({ id: bookings.id });
+    .returning({ id: bookings.id, lessonTypeId: bookings.lessonTypeId, startsAt: bookings.startsAt });
 
   if (removed.length > 0) {
     await record("buchung.verfallen", { label: "System" }, { anzahl: removed.length });
   }
+
+  // Hielt eine nie bestätigte Anfrage den letzten Kursplatz, ist er jetzt frei.
+  const sessions = new Map(removed.map((row) => [`${row.lessonTypeId}|${row.startsAt.toISOString()}`, row]));
+  for (const row of sessions.values()) await notifyWaitlist(row.lessonTypeId, row.startsAt);
   return removed.length;
 }

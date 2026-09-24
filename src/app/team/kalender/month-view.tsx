@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { isConfirmed } from "@/lib/booking";
+import { customerHistories, describeHistory } from "@/lib/customer-history";
 import { db } from "@/lib/db";
 import { availabilityExceptions, bookings, lessonTypes, staff } from "@/lib/db/schema";
 import { monthName, todayInZurich, weekdayName, zurichDay, zurichTime, zurichToInstant, zurichWeekday } from "@/lib/time";
@@ -36,6 +37,7 @@ export async function MonthView({
         startsAt: bookings.startsAt,
         endsAt: bookings.endsAt,
         customerName: bookings.customerName,
+        customerEmail: bookings.customerEmail,
         customerPhone: bookings.customerPhone,
         customerNote: bookings.customerNote,
         staffId: bookings.staffId,
@@ -79,6 +81,8 @@ export async function MonthView({
       .orderBy(asc(availabilityExceptions.startTime)),
   ]);
 
+  const histories = await customerHistories(entries);
+
   return (
     <div className="rounded-[var(--radius-surface)] border border-deep/12 bg-deep/12 overflow-hidden" style={{ display: "grid", gap: "1px" }}>
       {/* Wochentagsköpfe, nur einmal statt in jeder Zeile. */}
@@ -108,6 +112,7 @@ export async function MonthView({
             customerNote: entry.customerNote,
             lessonName: entry.lessonName,
             staffName: seesEveryone && !focus ? entry.staffName : null,
+            history: describeHistory(histories.get(entry.id)),
           }));
 
           const dayAbsences: DayAbsence[] = absenceRows

@@ -25,7 +25,7 @@ export function CaptchaField({
   scope,
   refreshOn,
 }: {
-  scope: "buchung" | "kontakt";
+  scope: "buchung" | "kontakt" | "warteliste";
   /** Jede Lösung gilt nur einmal. Ändert sich dieser Wert (die Antwort des
    * Servers auf einen Versand), wird eine neue Aufgabe gelöst. */
   refreshOn?: unknown;

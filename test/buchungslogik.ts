@@ -21,12 +21,15 @@ import {
   lessonTypes,
   staff,
   staffLessonTypes,
+  waitlistEntries,
 } from "@/lib/db/schema";
 import { randomBytes } from "node:crypto";
 import { accountingReport } from "@/lib/accounting";
 import { createBooking, findSlots, lessonTypeBySlug, newConfirmToken } from "@/lib/booking";
+import { customerHistories } from "@/lib/customer-history";
 import { deleteExpiredRequests, sendDueReminders } from "@/lib/reminders";
 import { addDays, todayInZurich, zurichDay, zurichWeekday } from "@/lib/time";
+import { fullCourseSessions, isSessionFull, notifyWaitlist, removeFromWaitlist } from "@/lib/waitlist";
 
 const MARK = "PRUEFSTAND";
 let failures = 0;
@@ -75,6 +78,7 @@ function note(label: string, value: unknown) {
 
 async function cleanup() {
   await db.delete(bookings).where(like(bookings.customerName, `${MARK}%`));
+  await db.delete(waitlistEntries).where(like(waitlistEntries.name, `${MARK}%`));
 
   // Regeln und Zuordnungen, die der Lauf auf bestehenden Konten angelegt hat.
   if (createdRules.length > 0) {
@@ -456,6 +460,108 @@ async function main() {
   await addRule(personA.id, vku.id, zurichWeekday(tagK), "18:00", "21:00");
   const vkuK = await findSlots({ lessonType: vku, fromDay: tagK, days: 1, staffId: personA.id });
   check("Wochenregel für VKU erzeugt keinen Kurstermin", vkuK.length, 0);
+
+  // ===================================================================
+  console.log("\nSZENARIO L — Warteliste für einen vollen Kurs");
+  // ===================================================================
+  const tagL = addDays(todayInZurich(), 18);
+  await addCourseDate(personA.id, vku.id, tagL, "18:00", "21:00");
+  const kursL = (await findSlots({ lessonType: vku, fromDay: tagL, days: 1, staffId: personA.id })).find(
+    (slot) => slot.time === "18:00",
+  )!;
+  check("Kurstermin ist buchbar", kursL !== undefined, true);
+  check("noch nicht ausgebucht", await isSessionFull(vku, tagL, "18:00"), false);
+  const plaetze = kursL.seatsLeft;
+  for (let index = 0; index < plaetze; index += 1) {
+    await book("vku", personA.id, kursL.startsAt, `L${index + 1}`);
+  }
+  const vollL = await fullCourseSessions(vku, tagL, 1);
+  check("voller Kurs erscheint als ausgebucht", vollL.map((session) => session.time), ["18:00"]);
+  check("isSessionFull erkennt ihn", await isSessionFull(vku, tagL, "18:00"), true);
+
+  const wartendMail = "pruefstand-warteliste@example.invalid";
+  const [wartend] = await db
+    .insert(waitlistEntries)
+    .values({
+      lessonTypeId: vku.id,
+      startsAt: kursL.startsAt,
+      name: `${MARK} Wartend`,
+      email: wartendMail,
+      phone: "079 000 00 01",
+      token: randomBytes(24).toString("base64url"),
+    })
+    .returning({ id: waitlistEntries.id });
+  const benachrichtigt = async () =>
+    (await db.select({ at: waitlistEntries.notifiedAt }).from(waitlistEntries).where(eq(waitlistEntries.id, wartend.id)))[0]
+      ?.at ?? null;
+
+  // Noch voll: keine Mail.
+  await notifyWaitlist(vku.id, kursL.startsAt);
+  check("voller Kurs: niemand wird benachrichtigt", await benachrichtigt(), null);
+
+  const [absage] = await db
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(and(eq(bookings.lessonTypeId, vku.id), eq(bookings.startsAt, kursL.startsAt), like(bookings.customerName, `${MARK}%`)))
+    .limit(1);
+  await db.update(bookings).set({ status: "abgesagt", cancelledBy: "kundschaft", cancelledAt: new Date() }).where(eq(bookings.id, absage.id));
+  check("nach einer Absage nicht mehr ausgebucht", (await fullCourseSessions(vku, tagL, 1)).length, 0);
+
+  if (process.env.SMTP_HOST) {
+    await notifyWaitlist(vku.id, kursL.startsAt);
+    check("freier Platz: Warteliste wird benachrichtigt", (await benachrichtigt()) !== null, true);
+  } else {
+    note("Wartelisten-Mail übersprungen", "SMTP_HOST nicht gesetzt — ohne Mailversand nicht prüfbar");
+  }
+
+  await removeFromWaitlist(vku.id, kursL.startsAt, wartendMail.toUpperCase());
+  check("nach der Buchung von der Warteliste gestrichen", await benachrichtigt(), null);
+  const [nochDa] = await db.select({ id: waitlistEntries.id }).from(waitlistEntries).where(eq(waitlistEntries.id, wartend.id));
+  check("Eintrag ist gelöscht", nochDa === undefined, true);
+
+  // ===================================================================
+  console.log("\nSZENARIO M — Kundenhistorie und wer abgesagt hat");
+  // ===================================================================
+  // Dieselbe Person, einmal mit "079 …", einmal mit "+41 79 …" erfasst.
+  const person = { customerEmail: "pruefstand-historie@example.invalid", customerPhone: "079 999 88 77" };
+  const confirmed = { confirmedAt: new Date(now - 60 * 24 * HOUR) };
+  await insert("M1", -10 * 24 * HOUR, { ...person, ...confirmed });
+  await insert("M2", -6 * 24 * HOUR, { ...person, ...confirmed, noShowAt: new Date(now - 6 * 24 * HOUR) });
+  const kundeAbgesagt = await insert("M3", -3 * 24 * HOUR, {
+    ...person,
+    ...confirmed,
+    status: "abgesagt",
+    cancelledBy: "kundschaft",
+    cancelledAt: new Date(now - 3 * 24 * HOUR - 2 * HOUR),
+  });
+  const schuleAbgesagt = await insert("M4", -2 * 24 * HOUR, {
+    ...person,
+    ...confirmed,
+    status: "abgesagt",
+    cancelledBy: "fahrschule",
+    cancelledAt: new Date(now - 2 * 24 * HOUR - HOUR),
+  });
+  const aktuell = await insert("M5", 5 * 24 * HOUR, {
+    customerEmail: "",
+    customerPhone: "+41 79 999 88 77",
+    ...confirmed,
+  });
+  const historie = (
+    await customerHistories([
+      { id: aktuell.id, startsAt: aktuell.startsAt, customerEmail: "", customerPhone: "+41 79 999 88 77" },
+    ])
+  ).get(aktuell.id);
+  check("zweiter wahrgenommener Termin (Nichterscheinen zählt nicht)", historie?.position, 2);
+  check("einmal nicht erschienen", historie?.noShows, 1);
+  check("nur die eigene kurzfristige Absage zählt", historie?.lateCancellations, 1);
+
+  const ausfaelle = async (ref: string, startsAt: Date) => {
+    const tag = zurichDay(startsAt);
+    const report = await accountingReport(Number(tag.slice(0, 4)), Number(tag.slice(5, 7)));
+    return report.chargeable.find((row) => row.reference === ref)?.reason ?? null;
+  };
+  check("kurzfristige Absage der Kundschaft wird verrechnet", await ausfaelle(kundeAbgesagt.reference, kundeAbgesagt.startsAt), "Absage unter 24 h");
+  check("kurzfristige Absage der Fahrschule nicht", await ausfaelle(schuleAbgesagt.reference, schuleAbgesagt.startsAt), null);
 
   console.log(`\n${failures === 0 ? "Alle Prüfungen bestanden." : `${failures} Prüfung(en) fehlgeschlagen.`}`);
 

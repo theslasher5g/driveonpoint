@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { bookings, lessonTypes } from "@/lib/db/schema";
 import { consume } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
+import { notifyWaitlist } from "@/lib/waitlist";
 
 /**
  * Absage über den Link aus der Bestätigungsmail.
@@ -29,6 +30,7 @@ export async function cancelBookingAction(formData: FormData): Promise<void> {
     .update(bookings)
     .set({
       status: "abgesagt",
+      cancelledBy: "kundschaft",
       cancelToken: `abgesagt:${crypto.randomUUID()}`,
       cancelledAt: now,
       updatedAt: now,
@@ -44,6 +46,7 @@ export async function cancelBookingAction(formData: FormData): Promise<void> {
 
   if (cancelled) {
     await record("buchung.abgesagt", { label: "Kundschaft" }, { referenz: cancelled.reference });
+    await notifyWaitlist(cancelled.lessonTypeId, cancelled.startsAt);
 
     const [offering] = cancelled.lessonTypeId
       ? await db

@@ -5,7 +5,7 @@ import { consume } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-const SCOPES = new Set(["buchung", "kontakt"]);
+const SCOPES = new Set(["buchung", "kontakt", "warteliste"]);
 
 export async function GET(request: Request) {
   const scope = new URL(request.url).searchParams.get("zweck") ?? "";

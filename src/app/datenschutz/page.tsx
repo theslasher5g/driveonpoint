@@ -50,7 +50,8 @@ export default function DatenschutzPage() {
               Bei einer Buchung erheben wir Name, Mailadresse und Telefonnummer sowie die von dir
               gewählte Lektionsart und den Termin. Eine freiwillige Bemerkung wird mitgespeichert.
               Beim Kontaktformular erheben wir Name, Mailadresse, Telefonnummer und
-              den Text deiner Nachricht.
+              den Text deiner Nachricht. Trägst du dich auf die Warteliste eines ausgebuchten
+              Kurses ein, speichern wir Name, Mailadresse, Telefonnummer und den Kurstermin.
             </p>
             <p className="text-slate">
               Der Webserver protokolliert technisch bedingt IP-Adresse, Zeitpunkt und
@@ -69,6 +70,7 @@ export default function DatenschutzPage() {
               </li>
               <li>Um die Leistung abzurechnen und die gesetzlichen Aufbewahrungspflichten zu erfüllen.</li>
               <li>Um deine Anfrage zu beantworten.</li>
+              <li>Um dir Bescheid zu geben, wenn in einem Kurs, auf dessen Warteliste du stehst, ein Platz frei wird.</li>
               <li>Um die Website vor automatisierten Angriffen und Spam zu schützen.</li>
             </ul>
             <p className="text-slate mt-3">
@@ -86,6 +88,11 @@ export default function DatenschutzPage() {
               Personenbezug erhalten, damit Auslastung und Umsatz nachvollziehbar bleiben. Davon
               ausgenommen sind Belege, die wir nach Artikel 958f des Obligationenrechts zehn Jahre
               aufbewahren müssen; diese liegen in der Buchhaltung, nicht in dieser Website.
+            </p>
+            <p className="text-slate mt-3">
+              Einträge auf einer Warteliste löschen wir vollständig, sobald der Kurstermin
+              vorbei ist, du den Kurs gebucht hast oder dich über den Link in unserer Mail
+              austrägst.
             </p>
           </div>
 

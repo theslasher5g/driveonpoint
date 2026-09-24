@@ -379,7 +379,7 @@ export async function deleteStaffAction(formData: FormData): Promise<void> {
 
     await db
       .update(bookings)
-      .set({ status: "abgesagt", cancelledAt: now, updatedAt: now })
+      .set({ status: "abgesagt", cancelledAt: now, cancelledBy: "fahrschule", updatedAt: now })
       .where(inArray(bookings.id, group.map((entry) => entry.id)));
     abgesagt += group.length;
 

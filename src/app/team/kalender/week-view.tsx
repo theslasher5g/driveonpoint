@@ -9,6 +9,8 @@ import {
   staffLessonTypes,
 } from "@/lib/db/schema";
 import { occupiesTime } from "@/lib/booking";
+import { customerHistories, describeHistory, type CustomerHistory } from "@/lib/customer-history";
+import { waitlistsBetween } from "@/lib/waitlist";
 import { toggleNoShowAction } from "./actions";
 import {
   addDays,
@@ -30,7 +32,9 @@ type Entry = {
   endsAt: Date;
   status: string;
   noShowAt: Date | null;
+  cancelledBy: string | null;
   customerName: string | null;
+  customerEmail: string | null;
   customerPhone: string | null;
   customerNote: string | null;
   staffId: string | null;
@@ -91,7 +95,9 @@ export async function WeekView({
         endsAt: bookings.endsAt,
         status: bookings.status,
         noShowAt: bookings.noShowAt,
+        cancelledBy: bookings.cancelledBy,
         customerName: bookings.customerName,
+        customerEmail: bookings.customerEmail,
         customerPhone: bookings.customerPhone,
         customerNote: bookings.customerNote,
         staffId: bookings.staffId,
@@ -171,6 +177,13 @@ export async function WeekView({
   ]);
 
   const assigned = new Set(offerings.map((row) => `${row.staffId}|${row.lessonTypeId}`));
+  const histories = await customerHistories(entries.filter((entry) => entry.status !== "abgesagt"));
+  // Wartelisten gehören zu keinem Konto, nur wer alle sieht oder Termine
+  // verwaltet, kann damit etwas anfangen.
+  const waiting =
+    seesEveryone || manages
+      ? await waitlistsBetween(zurichToInstant(start, "00:00"), zurichToInstant(end, "23:59"))
+      : [];
 
   const nameOf = new Map(people.map((person) => [person.id, person.name]));
   // Wer nur den eigenen Kalender sieht, muss seinen Namen nicht auf jeder Karte lesen.
@@ -251,7 +264,8 @@ export async function WeekView({
               ),
           ].sort((a, b) => a.start - b.start || order(a) - order(b));
 
-          const empty = items.length === 0 && cancelled.length === 0;
+          const dayWaiting = waiting.filter((entry) => zurichDay(entry.startsAt) === day);
+          const empty = items.length === 0 && cancelled.length === 0 && dayWaiting.length === 0;
 
           return (
             <section
@@ -368,6 +382,7 @@ export async function WeekView({
                       <p className="text-[0.85rem] font-semibold leading-snug pr-1.5">
                         {entry.customerName ?? "Angaben gelöscht"}
                       </p>
+                      <HistoryLine history={histories.get(entry.id)} />
                       <p className="text-fine text-slate leading-snug pr-1.5">
                         {entry.lessonName && shortLesson(entry.lessonName)}
                       </p>
@@ -390,6 +405,31 @@ export async function WeekView({
                 })}
               </ul>
 
+              {dayWaiting.length > 0 && (
+                <details className="mt-3 pt-2 border-t border-deep/10 text-fine">
+                  <summary className="cursor-pointer font-semibold">
+                    Warteliste ({dayWaiting.length})
+                  </summary>
+                  <ul className="mt-1.5 space-y-1.5">
+                    {dayWaiting.map((entry) => (
+                      <li key={entry.id} className="leading-snug">
+                        <span className="nums">{zurichTime(entry.startsAt)}</span> {entry.name}
+                        <span className="block text-slate">
+                          {shortLesson(entry.lessonName)}
+                          {entry.notifiedAt ? ", über freien Platz informiert" : ""}
+                        </span>
+                        <a
+                          href={`tel:${entry.phone.replace(/\s+/g, "")}`}
+                          className="tabular-nums text-signal-ink font-semibold break-normal"
+                        >
+                          {entry.phone}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
               {cancelled.length > 0 && (
                 <ul className="mt-3 pt-2 border-t border-deep/10 space-y-0.5">
                   {cancelled.map((entry) => (
@@ -402,7 +442,9 @@ export async function WeekView({
                         <span className="nums">{zurichTime(entry.startsAt)}</span>{" "}
                         {entry.customerName ?? "Angaben gelöscht"}
                       </span>{" "}
-                      <span className="whitespace-nowrap">abgesagt</span>
+                      <span className="whitespace-nowrap">
+                        {entry.cancelledBy === "fahrschule" ? "von uns abgesagt" : "abgesagt"}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -433,6 +475,25 @@ function shortLesson(name: string): string {
 /** Vorname genügt im kleinen Team und passt in die Spalte. */
 function firstName(name: string | null | undefined): string {
   return name?.trim().split(/\s+/)[0] || "Unbekannt";
+}
+
+/**
+ * "Erster Termin" / "4. Termin" und Warnungen wie "1× nicht erschienen" —
+ * damit man beim Blick in den Kalender weiss, mit wem man es zu tun hat.
+ */
+function HistoryLine({ history }: { history: CustomerHistory | undefined }) {
+  const { label, warnings } = describeHistory(history);
+  if (!label) return null;
+  return (
+    <>
+      <p className="text-fine text-slate leading-snug pr-1.5">{label}</p>
+      {warnings.map((warning) => (
+        <p key={warning} className="text-fine font-semibold text-danger leading-snug pr-1.5">
+          {warning}
+        </p>
+      ))}
+    </>
+  );
 }
 
 /** Bei gleicher Startzeit: erst die freie Zeit, dann Abwesenheit, dann der Termin darin. */

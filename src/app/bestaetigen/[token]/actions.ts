@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
 import { bookings, lessonTypes } from "@/lib/db/schema";
 import { consume } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
+import { removeFromWaitlist } from "@/lib/waitlist";
 import { zurichDay, zurichTime } from "@/lib/time";
 
 /**
@@ -60,6 +61,11 @@ export async function confirmBookingAction(formData: FormData): Promise<void> {
   if (confirmed.length === 0) redirect(`/bestaetigen/${encodeURIComponent(token)}`);
 
   confirmed.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+
+  // Wer den Kurs jetzt gebucht hat, steht nicht mehr auf dessen Warteliste.
+  for (const entry of confirmed) {
+    await removeFromWaitlist(entry.lessonTypeId, entry.startsAt, entry.customerEmail);
+  }
   const first = confirmed[0];
 
   await record(

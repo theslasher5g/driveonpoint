@@ -10,6 +10,7 @@ import {
 import type { LessonType } from "@/lib/db/schema";
 import { site } from "@/lib/site";
 import { formatDayLong, formatPrice } from "@/lib/time";
+import { fullCourseSessions, type FullSession } from "@/lib/waitlist";
 
 /**
  * Die Buchungskarte oben auf den Angebotsseiten.
@@ -31,6 +32,7 @@ export async function OfferBookingCard({
   let lessonType: LessonType | null = null;
   let trial: LessonType | null = null;
   let slot: Slot | undefined;
+  let fullSession: FullSession | undefined;
   let priced: ReturnType<typeof applyPromotions> | null = null;
   let trialPrice: number | null = null;
 
@@ -43,6 +45,8 @@ export async function OfferBookingCard({
     if (lessonType?.active) {
       priced = applyPromotions(lessonType, promotions);
       slot = (await findSlots({ lessonType, days: BOOKING_HORIZON_DAYS }))[0];
+      // Alles ausgebucht: dann wenigstens der Weg auf die Warteliste.
+      if (!slot) fullSession = (await fullCourseSessions(lessonType))[0];
     }
     if (trial?.active) trialPrice = applyPromotions(trial, promotions).finalRappen;
   } catch (error) {
@@ -105,6 +109,29 @@ export async function OfferBookingCard({
               className="btn btn-outline w-full mt-2.5"
             >
               {isCourse ? "Alle Kursdaten ansehen" : "Alle freien Termine ansehen"}
+            </Link>
+          </>
+        ) : fullSession ? (
+          <>
+            <p className="text-fine text-slate">Nächster Kurs, ausgebucht</p>
+            <p className="font-display font-bold text-xl leading-tight mt-1 hyphens-none">
+              {formatDayLong(fullSession.day)}
+            </p>
+            <p className="text-fine text-slate mt-0.5">
+              <span className="tabular-nums font-semibold text-deep">{fullSession.time} Uhr</span>
+              . Sagt jemand ab, bekommst du eine Mail.
+            </p>
+            <Link
+              href={`/buchen/warteliste?angebot=${lessonType.slug}&tag=${fullSession.day}&zeit=${fullSession.time}`}
+              className="btn btn-primary w-full mt-5"
+            >
+              Auf die Warteliste
+            </Link>
+            <Link
+              href={`/buchen?angebot=${lessonType.slug}`}
+              className="btn btn-outline w-full mt-2.5"
+            >
+              Alle Kursdaten ansehen
             </Link>
           </>
         ) : (

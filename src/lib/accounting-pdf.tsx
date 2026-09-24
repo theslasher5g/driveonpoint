@@ -445,9 +445,9 @@ export async function renderAccountingPdf(
           <HeaderBand title="Verrechenbare Ausfälle" period={period} />
           <Text style={styles.sectionTitle}>Kurzfristige Absagen und nicht erschienen</Text>
           <Text style={styles.pageIntro}>
-            Innert 24 Stunden vor Beginn abgesagt oder nicht erschienen und laut AGB verrechenbar, im Umsatz auf Seite 1
-            aber nicht mitgezählt. Absagen, die von der Fahrschule ausgingen, stehen hier ebenfalls
-            und gehören von Hand aussortiert — die Anwendung kennt den Grund einer Absage nicht.
+            Innert 24 Stunden vor Beginn von der Kundschaft abgesagt oder nicht erschienen und laut
+            AGB verrechenbar, im Umsatz auf Seite 1 aber nicht mitgezählt. Absagen durch die
+            Fahrschule stehen hier nicht.
           </Text>
           {journalHeadRow()}
           {report.chargeable.map((row, index) => journalDataRow(row, index))}

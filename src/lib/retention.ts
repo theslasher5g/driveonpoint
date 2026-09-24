@@ -5,6 +5,7 @@ import { auditLog, bookings } from "./db/schema";
 import { pruneSessions } from "./auth/session";
 import { pruneRateLimits } from "./rate-limit";
 import { deleteExpiredRequests } from "./reminders";
+import { pruneWaitlist } from "./waitlist";
 
 /**
  * Löscht die Personendaten der Kundschaft nach Ablauf der Aufbewahrungsfrist.
@@ -58,6 +59,7 @@ export async function runRetention(): Promise<{ bookings: number }> {
   // Eigentlich Sache des stündlichen Laufs; hier nochmals, falls der auf
   // einem Server (noch) nicht eingerichtet ist.
   await deleteExpiredRequests();
+  await pruneWaitlist();
   await pruneSessions();
   await pruneRateLimits();
   return { bookings: count };

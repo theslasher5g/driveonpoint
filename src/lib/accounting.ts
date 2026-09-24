@@ -27,7 +27,7 @@ export type JournalRow = {
   amountRappen: number;
   promotionLabel: string | null;
   /** Nur bei verrechenbaren Ausfällen: warum der Termin nicht stattfand. */
-  reason?: "Absage unter 24 h" | "Nicht erschienen";
+  reason?: "Absage unter 24 h" | "Absage unter 24 h, wer abgesagt hat ist unbekannt" | "Nicht erschienen";
 };
 
 export type AccountingReport = {
@@ -41,8 +41,7 @@ export type AccountingReport = {
    * Absagen innert 24 Stunden vor Beginn und Termine, zu denen niemand
    * erschienen ist. Laut AGB verrechenbar, aber nicht automatisch
    * verrechnet — deshalb getrennt und nicht im Umsatz enthalten. Absagen
-   * durch die Fahrschule stehen hier ebenfalls drin und gehören von Hand
-   * aussortiert; die Anwendung kennt den Grund einer Absage nicht.
+   * durch die Fahrschule zählen nicht dazu.
    */
   chargeable: JournalRow[];
   chargeableRappen: number;
@@ -72,6 +71,7 @@ export async function accountingReport(year: number, month?: number): Promise<Ac
       promotionLabel: bookings.appliedPromotionLabel,
       status: bookings.status,
       cancelledAt: bookings.cancelledAt,
+      cancelledBy: bookings.cancelledBy,
       noShowAt: bookings.noShowAt,
       lessonName: lessonTypes.name,
       staffName: staff.name,
@@ -116,8 +116,16 @@ export async function accountingReport(year: number, month?: number): Promise<Ac
       const late =
         row.cancelledAt !== null &&
         row.cancelledAt.getTime() > row.startsAt.getTime() - DAY_BEFORE_MS;
-      if (late) {
-        chargeable.push({ ...entry, reason: "Absage unter 24 h" });
+      // Sagt die Fahrschule selbst ab (Krankheit, Wetter), ist das kein
+      // Ausfall der Kundschaft und laut AGB nicht verrechenbar.
+      if (late && row.cancelledBy !== "fahrschule") {
+        chargeable.push({
+          ...entry,
+          reason:
+            row.cancelledBy === "kundschaft"
+              ? "Absage unter 24 h"
+              : "Absage unter 24 h, wer abgesagt hat ist unbekannt",
+        });
         chargeableRappen += row.amountRappen;
       }
       continue;

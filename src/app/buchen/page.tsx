@@ -15,6 +15,7 @@ import {
 } from "@/lib/booking";
 import { site } from "@/lib/site";
 import { formatDayLong, formatPrice, todayInZurich } from "@/lib/time";
+import { fullCourseSessions, type FullSession } from "@/lib/waitlist";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,8 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
     fromDay: todayInZurich(),
     days: BOOKING_HORIZON_DAYS,
   });
+  // Volle Kurstermine bleiben sichtbar, mit dem Weg auf die Warteliste.
+  const full = lessonType.capacity > 1 ? await fullCourseSessions(lessonType) : [];
 
   // Mehrere Fahrstunden auf einmal: eine eigene Auswahl statt eines
   // einzelnen Termins, siehe FahrstundeSlotSelector. Nur für Fahrstunden —
@@ -176,10 +179,12 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
       <PageHeader
         title={lessonType.name}
         lead={
-          slots.length > 0
+          slots.length > 0 || full.length > 0
             ? allowsMulti
               ? "Wähle einen oder mehrere Termine, hintereinander am selben Tag oder verteilt auf mehrere Tage. Alle Zeiten hier sind wirklich frei."
-              : `Wähle einen Termin. Alle Zeiten hier sind wirklich frei, sie kommen direkt aus unserem Kalender.`
+              : full.length > 0
+                ? "Wähle einen Kurstermin. Ist einer ausgebucht, kannst du dich auf die Warteliste setzen und bekommst eine Mail, sobald ein Platz frei wird."
+                : `Wähle einen Termin. Alle Zeiten hier sind wirklich frei, sie kommen direkt aus unserem Kalender.`
             : "Für die nächsten vier Wochen ist online nichts frei."
         }
       />
@@ -195,7 +200,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
             </Link>
           </div>
 
-          {slots.length === 0 ? (
+          {slots.length === 0 && full.length === 0 ? (
             <div className="surface bg-paper p-6 md:p-7 max-w-xl">
               <p className="font-display text-xl font-bold">Ruf uns an</p>
               <p className="text-slate mt-2">
@@ -214,7 +219,12 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
           ) : allowsMulti ? (
             <FahrstundeSlotSelector slots={slots} slug={lessonType.slug} />
           ) : (
-            <SlotList slots={slots} slug={lessonType.slug} isCourse={lessonType.capacity > 1} />
+            <SlotList
+              slots={slots}
+              full={full}
+              slug={lessonType.slug}
+              isCourse={lessonType.capacity > 1}
+            />
           )}
         </div>
       </section>
@@ -222,16 +232,20 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
   );
 }
 
+type ListEntry = { day: string; time: string; seatsLeft: number | null };
+
 function SlotList({
   slots,
+  full,
   slug,
   isCourse,
 }: {
   slots: Slot[];
+  full: FullSession[];
   slug: string;
   isCourse: boolean;
 }) {
-  if (slots.length === 0) {
+  if (slots.length === 0 && full.length === 0) {
     return (
       <p className="text-slate max-w-[52ch]">
         Sobald neue Zeiten eingetragen sind, erscheinen sie hier automatisch.
@@ -239,11 +253,18 @@ function SlotList({
     );
   }
 
-  const byDay = new Map<string, Slot[]>();
-  for (const slot of slots) {
-    const list = byDay.get(slot.day) ?? [];
-    list.push(slot);
-    byDay.set(slot.day, list);
+  // Ausgebuchte Kurstermine (seatsLeft null) stehen zwischen den freien,
+  // in zeitlicher Reihenfolge.
+  const listed: ListEntry[] = [
+    ...slots.map((slot) => ({ day: slot.day, time: slot.time, seatsLeft: slot.seatsLeft })),
+    ...full.map((session) => ({ day: session.day, time: session.time, seatsLeft: null })),
+  ].sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
+
+  const byDay = new Map<string, ListEntry[]>();
+  for (const entry of listed) {
+    const list = byDay.get(entry.day) ?? [];
+    list.push(entry);
+    byDay.set(entry.day, list);
   }
 
   return (
@@ -255,7 +276,18 @@ function SlotList({
         >
           <h2 className="text-base font-bold">{formatDayLong(day)}</h2>
           <ul className="flex flex-wrap gap-2">
-            {entries.map((slot) => (
+            {entries.map((slot) =>
+              slot.seatsLeft === null ? (
+                <li key={slot.time}>
+                  <Link
+                    href={`/buchen/warteliste?angebot=${slug}&tag=${slot.day}&zeit=${slot.time}`}
+                    className="nums block rounded-[var(--radius-control)] border border-dashed border-deep/25 px-4 py-2.5 font-bold text-slate hover:border-deep hover:text-deep transition-colors"
+                  >
+                    {slot.time}
+                    <span className="block text-fine font-normal">Ausgebucht, Warteliste</span>
+                  </Link>
+                </li>
+              ) : (
               <li key={slot.time}>
                 <Link
                   href={`/buchen?angebot=${slug}&tag=${slot.day}&zeit=${slot.time}`}
@@ -269,7 +301,8 @@ function SlotList({
                   )}
                 </Link>
               </li>
-            ))}
+              ),
+            )}
           </ul>
         </div>
       ))}

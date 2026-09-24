@@ -610,3 +610,83 @@ ${
     html,
   });
 }
+
+/** Eingangsbestätigung für die Warteliste, mit Link zum Austragen. */
+export async function sendWaitlistConfirmation(details: {
+  to: string;
+  name: string;
+  lessonName: string;
+  day: string;
+  time: string;
+  removeToken: string;
+}): Promise<void> {
+  const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
+  const removeUrl = `${env.appUrl}/warteliste/austragen/${details.removeToken}`;
+
+  const text = [
+    `Hallo ${details.name}`,
+    "",
+    `Du stehst auf der Warteliste für ${details.lessonName} am ${when}.`,
+    "",
+    "Wird ein Platz frei, bekommst du sofort eine Mail. Wer dann zuerst bucht, hat den Platz.",
+    "",
+    "Brauchst du den Platz nicht mehr? Hier kannst du dich austragen:",
+    removeUrl,
+    "",
+    `Fragen? ${site.contact.phone}`,
+  ].join("\n");
+
+  const html = mailLayout(
+    "Du stehst auf der Warteliste",
+    `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
+<p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
+<p style="margin:0 0 20px;">${escapeHtml(when)}</p>
+<p style="margin:0 0 20px;color:#515052;">Wird ein Platz frei, bekommst du sofort eine Mail. Wer dann zuerst bucht, hat den Platz.</p>
+<p style="margin:0;color:#515052;font-size:14px;">Brauchst du den Platz nicht mehr? <a href="${escapeHtml(removeUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Von der Warteliste streichen</a></p>`,
+  );
+
+  await sendMail({ to: details.to, subject: `Warteliste: ${details.lessonName}`, text, html });
+}
+
+/** Ein Platz ist frei geworden. Geht an alle auf der Warteliste. */
+export async function sendWaitlistNotification(details: {
+  to: string;
+  name: string;
+  lessonName: string;
+  slug: string;
+  day: string;
+  time: string;
+  seatsFree: number;
+  removeToken: string;
+}): Promise<void> {
+  const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
+  const bookUrl = `${env.appUrl}/buchen?angebot=${encodeURIComponent(details.slug)}&tag=${details.day}&zeit=${details.time}`;
+  const removeUrl = `${env.appUrl}/warteliste/austragen/${details.removeToken}`;
+  const seats = details.seatsFree === 1 ? "Ein Platz ist" : `${details.seatsFree} Plätze sind`;
+
+  const text = [
+    `Hallo ${details.name}`,
+    "",
+    `${seats} frei geworden: ${details.lessonName} am ${when}.`,
+    "",
+    "Diese Mail geht an alle auf der Warteliste. Wer zuerst bucht, bekommt den Platz:",
+    bookUrl,
+    "",
+    "Nicht mehr interessiert? Von der Warteliste streichen:",
+    removeUrl,
+  ].join("\n");
+
+  const html = mailLayout(
+    "Ein Platz ist frei geworden",
+    `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
+<p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
+<p style="margin:0 0 20px;">${escapeHtml(when)}</p>
+<p style="margin:0 0 20px;color:#515052;">${escapeHtml(seats)} frei geworden. Diese Mail geht an alle auf der Warteliste, wer zuerst bucht, bekommt den Platz.</p>
+<p style="margin:0 0 20px;">
+  <a href="${escapeHtml(bookUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;">Jetzt buchen</a>
+</p>
+<p style="margin:0;color:#515052;font-size:14px;">Nicht mehr interessiert? <a href="${escapeHtml(removeUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Von der Warteliste streichen</a></p>`,
+  );
+
+  await sendMail({ to: details.to, subject: `Platz frei: ${details.lessonName} am ${formatDayLong(details.day)}`, text, html });
+}

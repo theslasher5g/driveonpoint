@@ -13,8 +13,10 @@ import {
   listLessonTypes,
   type Slot,
 } from "@/lib/booking";
+import type { LessonType } from "@/lib/db/schema";
+import { withSoftHyphens } from "@/lib/hyphenate";
 import { site } from "@/lib/site";
-import { formatDayLong, formatPrice, todayInZurich } from "@/lib/time";
+import { formatDayLong, formatDayShort, formatPrice, todayInZurich } from "@/lib/time";
 import { fullCourseSessions, type FullSession } from "@/lib/waitlist";
 
 export const dynamic = "force-dynamic";
@@ -310,14 +312,52 @@ function SlotList({
   );
 }
 
+type OfferRow = {
+  lessonType: LessonType;
+  priced: ReturnType<typeof applyPromotions>;
+  next: Slot | undefined;
+  /** Kurs: nichts frei, aber ein voller Termin mit Warteliste. */
+  waitlist: boolean;
+};
+
+/**
+ * Erster Schritt: Angebot wählen.
+ *
+ * Nach Buchungsart gruppiert statt vier gleicher Karten: Kurse haben feste
+ * Daten und laufen in der Gruppe, Fahrstunden sind einzeln und frei wählbar.
+ * Das ergibt zwei Paare statt einer Dreierreihe mit einer verwaisten vierten
+ * Karte, und jede Gruppe sagt in einem Satz, wie das Buchen dort läuft.
+ * Jede Zeile zeigt gleich den nächsten freien Termin — die Seite hält damit
+ * schon hier, was die Einleitung verspricht.
+ */
 async function ChooseOffer({ unknown }: { unknown?: string } = {}) {
   const [types, promotions] = await Promise.all([listLessonTypes(), activePromotions()]);
+
+  const rows: OfferRow[] = await Promise.all(
+    types.map(async (lessonType) => {
+      let next: Slot | undefined;
+      let waitlist = false;
+      try {
+        next = (await findSlots({ lessonType, days: BOOKING_HORIZON_DAYS }))[0];
+        if (!next && lessonType.capacity > 1) {
+          waitlist = (await fullCourseSessions(lessonType)).length > 0;
+        }
+      } catch (error) {
+        // Ohne Termin-Vorschau bleibt die Auswahl trotzdem benutzbar.
+        console.error("Nächster Termin konnte nicht geladen werden:", error);
+      }
+      return { lessonType, priced: applyPromotions(lessonType, promotions), next, waitlist };
+    }),
+  );
+
+  const courses = rows.filter((row) => row.lessonType.capacity > 1);
+  const lessons = rows.filter((row) => row.lessonType.capacity <= 1);
 
   return (
     <>
       <PageHeader
         title="Was möchtest du buchen?"
-        lead="Wähle dein Angebot. Danach siehst du sofort, welche Termine noch frei sind."
+        lead="Bei jedem Angebot steht schon der nächste freie Termin. Ein Klick, und du siehst alle."
       />
       <section className="shell band">
         <div className="lane">
@@ -327,46 +367,116 @@ async function ChooseOffer({ unknown }: { unknown?: string } = {}) {
             </p>
           )}
 
-          {types.length === 0 ? (
+          {rows.length === 0 ? (
             <p className="text-slate">Es sind gerade keine Angebote hinterlegt.</p>
           ) : (
-            /* Rahmen an der Karte statt Rasterlinien über den Hintergrund
-               des Behälters: bei vier Angeboten in drei Spalten blieb sonst
-               eine leere graue Zelle stehen, die wie ein Fehler aussah. So
-               stimmt das Bild bei jeder Anzahl. */
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {types.map((lessonType) => {
-                const priced = applyPromotions(lessonType, promotions);
-                return (
-                  <li key={lessonType.id} className="flex">
-                    <Link
-                      href={`/buchen?angebot=${lessonType.slug}`}
-                      className="group surface bg-paper border border-deep/15 hover:bg-signal-tint transition-colors p-5 w-full flex flex-col"
-                    >
-                      <h2 className="text-xl stretch-wide font-extrabold leading-tight">
-                        {lessonType.name}
-                      </h2>
-                      <p className="text-slate text-fine mt-2 flex-1">
-                        {lessonType.shortDescription ||
-                          `${lessonType.durationMinutes} Minuten pro Termin`}
-                      </p>
-                      {priced.promotion && (
-                        <p className="promo-tag mt-3 self-start">{priced.promotion.label}</p>
-                      )}
-                      <p className="nums font-display text-xl font-bold mt-3">
-                        CHF {formatPrice(priced.finalRappen)}
-                      </p>
-                      <span className="text-fine font-bold text-signal-ink mt-3 underline-offset-4 group-hover:underline">
-                        Freie Termine ansehen
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+              {courses.length > 0 && (
+                <OfferGroup
+                  title="Kurse"
+                  lead="Feste Daten, in der Gruppe. Beide sind Pflicht für den Ausweis."
+                  rows={courses}
+                />
+              )}
+              {lessons.length > 0 && (
+                <OfferGroup
+                  title="Fahrstunden"
+                  lead="Einzeln im Schulfahrzeug, zu der Zeit, die dir passt."
+                  rows={lessons}
+                />
+              )}
+            </div>
           )}
         </div>
       </section>
     </>
+  );
+}
+
+function OfferGroup({ title, lead, rows }: { title: string; lead: string; rows: OfferRow[] }) {
+  return (
+    <section className="surface bg-paper overflow-hidden">
+      <div className="p-5 md:p-6 pb-4 md:pb-5">
+        <h2 className="font-display text-2xl md:text-3xl font-bold leading-tight">{title}</h2>
+        <p className="text-slate text-fine mt-1.5 max-w-[48ch]">{lead}</p>
+      </div>
+      <ul>
+        {rows.map((row) => (
+          <li key={row.lessonType.id} className="border-t border-deep/10">
+            <OfferLine row={row} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function OfferLine({ row }: { row: OfferRow }) {
+  const { lessonType, priced, next, waitlist } = row;
+  const isCourse = lessonType.capacity > 1;
+
+  return (
+    <Link
+      href={`/buchen?angebot=${lessonType.slug}`}
+      className="group grid grid-cols-[1fr_auto] gap-x-5 p-5 md:p-6 hover:bg-signal-tint/50 focus-visible:bg-signal-tint/50 transition-colors"
+    >
+      {/* Auf dem Handy steht der Preis unter dem Namen: daneben blieb für
+          "Verkehrskundeunterricht" zu wenig Platz, das Wort brach mitten
+          drin ohne Trennstrich um. */}
+      <div className="min-w-0 col-span-2 sm:col-span-1">
+        <h3 className="font-display text-xl md:text-[1.4rem] font-bold leading-tight">
+          {withSoftHyphens(lessonType.name)}
+        </h3>
+        <p className="text-slate text-fine mt-1">
+          {lessonType.shortDescription || `${lessonType.durationMinutes} Minuten pro Termin`}
+        </p>
+      </div>
+      <div className="col-span-2 mt-2 sm:col-span-1 sm:mt-0 sm:text-right">
+        <p className="nums font-display text-lg font-bold whitespace-nowrap">
+          CHF {formatPrice(priced.finalRappen)}
+        </p>
+        {priced.promotion && <p className="promo-tag mt-1.5">{priced.promotion.label}</p>}
+      </div>
+
+      {/* Der nächste Termin ist die eigentliche Auskunft der Seite: der
+          Punkt zeigt auf einen Blick, ob online etwas frei ist. */}
+      <p className="text-fine mt-4 flex items-center gap-2 min-w-0 self-center">
+        <span
+          aria-hidden="true"
+          className={`w-2 h-2 rounded-full shrink-0 ${next ? "bg-success" : "bg-deep/25"}`}
+        />
+        {next ? (
+          <span>
+            {isCourse ? "Nächster Kurs" : "Nächster freier Termin"}:{" "}
+            <strong className="text-deep">
+              {formatDayShort(next.day)}, {next.time} Uhr
+            </strong>
+            {isCourse && (
+              <span className="text-slate">
+                , noch {next.seatsLeft} {next.seatsLeft === 1 ? "Platz" : "Plätze"}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className="text-slate">
+            {waitlist ? "Nächster Kurs ausgebucht, Warteliste offen" : "Online gerade nichts frei"}
+          </span>
+        )}
+      </p>
+      <span
+        aria-hidden="true"
+        className="mt-4 self-center justify-self-end grid place-items-center w-10 h-10 rounded-full border border-deep/15 text-deep group-hover:bg-signal group-hover:border-signal transition-colors"
+      >
+        <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+          <path
+            d="M4 9h10M9 4l5 5-5 5"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+    </Link>
   );
 }

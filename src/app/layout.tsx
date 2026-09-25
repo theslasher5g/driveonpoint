@@ -86,7 +86,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         {/* Muss vor jedem anderen Skript laufen; steht nur im Grundgerüst,
             das beim Seitenwechsel nie neu aufgebaut wird. */}
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: TRUSTED_TYPES_POLICY }} />
+        {/* suppressHydrationWarning: Browser blenden das nonce-Attribut aus,
+            React sähe sonst beim Abgleich einen Unterschied. */}
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: TRUSTED_TYPES_POLICY }}
+        />
       </head>
       <body className="min-h-dvh flex flex-col">
         <a href="#inhalt" className="skip-link">

@@ -71,6 +71,13 @@ export default function DatenschutzPage() {
               <li>Um die Leistung abzurechnen und die gesetzlichen Aufbewahrungspflichten zu erfüllen.</li>
               <li>Um deine Anfrage zu beantworten.</li>
               <li>Um dir Bescheid zu geben, wenn in einem Kurs, auf dessen Warteliste du stehst, ein Platz frei wird.</li>
+              <li>
+                Nur wenn du bei der Buchung das freiwillige Häkchen gesetzt hast: um dich nach dem
+                Kurs oder der Ausbildung einmal per Mail um eine Bewertung auf Google zu bitten.
+                Ohne Häkchen bekommst du keine solche Mail. Die Einwilligung kannst du jederzeit per
+                Mail oder Telefon widerrufen. Eine Bewertung gibst du direkt bei Google ab, dort
+                gelten die Datenschutzbestimmungen von Google.
+              </li>
               <li>Um die Website vor automatisierten Angriffen und Spam zu schützen.</li>
             </ul>
             <p className="text-slate mt-3">

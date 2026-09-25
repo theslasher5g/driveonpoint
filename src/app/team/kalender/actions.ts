@@ -10,6 +10,7 @@ import { findSlots, moveBooking } from "@/lib/booking";
 import { sendRescheduleConfirmation } from "@/lib/booking-mail";
 import { cancelCourseSession } from "@/lib/course-cancel";
 import { moveCourseSession } from "@/lib/course-move";
+import { requestCourseReviews, requestReviews } from "@/lib/reviews";
 import { notifyWaitlist } from "@/lib/waitlist";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes } from "@/lib/db/schema";
@@ -369,5 +370,42 @@ export async function moveCourseAction(
   redirect(
     `/team/kalender?ansicht=woche&woche=${tag}&kursVerschoben=${result.moved.length}` +
       (result.mailsFailed > 0 ? `&mailFehler=${result.mailsFailed}` : ""),
+  );
+}
+
+/**
+ * Bitte um eine Google-Bewertung: für einen Termin (etwa rund um die
+ * Prüfungsfahrt) oder für alle eines Kurstermins nach dem letzten Abend.
+ * Geht nur an Kundschaft mit Einverständnis, jede Adresse höchstens einmal
+ * (lib/reviews.ts). Einzelne eigene Termine darf auch die Fahrlehrperson.
+ */
+export async function requestReviewAction(formData: FormData): Promise<void> {
+  const user = await assertPermission("kalender.ansehen");
+  const id = String(formData.get("id") ?? "");
+  const scope = formData.get("umfang") === "kurs" ? "kurs" : "termin";
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+
+  const [entry] = await db
+    .select({ staffId: bookings.staffId, startsAt: bookings.startsAt, reference: bookings.reference })
+    .from(bookings)
+    .where(eq(bookings.id, id))
+    .limit(1);
+  if (!entry) return;
+  const manages = can(user.role, "kalender.verwalten");
+  if (!manages && (scope === "kurs" || entry.staffId !== user.id)) return;
+
+  const outcome = scope === "kurs" ? await requestCourseReviews(id) : await requestReviews([id]);
+  if (!outcome) return;
+
+  await record("bewertung.angefragt", { id: user.id, label: user.name }, {
+    referenz: entry.reference,
+    umfang: scope,
+    gesendet: outcome.sent,
+  });
+
+  revalidatePath("/team/kalender");
+  const skipped = outcome.noConsent + outcome.noEmail + outcome.alreadyAsked + outcome.notEligible;
+  redirect(
+    `/team/kalender?ansicht=woche&woche=${zurichDay(entry.startsAt)}&bewertung=${outcome.sent}-${outcome.noConsent}-${outcome.alreadyAsked}-${skipped - outcome.noConsent - outcome.alreadyAsked}-${outcome.failed}`,
   );
 }

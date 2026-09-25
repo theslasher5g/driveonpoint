@@ -280,6 +280,11 @@ export const bookings = pgTable(
     // darf die Kundschaft danach jederzeit kostenlos absagen — sie hat der
     // neuen Zeit ja nie zugestimmt.
     movedBy: text("moved_by").$type<"kundschaft" | "fahrschule">(),
+    // Freiwilliges Einverständnis bei der Buchung, einmal per Mail um eine
+    // Google-Bewertung gebeten zu werden (Werbung nach UWG Art. 3 lit. o —
+    // ohne Häkchen geht keine Anfrage raus). Siehe lib/reviews.ts.
+    reviewConsent: boolean("review_consent").notNull().default(false),
+    reviewRequestedAt: timestamp("review_requested_at", { withTimezone: true }),
 
     /**
      * Bestätigung per Mail (Double-Opt-In) bei Online-Buchungen. Bis zum

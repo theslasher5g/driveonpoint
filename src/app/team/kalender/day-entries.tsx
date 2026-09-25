@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ActionMenu, ActionMenuItem } from "@/components/action-menu";
 import { CancelBookingButton } from "@/components/cancel-booking-button";
-import { toggleNoShowAction } from "./actions";
+import { requestReviewAction, toggleNoShowAction } from "./actions";
 import { DeleteExceptionButton } from "@/components/availability-delete";
 
 export type DayBooking = {
@@ -19,6 +19,8 @@ export type DayBooking = {
   cancellableCourse: boolean;
   /** Begonnen und darf markiert werden: "offen" oder schon "markiert"; sonst null. */
   noShow: "offen" | "markiert" | null;
+  /** Um eine Google-Bewertung bitten: dieser Termin, ganzer Kurs. */
+  review: { single: boolean; course: boolean };
 };
 
 export type DayAbsence = {
@@ -144,7 +146,7 @@ export function DayEntries({
               )}
 
               <DialogActions onClose={() => setSelected(null)}>
-                {(manages || booking.noShow) && (
+                {(manages || booking.noShow || booking.review.single) && (
                   <ActionMenu label="Termin verwalten" align="left">
                     {manages && (
                       <ActionMenuItem href={`/team/kalender/verschieben?id=${booking.id}`}>
@@ -162,6 +164,19 @@ export function DayEntries({
                         <ActionMenuItem type="submit">
                           {booking.noShow === "markiert" ? "Doch erschienen" : "Nicht erschienen"}
                         </ActionMenuItem>
+                      </form>
+                    )}
+                    {booking.review.single && (
+                      <form action={requestReviewAction}>
+                        <input type="hidden" name="id" value={booking.id} />
+                        <ActionMenuItem type="submit">Um Bewertung bitten</ActionMenuItem>
+                      </form>
+                    )}
+                    {booking.review.course && (
+                      <form action={requestReviewAction}>
+                        <input type="hidden" name="id" value={booking.id} />
+                        <input type="hidden" name="umfang" value="kurs" />
+                        <ActionMenuItem type="submit">Ganzen Kurs um Bewertung bitten</ActionMenuItem>
                       </form>
                     )}
                     {manages && <CancelBookingButton bookingId={booking.id} />}

@@ -32,6 +32,7 @@ import { cancelCourseSession } from "@/lib/course-cancel";
 import { moveCourseSession } from "@/lib/course-move";
 import { customerHistories, describeHistory } from "@/lib/customer-history";
 import { currentProblems } from "@/lib/monitoring";
+import { requestReviews } from "@/lib/reviews";
 import { deleteExpiredRequests, sendDueReminders } from "@/lib/reminders";
 import { addDays, todayInZurich, zurichDay, zurichWeekday } from "@/lib/time";
 import { fullCourseSessions, isSessionFull, notifyWaitlist, removeFromWaitlist } from "@/lib/waitlist";
@@ -762,6 +763,47 @@ async function main() {
     message: null,
   });
   check("Umzug auf belegte Zeit abgewiesen", "error" in konflikt, true);
+
+  // ===================================================================
+  console.log("\nSZENARIO R — Bitte um Google-Bewertung");
+  // ===================================================================
+  if (process.env.SMTP_HOST) {
+    const vorherUrl = process.env.GOOGLE_REVIEW_URL;
+    process.env.GOOGLE_REVIEW_URL = "https://g.page/r/pruefstand/review";
+    const mitJa = { customerEmail: "pruefstand-bewertung@example.invalid", reviewConsent: true, confirmedAt: new Date(now - 10 * 24 * HOUR) };
+    const r1 = await insert("R1", -2 * 24 * HOUR, mitJa);
+    const r2 = await insert("R2", -1 * 24 * HOUR, mitJa);
+    const ohneJa = await insert("R3", -1 * 24 * HOUR, {
+      customerEmail: "pruefstand-ohne@example.invalid",
+      reviewConsent: false,
+      confirmedAt: new Date(now - 10 * 24 * HOUR),
+    });
+    const nichtDa = await insert("R4", -3 * 24 * HOUR, {
+      customerEmail: "pruefstand-nichtda@example.invalid",
+      reviewConsent: true,
+      noShowAt: new Date(now - 3 * 24 * HOUR),
+      confirmedAt: new Date(now - 10 * 24 * HOUR),
+    });
+    const kuenftig = await insert("R5", 3 * 24 * HOUR, {
+      customerEmail: "pruefstand-kuenftig@example.invalid",
+      reviewConsent: true,
+      confirmedAt: new Date(now - HOUR),
+    });
+    const erste = await requestReviews([r1.id, ohneJa.id, nichtDa.id, kuenftig.id]);
+    check(
+      "nur mit Einverständnis, wahrgenommen und vorbei",
+      [erste.sent, erste.noConsent, erste.notEligible],
+      [1, 1, 2],
+    );
+    const zweite = await requestReviews([r2.id]);
+    check("dieselbe Adresse wird nicht ein zweites Mal gefragt", [zweite.sent, zweite.alreadyAsked], [0, 1]);
+    if (vorherUrl === undefined) delete process.env.GOOGLE_REVIEW_URL;
+    else process.env.GOOGLE_REVIEW_URL = vorherUrl;
+    const ohneLink = await requestReviews([r2.id]);
+    check("ohne Bewertungslink geht nichts raus", ohneLink.sent, 0);
+  } else {
+    note("Bewertungsanfrage übersprungen", "SMTP_HOST nicht gesetzt — ohne Mailversand nicht prüfbar");
+  }
 
   // ===================================================================
   console.log("\nSZENARIO O — Überwachung erkennt Stillstand");

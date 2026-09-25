@@ -188,6 +188,18 @@ sudo deploy/aufraeumen.sh && sudo tail -5 /var/log/driveonpoint-aufraeumen.log
 sudo deploy/docker-updates.sh && sudo tail -20 /var/log/driveonpoint-docker-updates.log
 ```
 
+### Bitte um Google-Bewertungen
+
+Im Kalender gibt es bei vergangenen Terminen „Um Bewertung bitten“ und bei
+Kursen „Ganzen Kurs um Bewertung bitten“. Die Mail geht nur an Kundschaft,
+die bei der Buchung das freiwillige Häkchen gesetzt hat (eine solche Mail ist
+Werbung, UWG Art. 3 Abs. 1 lit. o), und an jede Mailadresse höchstens einmal.
+
+Dafür in der `.env` den Link zum Bewertungsformular eintragen:
+`GOOGLE_REVIEW_URL=https://g.page/r/…` — im Google-Unternehmensprofil unter
+„Rezensionen anfordern“ bzw. „Profil teilen“. Ohne Link sind die Menüpunkte
+ausgeblendet.
+
 ### Wenn etwas stillsteht
 
 Die Anwendung merkt selbst, wenn der Mailversand scheitert oder einer der

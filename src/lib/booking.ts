@@ -638,6 +638,8 @@ export async function createBooking(input: {
    * angeklickt ist. Ohne diese Angabe (im Team erfasst) gilt er sofort.
    */
   confirmation?: { token: string; expiresAt: Date };
+  /** Häkchen "darf einmal um eine Google-Bewertung bitten". */
+  reviewConsent?: boolean;
 }): Promise<{ reference: string; cancelToken: string } | { error: string }> {
   const endsAt = new Date(input.startsAt.getTime() + input.lessonType.durationMinutes * 60_000);
   const reference = newReference();
@@ -671,6 +673,7 @@ export async function createBooking(input: {
         customerEmail: input.customerEmail || null,
         customerPhone: input.customerPhone,
         customerNote: input.customerNote ?? null,
+        reviewConsent: input.reviewConsent ?? false,
         priceRappen: input.priceRappen,
         appliedPromotionLabel: input.promotionLabel ?? null,
         purgeAfter,

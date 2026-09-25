@@ -7,6 +7,7 @@ import { createMultiBookingAction, type BookingState } from "@/app/buchen/action
 import { CaptchaField } from "./captcha-field";
 import { Honeypot } from "./honeypot";
 import { PhoneField } from "./phone-field";
+import { ReviewConsent } from "./review-consent";
 
 const EMPTY: BookingState = {};
 
@@ -100,6 +101,8 @@ export function MultiBookingForm({ slug, termine }: { slug: string; termine: str
           <p className="field-hint text-danger">{state.fieldErrors.agb}</p>
         )}
       </div>
+
+      <ReviewConsent checked={state.values?.bewertung === "ja"} />
 
       <SubmitButton count={termine.length} />
     </form>

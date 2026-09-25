@@ -38,7 +38,7 @@ export type BookingState = {
  */
 function echoValues(formData: FormData): Record<string, string> {
   const values: Record<string, string> = {};
-  for (const key of ["name", "email", "telefon", "bemerkung", "agb"]) {
+  for (const key of ["name", "email", "telefon", "bemerkung", "agb", "bewertung"]) {
     const value = formData.get(key);
     if (typeof value === "string") values[key] = value.slice(0, 600);
   }
@@ -218,6 +218,7 @@ async function bookSingle(
     promotionLabel: priced.promotion?.label ?? null,
     retentionDays: env.retentionDays,
     confirmation,
+    reviewConsent: formData.get("bewertung") === "ja",
   });
 
   if ("error" in result) {
@@ -395,6 +396,7 @@ async function bookSeveral(
       promotionLabel: priced.promotion?.label ?? null,
       retentionDays: env.retentionDays,
       confirmation,
+      reviewConsent: formData.get("bewertung") === "ja",
     });
 
     if ("error" in result) {

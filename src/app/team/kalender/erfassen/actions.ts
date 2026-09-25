@@ -32,7 +32,7 @@ export async function createManualBookingAction(
   formData: FormData,
 ): Promise<ManualBookingState> {
   const values: Record<string, string> = {};
-  for (const key of ["name", "telefon", "email", "bemerkung", "wiederholen"]) {
+  for (const key of ["name", "telefon", "email", "bemerkung", "wiederholen", "bewertung"]) {
     const value = formData.get(key);
     if (typeof value === "string") values[key] = value.slice(0, 600);
   }
@@ -146,6 +146,7 @@ async function createManualBooking(
           priceRappen: priced.finalRappen,
           promotionLabel: priced.promotion?.label ?? null,
           retentionDays: env.retentionDays,
+          reviewConsent: formData.get("bewertung") === "ja",
         })
       : { error: "Dieser Termin ist nicht mehr frei. Bitte wähle einen anderen." };
 

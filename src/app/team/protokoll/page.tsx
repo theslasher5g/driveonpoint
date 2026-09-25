@@ -32,6 +32,7 @@ const ACTION_LABELS: Record<string, string> = {
   "buchung.selbst-verschoben": "Termin von der Kundschaft selbst verschoben",
   "kurs.abgesagt": "Ganzer Kurstermin abgesagt",
   "kurs.verschoben": "Ganzer Kurstermin verschoben",
+  "bewertung.angefragt": "Um eine Google-Bewertung gebeten",
   "warteliste.eingetragen": "Auf die Warteliste eines Kurses eingetragen",
   "warteliste.ausgetragen": "Von einer Warteliste gestrichen",
   "buchung.manuell-erstellt": "Termin von Hand erfasst",

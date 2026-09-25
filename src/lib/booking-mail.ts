@@ -940,3 +940,41 @@ ${details.message ? `<p style="margin:0 0 20px;white-space:pre-line;">${escapeHt
     html,
   });
 }
+
+/**
+ * Einmalige Bitte um eine Google-Bewertung — nur an Kundschaft, die bei der
+ * Buchung ausdrücklich eingewilligt hat (siehe lib/reviews.ts).
+ */
+export async function sendReviewRequest(details: {
+  to: string;
+  name: string;
+  lessonName: string;
+  reviewUrl: string;
+}): Promise<void> {
+  const text = [
+    `Hallo ${details.name}`.trim(),
+    "",
+    `Danke, dass du bei ${site.name} warst (${details.lessonName}).`,
+    "",
+    "Wenn du zufrieden warst, hilft uns eine kurze Bewertung auf Google sehr. Andere, die eine Fahrschule suchen, sehen so, wie es bei uns ist. Das dauert etwa eine Minute:",
+    details.reviewUrl,
+    "",
+    "Du bekommst diese Bitte nur einmal, weil du bei der Buchung zugestimmt hast. Es folgt keine weitere Mail dieser Art.",
+    "",
+    `Dein Team von ${site.name}`,
+  ].join("\n");
+
+  const html = mailLayout(
+    "Wie war es bei uns?",
+    `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
+<p style="margin:0 0 16px;">Danke, dass du bei ${escapeHtml(site.name)} warst (${escapeHtml(details.lessonName)}).</p>
+<p style="margin:0 0 20px;">Wenn du zufrieden warst, hilft uns eine kurze Bewertung auf Google sehr. Andere, die eine Fahrschule suchen, sehen so, wie es bei uns ist. Das dauert etwa eine Minute.</p>
+<p style="margin:0 0 24px;">
+  <a href="${escapeHtml(details.reviewUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;">Auf Google bewerten</a>
+</p>
+<p style="margin:0 0 16px;color:#515052;font-size:14px;">Du bekommst diese Bitte nur einmal, weil du bei der Buchung zugestimmt hast. Es folgt keine weitere Mail dieser Art.</p>
+<p style="margin:0;">Dein Team von ${escapeHtml(site.name)}</p>`,
+  );
+
+  await sendMail({ to: details.to, subject: `Wie war es bei ${site.name}?`, text, html });
+}

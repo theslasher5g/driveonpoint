@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { createManualBookingAction, type ManualBookingState } from "@/app/team/kalender/erfassen/actions";
 import { PhoneField } from "./phone-field";
+import { ReviewConsent } from "./review-consent";
 
 const EMPTY: ManualBookingState = {};
 
@@ -84,6 +85,8 @@ export function ManualBookingForm({
           <p className="field-hint text-danger">{state.fieldErrors.bemerkung}</p>
         )}
       </div>
+
+      <ReviewConsent byPhone checked={state.values?.bewertung === "ja"} />
 
       {repeatable && (
         <div>

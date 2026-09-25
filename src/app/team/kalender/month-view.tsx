@@ -2,6 +2,8 @@ import Link from "next/link";
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { isConfirmed } from "@/lib/booking";
 import { customerHistories, describeHistory } from "@/lib/customer-history";
+import { env } from "@/lib/env";
+import { reviewAskable } from "@/lib/reviews";
 import { db } from "@/lib/db";
 import { availabilityExceptions, bookings, lessonTypes, staff } from "@/lib/db/schema";
 import { monthName, todayInZurich, weekdayName, zurichDay, zurichTime, zurichToInstant, zurichWeekday } from "@/lib/time";
@@ -48,6 +50,9 @@ export async function MonthView({
         lessonName: lessonTypes.name,
         lessonCapacity: lessonTypes.capacity,
         noShowAt: bookings.noShowAt,
+        status: bookings.status,
+        reviewConsent: bookings.reviewConsent,
+        reviewRequestedAt: bookings.reviewRequestedAt,
       })
       .from(bookings)
       .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
@@ -121,6 +126,14 @@ export async function MonthView({
               course: (entry.lessonCapacity ?? 1) > 1,
             }),
             cancellableCourse: (entry.lessonCapacity ?? 1) > 1 && entry.startsAt.getTime() > now,
+            review: {
+              single: reviewAskable(entry) && (manages || entry.staffId === userId),
+              course:
+                !!env.googleReviewUrl &&
+                manages &&
+                (entry.lessonCapacity ?? 1) > 1 &&
+                entry.startsAt.getTime() <= now,
+            },
             // Begonnene Termine: Leitung für alle, Fahrlehrperson für die eigenen.
             noShow:
               entry.startsAt.getTime() <= now && (manages || entry.staffId === userId)

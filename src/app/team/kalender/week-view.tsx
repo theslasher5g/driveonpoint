@@ -10,8 +10,10 @@ import {
 } from "@/lib/db/schema";
 import { occupiesTime } from "@/lib/booking";
 import { customerHistories, describeHistory, type CustomerHistory } from "@/lib/customer-history";
+import { env } from "@/lib/env";
+import { reviewAskable } from "@/lib/reviews";
 import { waitlistsBetween } from "@/lib/waitlist";
-import { toggleNoShowAction } from "./actions";
+import { requestReviewAction, toggleNoShowAction } from "./actions";
 import {
   addDays,
   minutesSinceMidnight,
@@ -41,6 +43,8 @@ type Entry = {
   staffName: string | null;
   lessonName: string | null;
   lessonCapacity: number | null;
+  reviewConsent: boolean;
+  reviewRequestedAt: Date | null;
 };
 
 /** Ein Verfügbarkeitsfenster einer Person — mehrere Angebote zur selben Zeit zusammengefasst. */
@@ -108,6 +112,8 @@ export async function WeekView({
         staffName: staff.name,
         lessonName: lessonTypes.name,
         lessonCapacity: lessonTypes.capacity,
+        reviewConsent: bookings.reviewConsent,
+        reviewRequestedAt: bookings.reviewRequestedAt,
       })
       .from(bookings)
       .leftJoin(staff, eq(staff.id, bookings.staffId))
@@ -182,6 +188,7 @@ export async function WeekView({
   ]);
 
   const assigned = new Set(offerings.map((row) => `${row.staffId}|${row.lessonTypeId}`));
+  const reviewsEnabled = !!env.googleReviewUrl;
   const histories = await customerHistories(entries.filter((entry) => entry.status !== "abgesagt"));
   // Wartelisten gehören zu keinem Konto, nur wer alle sieht oder Termine
   // verwaltet, kann damit etwas anfangen.
@@ -345,6 +352,10 @@ export async function WeekView({
                   const isCourse = (entry.lessonCapacity ?? 1) > 1;
                   const mayMarkNoShow =
                     started && !pending && (manages || entry.staffId === userId);
+                  const mayAskReview =
+                    reviewAskable(entry) &&
+                    (manages || entry.staffId === userId);
+                  const mayAskCourseReview = reviewsEnabled && manages && isCourse && started;
                   return (
                     <li
                       key={entry.id}
@@ -359,7 +370,7 @@ export async function WeekView({
                         <p className="tabular-nums text-fine font-bold pt-1.5 whitespace-nowrap">
                           {zurichTime(entry.startsAt)}–{zurichTime(entry.endsAt)}
                         </p>
-                        {(manages || mayMarkNoShow) && (
+                        {(manages || mayMarkNoShow || mayAskReview) && (
                           <ActionMenu label={`Termin von ${entry.customerName ?? "Kundschaft"} verwalten`}>
                             {manages && (
                               <ActionMenuItem href={`/team/kalender/verschieben?id=${entry.id}`}>
@@ -377,6 +388,19 @@ export async function WeekView({
                                 <ActionMenuItem type="submit">
                                   {entry.noShowAt ? "Doch erschienen" : "Nicht erschienen"}
                                 </ActionMenuItem>
+                              </form>
+                            )}
+                            {mayAskReview && (
+                              <form action={requestReviewAction}>
+                                <input type="hidden" name="id" value={entry.id} />
+                                <ActionMenuItem type="submit">Um Bewertung bitten</ActionMenuItem>
+                              </form>
+                            )}
+                            {mayAskCourseReview && (
+                              <form action={requestReviewAction}>
+                                <input type="hidden" name="id" value={entry.id} />
+                                <input type="hidden" name="umfang" value="kurs" />
+                                <ActionMenuItem type="submit">Ganzen Kurs um Bewertung bitten</ActionMenuItem>
                               </form>
                             )}
                             {manages && <CancelBookingButton bookingId={entry.id} />}
@@ -398,6 +422,9 @@ export async function WeekView({
                       )}
                       {entry.noShowAt && (
                         <p className="text-fine font-semibold text-danger">Nicht erschienen</p>
+                      )}
+                      {entry.reviewRequestedAt && (
+                        <p className="text-fine text-slate">Um Bewertung gebeten</p>
                       )}
                       <p className="text-[0.85rem] font-semibold leading-snug pr-1.5">
                         {entry.customerName ?? "Angaben gelöscht"}

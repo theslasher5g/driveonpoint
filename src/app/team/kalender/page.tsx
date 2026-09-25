@@ -22,6 +22,7 @@ type Params = {
   verschoben?: string;
   kursAbgesagt?: string;
   kursVerschoben?: string;
+  bewertung?: string;
   mailFehler?: string;
 };
 
@@ -94,6 +95,9 @@ export default async function KalenderPage({
           <p role="status" className="notice notice-success mb-6">
             Termin {params.verschoben} verschoben.
           </p>
+        )}
+        {params.bewertung && /^\d+-\d+-\d+-\d+-\d+$/.test(params.bewertung) && (
+          <ReviewNotice summary={params.bewertung} />
         )}
         {params.kursVerschoben && /^\d+$/.test(params.kursVerschoben) && (
           <p role="status" className="notice notice-success mb-6">
@@ -255,5 +259,24 @@ export default async function KalenderPage({
         </div>
       </div>
     </section>
+  );
+}
+
+/** Rückmeldung nach "Um Bewertung bitten": wer eine Mail bekam und wer nicht, und warum. */
+function ReviewNotice({ summary }: { summary: string }) {
+  const [sent, noConsent, already, other, failed] = summary.split("-").map(Number);
+  const parts = [
+    noConsent > 0 && `${noConsent} ohne Einverständnis`,
+    already > 0 && `${already} schon einmal gefragt`,
+    other > 0 && `${other} ohne Mailadresse oder Termin nicht wahrgenommen`,
+    failed > 0 && `${failed} Mail${failed === 1 ? "" : "s"} nicht zugestellt`,
+  ].filter(Boolean);
+  return (
+    <p role="status" className={`notice ${sent > 0 ? "notice-success" : "notice-warn"} mb-6`}>
+      {sent === 0
+        ? "Keine Bewertungsanfrage verschickt."
+        : `Bewertungsanfrage an ${sent} ${sent === 1 ? "Person" : "Personen"} verschickt.`}
+      {parts.length > 0 && ` Nicht angefragt: ${parts.join(", ")}.`}
+    </p>
   );
 }

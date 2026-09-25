@@ -71,6 +71,7 @@ services:
       MAIL_FROM: ${MAIL_FROM:-DriveOnPoint <inbox@driveonpoint.ch>}
       MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
       ALERT_EMAIL: ${ALERT_EMAIL:-}
+      GOOGLE_REVIEW_URL: ${GOOGLE_REVIEW_URL:-}
       RETENTION_DAYS: ${RETENTION_DAYS:-30}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}

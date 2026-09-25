@@ -72,6 +72,15 @@ export const env = {
   get mailReplyTo(): string | undefined {
     return process.env.MAIL_REPLY_TO || undefined;
   },
+  /**
+   * Link zum Bewertungsformular im Google-Unternehmensprofil ("Rezensionen
+   * anfordern" / g.page/r/…). Leer: keine Bewertungsanfragen, der Punkt ist
+   * im Team-Bereich ausgeblendet.
+   */
+  get googleReviewUrl(): string | null {
+    const value = process.env.GOOGLE_REVIEW_URL?.trim();
+    return value && /^https:\/\//.test(value) ? value : null;
+  },
   get isProduction(): boolean {
     return process.env.NODE_ENV === "production";
   },

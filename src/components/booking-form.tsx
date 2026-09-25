@@ -7,6 +7,7 @@ import { createBookingAction, type BookingState } from "@/app/buchen/actions";
 import { CaptchaField } from "./captcha-field";
 import { Honeypot } from "./honeypot";
 import { PhoneField } from "./phone-field";
+import { ReviewConsent } from "./review-consent";
 
 const EMPTY: BookingState = {};
 
@@ -115,6 +116,8 @@ export function BookingForm({
           <p className="field-hint text-danger">{state.fieldErrors.agb}</p>
         )}
       </div>
+
+      <ReviewConsent checked={state.values?.bewertung === "ja"} />
 
       <SubmitButton />
     </form>

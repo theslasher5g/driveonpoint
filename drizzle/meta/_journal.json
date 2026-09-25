@@ -71,6 +71,13 @@
       "when": 1790314845745,
       "tag": "0009_verschoben_von",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790323339197,
+      "tag": "0010_bewertung",
+      "breakpoints": true
     }
   ]
 }

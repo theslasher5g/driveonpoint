@@ -67,13 +67,29 @@ export async function NextSlotPanel() {
 }
 
 /** Platzhalter gleicher Höhe, damit beim Nachladen nichts springt. */
+/**
+ * Platzhalter, bis die Karte oben fertig ist. Gleicher Aufbau, gleiche
+ * Schriften, nur unsichtbarer Text: so ist er genau so hoch wie die Karte.
+ * Vorher war er niedriger — beim Nachladen wuchs der Aufmacher, und
+ * Lighthouse zählte das als Layoutverschiebung.
+ */
 export function NextSlotSkeleton() {
+  const bar = "bg-paper/20 rounded-full text-transparent select-none";
   return (
-    <div className="glass rounded-[var(--radius-surface)] max-w-xl p-6 sm:p-7" aria-hidden="true">
-      <div className="h-4 w-44 bg-paper/20 rounded-full mb-4" />
-      <div className="h-7 w-72 max-w-full bg-paper/20 rounded-full mb-3" />
-      <div className="h-11 w-32 bg-paper/20 rounded-full mb-3" />
-      <div className="h-4 w-52 max-w-full bg-paper/20 rounded-full" />
+    <div className="glass text-paper rounded-[var(--radius-surface)] max-w-xl p-6 sm:p-7" aria-hidden="true">
+      <p className="text-fine font-semibold mb-3">
+        <span className={bar}>Nächster freier Termin</span>
+      </p>
+      <p className="font-display font-bold text-2xl sm:text-[1.75rem] leading-[1.05] tracking-tight hyphens-none">
+        <span className={bar}>Dienstag, 6. Oktober 2026</span>
+      </p>
+      <p className="nums font-display font-bold text-5xl sm:text-6xl leading-none mt-2">
+        <span className={bar}>00:00</span>
+      </p>
+      <p className="text-fine mt-3">
+        <span className={bar}>Fahrstunde, 45 Minuten</span>
+      </p>
+      <span className="btn btn-invert w-full mt-6 opacity-30">&nbsp;</span>
     </div>
   );
 }

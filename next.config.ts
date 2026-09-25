@@ -7,6 +7,11 @@ const config: NextConfig = {
   compress: true,
   experimental: {
     optimizePackageImports: ["drizzle-orm"],
+    // Das Stylesheet (rund 11 KB komprimiert) steht direkt im HTML statt als
+    // eigene Datei: der Browser muss vor dem ersten Bild nicht erst auf eine
+    // zweite Anfrage warten. Lighthouse zählte die Datei als "blockierend".
+    // Erlaubt, weil die CSP Stile ohnehin mit 'unsafe-inline' zulässt.
+    inlineCss: true,
   },
   serverExternalPackages: ["@node-rs/argon2", "pg", "nodemailer"],
 
@@ -23,6 +28,24 @@ const config: NextConfig = {
       "./node_modules/pdfkit/js/data/**",
       "./node_modules/pdfkit/js/standard-fonts/**",
     ],
+  },
+
+  /**
+   * Next liefert jedem Browser ein Polyfill-Modul mit (Array.prototype.at,
+   * Object.hasOwn, flat, trimStart …). Diese Funktionen hat jeder Browser
+   * seit 2022 selbst — Safari ab 15.4, und jedes iPhone mit iOS 15 lässt
+   * sich auf 15.8 bringen. Lighthouse meldet das Modul als "veraltetes
+   * JavaScript"; hier fällt es weg.
+   */
+  webpack(webpackConfig, { isServer }) {
+    if (!isServer) {
+      webpackConfig.resolve.alias = {
+        ...webpackConfig.resolve.alias,
+        "../build/polyfills/polyfill-module": false,
+        "next/dist/build/polyfills/polyfill-module": false,
+      };
+    }
+    return webpackConfig;
   },
 
   async headers() {

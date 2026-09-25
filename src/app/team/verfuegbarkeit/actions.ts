@@ -2,6 +2,7 @@
 
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { record } from "@/lib/audit";
 import { assertPermission } from "@/lib/auth/guard";
@@ -9,7 +10,8 @@ import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { availabilityExceptions, availabilityRules, lessonTypes, staffLessonTypes } from "@/lib/db/schema";
 import { occurrences } from "@/lib/availability-rules";
-import { addDays, daysBetween, minutesSinceMidnight, todayInZurich, zurichWeekday } from "@/lib/time";
+import { cancelCourseSession, courseSession } from "@/lib/course-cancel";
+import { addDays, daysBetween, minutesSinceMidnight, todayInZurich, zurichToInstant, zurichWeekday } from "@/lib/time";
 
 /** Höchstens rund zwei Monate am Stück, damit ein Tippfehler beim Enddatum
  * keine tausend Zeilen erzeugt. */
@@ -367,6 +369,38 @@ export async function deleteExceptionAction(formData: FormData): Promise<void> {
   const { user, staffId } = await resolveTarget(formData);
   const id = String(formData.get("id") ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+
+  const [entry] = await db
+    .select({
+      day: availabilityExceptions.day,
+      startTime: availabilityExceptions.startTime,
+      available: availabilityExceptions.available,
+      lessonTypeId: availabilityExceptions.lessonTypeId,
+      capacity: lessonTypes.capacity,
+    })
+    .from(availabilityExceptions)
+    .leftJoin(lessonTypes, eq(lessonTypes.id, availabilityExceptions.lessonTypeId))
+    .where(and(eq(availabilityExceptions.id, id), eq(availabilityExceptions.staffId, staffId)))
+    .limit(1);
+  if (!entry) return;
+
+  // Ein künftiger Kurstermin mit Anmeldungen lässt sich hier nicht einfach
+  // entfernen: die Angemeldeten stünden ohne Kurstermin da und erführen
+  // nichts davon. Dafür gibt es "Kurs absagen" im Kalender, mit Mail an alle.
+  if (entry.available && entry.lessonTypeId && (entry.capacity ?? 1) > 1) {
+    const startsAt = zurichToInstant(entry.day, entry.startTime.slice(0, 5));
+    if (startsAt.getTime() > Date.now()) {
+      const { participants, waiting } = await courseSession(entry.lessonTypeId, startsAt);
+      const own = participants.filter((participant) => participant.staffId === staffId).length;
+      if (own > 0) {
+        redirect(`/team/verfuegbarkeit?person=${staffId}&kursBelegt=${own}&tag=${entry.day}`);
+      }
+      // Niemand angemeldet, aber eine Warteliste: die erfährt es per Mail.
+      if (participants.length === 0 && waiting.length > 0) {
+        await cancelCourseSession({ lessonTypeId: entry.lessonTypeId, startsAt, message: null });
+      }
+    }
+  }
 
   await db
     .delete(availabilityExceptions)

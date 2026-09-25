@@ -108,6 +108,9 @@ export async function notifyWaitlist(lessonTypeId: string | null, startsAt: Date
       .where(eq(lessonTypes.id, lessonTypeId))
       .limit(1);
     if (!lessonType || lessonType.capacity <= 1) return;
+    // Innerhalb der Vorlaufzeit lässt sich online nicht mehr buchen; eine
+    // Mail "Platz frei" führte dann auf eine Seite ohne diesen Termin.
+    if (startsAt.getTime() < Date.now() + lessonType.leadTimeHours * 60 * 60 * 1000) return;
 
     const seatsFree = lessonType.capacity - (await takenSeats(lessonTypeId, startsAt));
     if (seatsFree <= 0) return;

@@ -36,7 +36,7 @@ import { currentProblems } from "@/lib/monitoring";
 import { offeringGap, shouldAlert } from "@/lib/offering-gaps";
 import { requestReviews } from "@/lib/reviews";
 import { deleteExpiredRequests, sendDueReminders } from "@/lib/reminders";
-import { addDays, todayInZurich, zurichDay, zurichWeekday } from "@/lib/time";
+import { addDays, todayInZurich, zurichDay, zurichToInstant, zurichWeekday } from "@/lib/time";
 import { fullCourseSessions, isSessionFull, notifyWaitlist, removeFromWaitlist } from "@/lib/waitlist";
 
 const MARK = "PRUEFSTAND";
@@ -279,7 +279,14 @@ async function main() {
   await addCourseDate(personB.id, vku.id, day, "18:00", "21:00");
 
   const fahrAbends = await findSlots({ lessonType: fahrstunde, fromDay: day, days: 1, staffId: personB.id });
-  const sechs = fahrAbends.find((s) => s.time === "18:00")!;
+  check(
+    "geplanter Kurstermin sperrt die Fahrstunde, auch ohne Anmeldung",
+    fahrAbends.some((s) => s.time === "18:00"),
+    false,
+  );
+  // Direkt angelegt, ohne findSlots — etwa ein Termin aus der Zeit, bevor
+  // der Kurstermin eingetragen war.
+  const sechs = { startsAt: zurichToInstant(day, "18:00") };
   const fahrBooked = await book("fahrstunde", personB.id, sechs.startsAt, "D-fahrstunde");
   check("Fahrstunde um 18:00 bei Person B gebucht", fahrBooked.ok, true);
 
@@ -311,8 +318,12 @@ async function main() {
 
   const vorKurs = await findSlots({ lessonType: fahrstunde, fromDay: tagE, days: 1, staffId: personA.id });
   const abendsVorher = vorKurs.filter((s) => s.time >= "18:00").map((s) => s.time);
-  note("Fahrstunden abends, bevor der Kurs steht", abendsVorher);
-  check("abends sind Fahrstunden möglich", abendsVorher.includes("18:00"), true);
+  note("Fahrstunden abends, bevor sich jemand angemeldet hat", abendsVorher);
+  check(
+    "schon der geplante Kurstermin sperrt die Fahrstunden bis Kursende",
+    abendsVorher.filter((t) => t < "21:00").length,
+    0,
+  );
 
   const kursA = (await findSlots({ lessonType: vku, fromDay: tagE, days: 1, staffId: personA.id }))[0];
   check("Kurstermin für Person A vorhanden", kursA?.time, "18:00");
@@ -884,6 +895,44 @@ async function main() {
   const gebucht = await book("pruefstand-luecke", personC.id, einzige.startsAt, "T1");
   check("die einzige Zeit gebucht", gebucht.ok, true);
   check("danach ausgebucht", (await offeringGap(luecke))?.reason, "ausgebucht");
+
+  // ===================================================================
+  console.log("\nSZENARIO U — Kurstermin: fester Beginn, blockiert Fahrstunden");
+  // ===================================================================
+  await addOffering(personC.id, vku.id);
+  const tagU = addDays(day, 8);
+  await addCourseDate(personC.id, fahrstunde.id, tagU, "16:00", "20:00");
+  await addCourseDate(personC.id, vku.id, tagU, "18:00", "21:00");
+  const vkuU = await findSlots({ lessonType: vku, fromDay: tagU, days: 1, staffId: personC.id });
+  check("Kurstermin ohne Anmeldung buchbar um 18:00", vkuU.map((s) => s.time), ["18:00"]);
+  const fahrU = await findSlots({ lessonType: fahrstunde, fromDay: tagU, days: 1, staffId: personC.id });
+  const pauseU = Math.max(fahrstunde.bufferMinutes, vku.bufferMinutes);
+  const kursBeginnU = zurichToInstant(tagU, "18:00").getTime() - pauseU * 60_000;
+  note("Fahrstunden an dem Tag", fahrU.map((s) => s.time));
+  check("Fahrstunde vor dem Kurs möglich", fahrU.some((s) => s.time === "16:00"), true);
+  check(
+    "keine Fahrstunde in den geplanten Kurstermin hinein (samt Pause)",
+    fahrU.every((s) => s.endsAt.getTime() <= kursBeginnU),
+    true,
+  );
+
+  // Lag vor dem Kurs schon ein Termin im Fenster, rückte der Kursbeginn
+  // früher nach hinten. Jetzt fällt der Kurstermin aus, statt zu wandern.
+  const tagU2 = addDays(day, 9);
+  await addCourseDate(personC.id, vku.id, tagU2, "17:00", "21:00");
+  const direkt = await createBooking({
+    lessonType: fahrstunde,
+    staffId: personC.id,
+    startsAt: zurichToInstant(tagU2, "17:00"),
+    customerName: `${MARK} U1`,
+    customerEmail: "",
+    customerPhone: "079 000 00 00",
+    priceRappen: 0,
+    retentionDays: 30,
+  });
+  check("Fahrstunde im Kursfenster direkt angelegt", "reference" in direkt, true);
+  const vkuU2 = await findSlots({ lessonType: vku, fromDay: tagU2, days: 1, staffId: personC.id });
+  check("Kursbeginn wandert nicht auf 18:00", vkuU2.map((s) => s.time), []);
 
   // ===================================================================
   console.log("\nSZENARIO R — Bitte um Google-Bewertung");

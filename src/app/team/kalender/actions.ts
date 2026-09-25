@@ -11,7 +11,7 @@ import { sendRescheduleConfirmation } from "@/lib/booking-mail";
 import { cancelCourseSession } from "@/lib/course-cancel";
 import { moveCourseSession } from "@/lib/course-move";
 import { requestCourseReviews, requestReviews } from "@/lib/reviews";
-import { notifyWaitlist } from "@/lib/waitlist";
+import { notifyWaitlist, removeFromWaitlist } from "@/lib/waitlist";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes } from "@/lib/db/schema";
 import { env } from "@/lib/env";
@@ -179,6 +179,12 @@ export async function rescheduleBookingAction(
   if (!entry || entry.status === "abgesagt" || !entry.staffId || !entry.lessonTypeId) {
     return { error: "Dieser Termin lässt sich nicht verschieben." };
   }
+  // Eine Online-Anfrage ohne Bestätigung verfällt ohnehin; verschoben bekäme
+  // die Kundschaft eine Mail mit Absagelink zu einem Termin, den sie nie
+  // bestätigt hat.
+  if (entry.status === "angefragt") {
+    return { error: "Diese Anfrage ist noch nicht per Mail bestätigt und lässt sich nicht verschieben." };
+  }
 
   const [lessonType] = await db
     .select()
@@ -214,8 +220,10 @@ export async function rescheduleBookingAction(
   });
   if ("error" in moved) return { error: moved.error };
 
-  // Beim alten Kurstermin ist jetzt ein Platz frei.
+  // Beim alten Kurstermin ist jetzt ein Platz frei; beim neuen steht die
+  // Person nicht mehr auf der Warteliste.
   await notifyWaitlist(entry.lessonTypeId, entry.startsAt);
+  await removeFromWaitlist(entry.lessonTypeId, slot.startsAt, entry.customerEmail);
 
   const von = `${zurichDay(entry.startsAt)} ${zurichTime(entry.startsAt)}`;
   await record("buchung.verschoben", { id: user.id, label: user.name }, {

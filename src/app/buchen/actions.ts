@@ -332,6 +332,12 @@ async function bookSeveral(
   if (!lessonType || !lessonType.active) {
     return { error: "Dieses Angebot gibt es nicht mehr." };
   }
+  // Mehrere auf einmal gibt es nur für Fahrstunden (siehe Buchungsseite).
+  // Ohne diese Prüfung liessen sich über ein nachgebautes Formular mehrere
+  // Kursplätze oder Schnupperstunden in einem Zug reservieren.
+  if (lessonType.slug !== "fahrstunde") {
+    return { error: "Für dieses Angebot lässt sich nur ein Termin auf einmal buchen." };
+  }
 
   // Mehrere Fahrlehrpersonen können versetzte Zeiten haben (08:00 bei der
   // einen, 08:30 bei der anderen) — beide anzuhaken hiesse, gleichzeitig in

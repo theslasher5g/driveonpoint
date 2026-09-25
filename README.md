@@ -385,6 +385,10 @@ was entsteht.
   letzten Kurstermin, der hier Pflicht ist (höchstens 60 auf einmal). So
   lässt sich jeder einzeln absagen oder verschieben, mit eigener Warteliste.
   Schon eingetragene Termine zur selben Zeit werden nicht verdoppelt.
+  Ein eingetragener Kurstermin sperrt die Person für andere Angebote,
+  auch solange sich noch niemand angemeldet hat. Hat er Anmeldungen, lässt
+  er sich unter Verfügbarkeit nicht entfernen, sondern nur im Kalender
+  über „Kurs absagen“ (mit Mail an alle).
 
 Abwesenheiten (Ferien, Arzttermin) gelten standardmässig für alle Angebote
 einer Person und lassen sich auf ein einzelnes Angebot eingrenzen.

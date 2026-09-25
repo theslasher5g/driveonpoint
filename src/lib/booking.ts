@@ -207,7 +207,7 @@ export async function findSlots(options: {
   const staffIds = eligible.map((row) => row.id);
   if (staffIds.length === 0) return [];
 
-  const [rules, exceptions, taken] = await Promise.all([
+  const [rules, exceptions, taken, otherCourseDates] = await Promise.all([
     db
       .select()
       .from(availabilityRules)
@@ -255,6 +255,31 @@ export async function findSlots(options: {
           options.excludeBookingId ? ne(bookings.id, options.excludeBookingId) : undefined,
         ),
       ),
+    // Geplante Kurstermine anderer Kurse: die Person steht dann im Kursraum,
+    // auch wenn sich noch niemand angemeldet hat. Vorher liess sich in diese
+    // Zeit eine Fahrstunde buchen, und der Kurstermin verschwand danach
+    // stillschweigend aus der Buchung.
+    db
+      .select({
+        staffId: availabilityExceptions.staffId,
+        day: availabilityExceptions.day,
+        startTime: availabilityExceptions.startTime,
+        endTime: availabilityExceptions.endTime,
+        bufferMinutes: lessonTypes.bufferMinutes,
+      })
+      .from(availabilityExceptions)
+      .innerJoin(lessonTypes, eq(lessonTypes.id, availabilityExceptions.lessonTypeId))
+      .where(
+        and(
+          inArray(availabilityExceptions.staffId, staffIds),
+          eq(availabilityExceptions.available, true),
+          ne(availabilityExceptions.lessonTypeId, lessonType.id),
+          gt(lessonTypes.capacity, 1),
+          eq(lessonTypes.active, true),
+          gte(availabilityExceptions.day, fromDay),
+          lte(availabilityExceptions.day, untilDay),
+        ),
+      ),
   ]);
 
   const isGroupCourse = lessonType.capacity > 1;
@@ -283,6 +308,9 @@ export async function findSlots(options: {
 
     for (const exception of exceptions) {
       if (exception.day !== day || !exception.available) continue;
+      // Ein Kurs braucht einen eigenen Kurstermin. Ein alter Eintrag
+      // "zusätzlich frei für alle Angebote" darf keinen erzeugen.
+      if (isGroupCourse && exception.lessonTypeId !== lessonType.id) continue;
       plan.get(exception.staffId)?.push({
         start: minutesSinceMidnight(exception.startTime),
         end: minutesSinceMidnight(exception.endTime),
@@ -316,16 +344,35 @@ export async function findSlots(options: {
         ),
       );
 
+      for (const course of otherCourseDates) {
+        if (course.day !== day || course.staffId !== id) continue;
+        const pause = Math.max(lessonType.bufferMinutes, course.bufferMinutes);
+        cuts.push({
+          start: minutesSinceMidnight(course.startTime) - pause,
+          end: minutesSinceMidnight(course.endTime) + pause,
+        });
+      }
+
       const free = subtract(blocks, cuts);
+
+      // Ein Kurs beginnt, wann er eingetragen ist. Vorher begann er am
+      // Anfang des freien Rests: lag davor eine Fahrstunde, rückte der
+      // Kursbeginn nach hinten, und Absagen, Verschieben und Warteliste
+      // fanden den Kurstermin nicht mehr.
+      if (isGroupCourse) {
+        // Derselbe Kurstermin zweimal eingetragen zählt einmal, sonst
+        // verdoppelten sich die freien Plätze in der Anzeige.
+        for (const start of new Set(blocks.map((block) => block.start))) {
+          const end = start + lessonType.durationMinutes;
+          if (free.some((window) => window.start <= start && end <= window.end)) {
+            pushSlot(result, day, start, lessonType, [id], taken, earliest);
+          }
+        }
+        continue;
+      }
 
       for (const window of free) {
         const step = lessonType.durationMinutes + lessonType.bufferMinutes;
-
-        if (isGroupCourse) {
-          if (window.end - window.start < lessonType.durationMinutes) continue;
-          pushSlot(result, day, window.start, lessonType, [id], taken, earliest);
-          continue;
-        }
 
         for (
           let start = window.start;

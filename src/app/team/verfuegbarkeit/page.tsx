@@ -1,16 +1,18 @@
 import Link from "next/link";
-import { and, asc, eq, gte, isNull, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import { requirePermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
+import { occupiesTime } from "@/lib/booking";
 import {
   availabilityExceptions,
   availabilityRules,
+  bookings,
   lessonTypes,
   staff,
   staffLessonTypes,
 } from "@/lib/db/schema";
-import { formatDayLong, todayInZurich } from "@/lib/time";
+import { formatDayLong, todayInZurich, zurichToInstant } from "@/lib/time";
 import { AvailabilityExceptionForm, OfferingDateForm } from "@/components/availability-forms";
 import { describeRule, describeRuleRange } from "@/lib/availability-rules";
 import { DeleteRuleButton, DeleteExceptionButton } from "@/components/availability-delete";
@@ -22,7 +24,7 @@ const FREQUENCY_ORDER = { taeglich: 0, woechentlich: 1, monatlich: 2 } as const;
 export default async function VerfuegbarkeitPage({
   searchParams,
 }: {
-  searchParams: Promise<{ person?: string }>;
+  searchParams: Promise<{ person?: string; kursBelegt?: string; tag?: string }>;
 }) {
   const user = await requirePermission("verfuegbarkeit.eigene");
   const params = await searchParams;
@@ -98,6 +100,34 @@ export default async function VerfuegbarkeitPage({
       .orderBy(asc(availabilityExceptions.day), asc(availabilityExceptions.startTime)),
   ]);
 
+  // Anmeldungen je künftigem Kurstermin dieser Person: wer angemeldet ist,
+  // wird nicht über "Entfernen" abgesagt, sondern im Kalender.
+  const courseIds = offerings.filter((offering) => offering.capacity > 1).map((offering) => offering.id);
+  const signups = new Map(
+    (courseIds.length === 0
+      ? []
+      : await db
+          .select({
+            lessonTypeId: bookings.lessonTypeId,
+            startsAt: bookings.startsAt,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(bookings)
+          .where(
+            and(
+              eq(bookings.staffId, targetId),
+              inArray(bookings.lessonTypeId, courseIds),
+              occupiesTime(),
+              gte(bookings.startsAt, new Date()),
+            ),
+          )
+          .groupBy(bookings.lessonTypeId, bookings.startsAt)
+    ).map((row) => [`${row.lessonTypeId}|${row.startsAt.toISOString()}`, row.count]),
+  );
+  const signupsFor = (lessonTypeId: string, day: string, startTime: string) =>
+    signups.get(`${lessonTypeId}|${zurichToInstant(day, startTime.slice(0, 5)).toISOString()}`) ?? 0;
+  const blockedCount = Number(params.kursBelegt);
+
   // Zeiten für ein Angebot stehen oben beim jeweiligen Angebot — hier unten
   // bleiben Abwesenheiten, sonst stünde derselbe Eintrag zweimal auf der Seite.
   const offeringIds = new Set(offerings.map((offering) => offering.id));
@@ -132,6 +162,20 @@ export default async function VerfuegbarkeitPage({
               </li>
             ))}
           </ul>
+        )}
+
+        {blockedCount > 0 && (
+          <p role="alert" className="notice notice-error mt-7">
+            Dieser Kurstermin hat {blockedCount} {blockedCount === 1 ? "Anmeldung" : "Anmeldungen"} und
+            lässt sich hier nicht entfernen. Sag ihn im{" "}
+            <Link
+              href={`/team/kalender?ansicht=woche${/^\d{4}-\d{2}-\d{2}$/.test(params.tag ?? "") ? `&woche=${params.tag}` : ""}`}
+              className="font-semibold underline underline-offset-2"
+            >
+              Kalender
+            </Link>{" "}
+            über „Kurs absagen“ ab, dann bekommen alle eine Mail.
+          </p>
         )}
 
         {offerings.length === 0 ? (
@@ -175,7 +219,22 @@ export default async function VerfuegbarkeitPage({
                               <span className="nums text-slate whitespace-nowrap">
                                 {entry.startTime.slice(0, 5)} – {entry.endTime.slice(0, 5)}
                               </span>
-                              <DeleteExceptionButton id={entry.id} person={targetId} />
+                              {(() => {
+                                const count = signupsFor(offering.id, entry.day, entry.startTime);
+                                return count > 0 ? (
+                                  <>
+                                    <span className="text-fine text-slate">{count} angemeldet</span>
+                                    <Link
+                                      href={`/team/kalender?ansicht=woche&woche=${entry.day}`}
+                                      className="text-fine font-semibold text-slate underline underline-offset-2 hover:text-deep"
+                                    >
+                                      Im Kalender absagen
+                                    </Link>
+                                  </>
+                                ) : (
+                                  <DeleteExceptionButton id={entry.id} person={targetId} />
+                                );
+                              })()}
                             </li>
                           ))}
                         </ul>

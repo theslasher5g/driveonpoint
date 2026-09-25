@@ -20,7 +20,7 @@ import {
   staffLessonTypes,
   staffRole,
 } from "@/lib/db/schema";
-import { zurichDay, zurichTime } from "@/lib/time";
+import { zurichDay, zurichTime, zurichToInstant } from "@/lib/time";
 
 export type StaffState = { error?: string; ok?: string; password?: string };
 
@@ -219,8 +219,15 @@ export async function setLessonTypesAction(formData: FormData): Promise<void> {
           chosen.length > 0 ? notInArray(availabilityRules.lessonTypeId, chosen) : undefined,
         ),
       );
-    await tx
-      .delete(availabilityExceptions)
+    const stale = await tx
+      .select({
+        id: availabilityExceptions.id,
+        lessonTypeId: availabilityExceptions.lessonTypeId,
+        day: availabilityExceptions.day,
+        startTime: availabilityExceptions.startTime,
+        available: availabilityExceptions.available,
+      })
+      .from(availabilityExceptions)
       .where(
         and(
           eq(availabilityExceptions.staffId, id),
@@ -228,6 +235,25 @@ export async function setLessonTypesAction(formData: FormData): Promise<void> {
           chosen.length > 0 ? notInArray(availabilityExceptions.lessonTypeId, chosen) : undefined,
         ),
       );
+
+    // Ein künftiger Kurstermin mit Anmeldungen bleibt stehen: sonst hätten
+    // die Angemeldeten keinen Kurstermin mehr und erführen nichts. Er lässt
+    // sich im Kalender über "Kurs absagen" absagen, mit Mail an alle.
+    const booked = await tx
+      .select({ lessonTypeId: bookings.lessonTypeId, startsAt: bookings.startsAt })
+      .from(bookings)
+      .where(and(eq(bookings.staffId, id), occupiesTime(), gt(bookings.startsAt, new Date())));
+    const bookedKeys = new Set(booked.map((row) => `${row.lessonTypeId}|${row.startsAt.toISOString()}`));
+    const removable = stale
+      .filter(
+        (row) =>
+          !row.available ||
+          !bookedKeys.has(`${row.lessonTypeId}|${zurichToInstant(row.day, row.startTime.slice(0, 5)).toISOString()}`),
+      )
+      .map((row) => row.id);
+    if (removable.length > 0) {
+      await tx.delete(availabilityExceptions).where(inArray(availabilityExceptions.id, removable));
+    }
   });
 
   await record("mitarbeiter.angebote-gesetzt", { id: admin.id, label: admin.name }, {

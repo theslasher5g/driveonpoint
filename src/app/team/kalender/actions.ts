@@ -5,8 +5,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { record } from "@/lib/audit";
 import { assertPermission } from "@/lib/auth/guard";
-import { findSlots } from "@/lib/booking";
+import { can } from "@/lib/auth/permissions";
+import { findSlots, moveBooking } from "@/lib/booking";
+import { sendRescheduleConfirmation } from "@/lib/booking-mail";
 import { cancelCourseSession } from "@/lib/course-cancel";
+import { moveCourseSession } from "@/lib/course-move";
 import { notifyWaitlist } from "@/lib/waitlist";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes } from "@/lib/db/schema";
@@ -91,9 +94,12 @@ export async function cancelByStaffAction(formData: FormData): Promise<void> {
  * Markierung zurück, falls sie versehentlich gesetzt wurde. Laut AGB ist ein
  * solcher Termin verrechenbar; die Buchhaltung führt ihn deshalb getrennt
  * vom Umsatz auf, statt ihn als erbracht zu zählen.
+ *
+ * Darf auch die Fahrlehrperson für ihre eigenen Termine: sie wartet am
+ * Treffpunkt und weiss es als Erste.
  */
 export async function toggleNoShowAction(formData: FormData): Promise<void> {
-  const user = await assertPermission("kalender.verwalten");
+  const user = await assertPermission("kalender.ansehen");
 
   const id = String(formData.get("id") ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Ungültiger Termin.");
@@ -104,10 +110,14 @@ export async function toggleNoShowAction(formData: FormData): Promise<void> {
       startsAt: bookings.startsAt,
       status: bookings.status,
       noShowAt: bookings.noShowAt,
+      staffId: bookings.staffId,
     })
     .from(bookings)
     .where(eq(bookings.id, id))
     .limit(1);
+
+  if (!entry) return;
+  if (!can(user.role, "kalender.verwalten") && entry.staffId !== user.id) return;
 
   // Vor Beginn lässt sich noch nicht sagen, ob jemand kommt.
   if (!entry || entry.status === "abgesagt" || entry.status === "angefragt") return;
@@ -159,6 +169,7 @@ export async function rescheduleBookingAction(
       customerName: bookings.customerName,
       customerEmail: bookings.customerEmail,
       reference: bookings.reference,
+      cancelToken: bookings.cancelToken,
     })
     .from(bookings)
     .where(eq(bookings.id, id))
@@ -190,23 +201,16 @@ export async function rescheduleBookingAction(
     return { error: "Dieser Termin ist nicht mehr frei. Bitte wähle einen anderen." };
   }
 
-  const purgeAfter = new Date(
-    Math.max(slot.endsAt.getTime(), Date.now()) + env.retentionDays * 24 * 60 * 60 * 1000,
-  );
-
-  await db
-    .update(bookings)
-    // Neue Zeit, neue Erinnerung: die alte ging (falls schon verschickt) noch
-    // an den früheren Termin.
-    .set({
-      startsAt: slot.startsAt,
-      endsAt: slot.endsAt,
-      purgeAfter,
-      reminderSentAt: null,
-      noShowAt: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(bookings.id, id));
+  // Unter derselben Sperre wie eine neue Buchung — zwischen der Auswahl und
+  // dem Klick kann eine Online-Buchung den Platz genommen haben.
+  const moved = await moveBooking({
+    bookingId: id,
+    lessonType,
+    staffId: entry.staffId,
+    startsAt: slot.startsAt,
+    retentionDays: env.retentionDays,
+  });
+  if ("error" in moved) return { error: moved.error };
 
   // Beim alten Kurstermin ist jetzt ein Platz frei.
   await notifyWaitlist(entry.lessonTypeId, entry.startsAt);
@@ -219,30 +223,19 @@ export async function rescheduleBookingAction(
   });
 
   if (entry.customerEmail) {
-    const when = `${formatDayLong(tag)}, ${zeit} Uhr`;
     try {
-      await sendMail({
+      await sendRescheduleConfirmation({
         to: entry.customerEmail,
-        subject: `Termin verschoben — ${entry.reference}`,
-        text: [
-          `Hallo ${entry.customerName ?? ""}`.trim(),
-          "",
-          `Dein Termin bei ${site.name} wurde verschoben:`,
-          "",
-          `${lessonType.name}`,
-          `Neu: ${when}`,
-          "",
-          `Referenz: ${entry.reference}`,
-          "",
-          `Fragen? ${site.contact.phone}`,
-        ].join("\n"),
-        html: mailLayout(
-          "Dein Termin wurde verschoben",
-          `<p style="margin:0 0 16px;">Hallo ${escapeHtml(entry.customerName ?? "")}</p>
-<p style="margin:0 0 16px;"><strong>${escapeHtml(lessonType.name)}</strong><br>Neu: ${escapeHtml(when)}</p>
-<p style="margin:0 0 16px;">Referenz: ${escapeHtml(entry.reference)}</p>
-<p style="margin:0;color:#515052;font-size:14px;">Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
-        ),
+        name: entry.customerName ?? "",
+        reference: entry.reference,
+        cancelToken: entry.cancelToken,
+        lessonName: lessonType.name,
+        day: tag,
+        time: zeit,
+        previousStartsAt: entry.startsAt,
+        durationMinutes: lessonType.durationMinutes,
+        capacity: lessonType.capacity,
+        byCustomer: false,
       });
     } catch (error) {
       console.error("Mail zum verschobenen Termin konnte nicht versendet werden:", error);
@@ -310,6 +303,70 @@ export async function cancelCourseAction(
   revalidatePath("/team");
   redirect(
     `/team/kalender?ansicht=woche&woche=${day}&kursAbgesagt=${result.cancelled.length}` +
+      (result.mailsFailed > 0 ? `&mailFehler=${result.mailsFailed}` : ""),
+  );
+}
+
+export type CourseMoveState = { error?: string };
+
+/**
+ * Legt einen ganzen Kurstermin auf ein anderes Datum: Kurstermin,
+ * Anmeldungen und Warteliste ziehen mit, alle bekommen eine Mail.
+ */
+export async function moveCourseAction(
+  _previous: CourseMoveState,
+  formData: FormData,
+): Promise<CourseMoveState> {
+  const user = await assertPermission("kalender.verwalten");
+
+  const id = String(formData.get("id") ?? "");
+  const tag = String(formData.get("tag") ?? "");
+  const zeit = String(formData.get("zeit") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "Ungültiger Termin." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tag)) return { error: "Bitte ein Datum wählen." };
+  if (!/^\d{2}:\d{2}$/.test(zeit)) return { error: "Bitte eine Uhrzeit wählen." };
+  const message = String(formData.get("nachricht") ?? "").trim().slice(0, 500) || null;
+
+  const [entry] = await db
+    .select({
+      lessonTypeId: bookings.lessonTypeId,
+      startsAt: bookings.startsAt,
+      capacity: lessonTypes.capacity,
+      lessonName: lessonTypes.name,
+    })
+    .from(bookings)
+    .innerJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
+    .where(eq(bookings.id, id))
+    .limit(1);
+
+  if (!entry || !entry.lessonTypeId || entry.capacity <= 1) {
+    return { error: "Das ist kein Kurstermin." };
+  }
+  if (entry.startsAt.getTime() <= Date.now()) {
+    return { error: "Der Kurs hat schon begonnen und lässt sich nicht mehr verschieben." };
+  }
+
+  const result = await moveCourseSession({
+    lessonTypeId: entry.lessonTypeId,
+    startsAt: entry.startsAt,
+    newDay: tag,
+    newTime: zeit,
+    message,
+  });
+  if ("error" in result) return { error: result.error };
+
+  await record("kurs.verschoben", { id: user.id, label: user.name }, {
+    angebot: entry.lessonName,
+    von: `${zurichDay(entry.startsAt)} ${zurichTime(entry.startsAt)}`,
+    auf: `${tag} ${zeit}`,
+    referenzen: result.moved,
+    warteliste: result.waitlist,
+  });
+
+  revalidatePath("/team/kalender");
+  revalidatePath("/team");
+  redirect(
+    `/team/kalender?ansicht=woche&woche=${tag}&kursVerschoben=${result.moved.length}` +
       (result.mailsFailed > 0 ? `&mailFehler=${result.mailsFailed}` : ""),
   );
 }

@@ -4,7 +4,7 @@ import { requirePermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { staff } from "@/lib/db/schema";
-import { addDays, formatDayShort, todayInZurich } from "@/lib/time";
+import { addDays, formatDayLong, formatDayShort, todayInZurich } from "@/lib/time";
 import { mondayOf, shiftMonth, yearMonthOf } from "./dates";
 import { MonthView, monthLabel } from "./month-view";
 import { WeekView } from "./week-view";
@@ -17,8 +17,11 @@ type Params = {
   woche?: string;
   person?: string;
   erfasst?: string;
+  serie?: string;
+  uebersprungen?: string;
   verschoben?: string;
   kursAbgesagt?: string;
+  kursVerschoben?: string;
   mailFehler?: string;
 };
 
@@ -71,12 +74,34 @@ export default async function KalenderPage({
       <div className="lane">
         {params.erfasst && (
           <p role="status" className="notice notice-success mb-6">
-            Termin {params.erfasst} eingetragen.
+            {params.serie && /^\d+$/.test(params.serie) && params.serie !== "1"
+              ? `${params.serie} Termine eingetragen, jede Woche zur selben Zeit (ab ${params.erfasst}).`
+              : `Termin ${params.erfasst} eingetragen.`}
+          </p>
+        )}
+        {params.uebersprungen && (
+          <p role="status" className="notice notice-warn mb-6">
+            Übersprungen, weil schon belegt oder keine Zeit eingetragen:{" "}
+            {params.uebersprungen
+              .split(",")
+              .filter((day) => /^\d{4}-\d{2}-\d{2}$/.test(day))
+              .map((day) => formatDayLong(day))
+              .join("; ")}
+            . Diese Wochen bei Bedarf von Hand erfassen.
           </p>
         )}
         {params.verschoben && (
           <p role="status" className="notice notice-success mb-6">
             Termin {params.verschoben} verschoben.
+          </p>
+        )}
+        {params.kursVerschoben && /^\d+$/.test(params.kursVerschoben) && (
+          <p role="status" className="notice notice-success mb-6">
+            Kurstermin verschoben ({params.kursVerschoben}{" "}
+            {params.kursVerschoben === "1" ? "Anmeldung" : "Anmeldungen"}). Wer eine Mailadresse
+            hinterlegt hat, ist informiert.
+            {params.mailFehler && /^\d+$/.test(params.mailFehler) &&
+              ` ${params.mailFehler} Mail${params.mailFehler === "1" ? "" : "s"} konnte${params.mailFehler === "1" ? "" : "n"} nicht verschickt werden — bitte diese Personen anrufen.`}
           </p>
         )}
         {params.kursAbgesagt && /^\d+$/.test(params.kursAbgesagt) && (
@@ -213,6 +238,7 @@ export default async function KalenderPage({
               focus={focus}
               seesEveryone={seesEveryone}
               manages={manages}
+              userId={user.id}
               mayEditAvailability={mayEditAvailability}
             />
           ) : (
@@ -222,6 +248,7 @@ export default async function KalenderPage({
               focus={focus}
               seesEveryone={seesEveryone}
               manages={manages}
+              userId={user.id}
               mayEditAvailability={mayEditAvailability}
             />
           )}

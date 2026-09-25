@@ -79,6 +79,16 @@ export default async function AbsagenPage({ params }: { params: Params }) {
         </p>
       )}
 
+      {!chargeable && booking.status === "bestaetigt" && (
+        <p className="text-slate max-w-xl mt-6">
+          Passt nur die Zeit nicht? Du kannst den Termin auch{" "}
+          <Link href={`/verschieben/${token}`} className="font-semibold text-signal-ink underline underline-offset-4">
+            kostenlos verschieben
+          </Link>
+          .
+        </p>
+      )}
+
       <form action={cancelBookingAction} className="mt-7 flex flex-wrap gap-3">
         <input type="hidden" name="token" value={token} />
         <button type="submit" className="btn btn-primary">

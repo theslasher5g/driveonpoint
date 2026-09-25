@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ActionMenu, ActionMenuItem } from "@/components/action-menu";
 import { CancelBookingButton } from "@/components/cancel-booking-button";
+import { toggleNoShowAction } from "./actions";
 import { DeleteExceptionButton } from "@/components/availability-delete";
 
 export type DayBooking = {
@@ -16,6 +17,8 @@ export type DayBooking = {
   history: { label: string | null; warnings: string[] };
   /** Kurstermin, der noch nicht begonnen hat — dann lässt er sich als Ganzes absagen. */
   cancellableCourse: boolean;
+  /** Begonnen und darf markiert werden: "offen" oder schon "markiert"; sonst null. */
+  noShow: "offen" | "markiert" | null;
 };
 
 export type DayAbsence = {
@@ -141,13 +144,28 @@ export function DayEntries({
               )}
 
               <DialogActions onClose={() => setSelected(null)}>
-                {manages && (
+                {(manages || booking.noShow) && (
                   <ActionMenu label="Termin verwalten" align="left">
-                    <ActionMenuItem href={`/team/kalender/verschieben?id=${booking.id}`}>
-                      Verschieben
-                    </ActionMenuItem>
-                    <CancelBookingButton bookingId={booking.id} />
-                    {booking.cancellableCourse && (
+                    {manages && (
+                      <ActionMenuItem href={`/team/kalender/verschieben?id=${booking.id}`}>
+                        Verschieben
+                      </ActionMenuItem>
+                    )}
+                    {manages && booking.cancellableCourse && (
+                      <ActionMenuItem href={`/team/kalender/kurs-verschieben?id=${booking.id}`}>
+                        Ganzen Kurs verschieben
+                      </ActionMenuItem>
+                    )}
+                    {booking.noShow && (
+                      <form action={toggleNoShowAction}>
+                        <input type="hidden" name="id" value={booking.id} />
+                        <ActionMenuItem type="submit">
+                          {booking.noShow === "markiert" ? "Doch erschienen" : "Nicht erschienen"}
+                        </ActionMenuItem>
+                      </form>
+                    )}
+                    {manages && <CancelBookingButton bookingId={booking.id} />}
+                    {manages && booking.cancellableCourse && (
                       <ActionMenuItem href={`/team/kalender/kurs-absagen?id=${booking.id}`} danger>
                         Ganzen Kurs absagen
                       </ActionMenuItem>

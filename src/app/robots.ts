@@ -11,7 +11,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       // Interner Bereich, persönliche Links und Einzeltermine gehören nicht
       // in einen Suchindex.
-      disallow: ["/team", "/api/", "/absagen/", "/bestaetigen/", "/buchen/bestaetigt", "/buchen/reserviert", "/buchen/warteliste", "/warteliste/"],
+      disallow: ["/team", "/api/", "/absagen/", "/verschieben/", "/bestaetigen/", "/buchen/bestaetigt", "/buchen/reserviert", "/buchen/warteliste", "/warteliste/"],
     },
     sitemap: `${appUrl}/sitemap.xml`,
   };

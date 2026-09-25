@@ -12,8 +12,13 @@ import {
   findSlots,
   lessonTypeBySlug,
 } from "@/lib/booking";
-import { sendBookingConfirmation } from "@/lib/booking-mail";
+import {
+  sendBookingConfirmation,
+  sendMultiBookingConfirmation,
+  type BookedAppointment,
+} from "@/lib/booking-mail";
 import { env } from "@/lib/env";
+import { addDays } from "@/lib/time";
 
 export type ManualBookingState = {
   error?: string;
@@ -27,7 +32,7 @@ export async function createManualBookingAction(
   formData: FormData,
 ): Promise<ManualBookingState> {
   const values: Record<string, string> = {};
-  for (const key of ["name", "telefon", "email", "bemerkung"]) {
+  for (const key of ["name", "telefon", "email", "bemerkung", "wiederholen"]) {
     const value = formData.get(key);
     if (typeof value === "string") values[key] = value.slice(0, 600);
   }
@@ -55,6 +60,8 @@ const schema = z.object({
     .max(30, "Die Nummer ist zu lang.")
     .regex(/^[0-9+().\s/-]+$/, "Die Nummer enthält unerlaubte Zeichen."),
   bemerkung: z.string().trim().max(500, "Die Bemerkung ist zu lang.").optional(),
+  // Serie: so viele Termine, jede Woche zur selben Zeit. 1 = nur dieser.
+  wiederholen: z.coerce.number().int().min(1).max(12).default(1),
 });
 
 /**
@@ -79,6 +86,7 @@ async function createManualBooking(
     email: formData.get("email") || "",
     telefon: formData.get("telefon"),
     bemerkung: formData.get("bemerkung") || undefined,
+    wiederholen: formData.get("wiederholen") || 1,
   });
 
   if (!parsed.success) {
@@ -102,61 +110,90 @@ async function createManualBooking(
     return { error: "Dieses Angebot gibt es nicht mehr." };
   }
 
-  // Dieselbe Prüfung wie bei der Online-Buchung: der Termin muss tatsächlich
-  // noch frei sein, unabhängig davon, was das Formular zuvor anzeigte.
-  // Ohne Vorlaufzeit: wer im Team selbst erfasst, darf auch den Anruf vom
-  // Morgen für den Nachmittag eintragen.
-  const slots = await findSlots({
-    lessonType,
-    fromDay: input.tag,
-    days: 1,
-    staffId: input.person,
-    ignoreLeadTime: true,
-  });
-  const slot = slots.find((entry) => entry.day === input.tag && entry.time === input.zeit);
-  if (!slot) {
-    return { error: "Dieser Termin ist nicht mehr frei. Bitte wähle einen anderen." };
-  }
-
   const priced = applyPromotions(lessonType, await activePromotions());
+  // Serien nur für Fahrstunden — ein Kurs oder eine Schnupperstunde
+  // wiederholt sich nicht wöchentlich.
+  const count = lessonType.slug === "fahrstunde" ? input.wiederholen : 1;
 
-  const result = await createBooking({
-    lessonType,
-    staffId: input.person,
-    startsAt: slot.startsAt,
-    customerName: input.name,
-    customerEmail: input.email ?? "",
-    customerPhone: input.telefon,
-    customerNote: input.bemerkung,
-    priceRappen: priced.finalRappen,
-    promotionLabel: priced.promotion?.label ?? null,
-    retentionDays: env.retentionDays,
-  });
+  const booked: BookedAppointment[] = [];
+  const skipped: string[] = [];
 
-  if ("error" in result) {
-    return { error: result.error };
+  for (let week = 0; week < count; week += 1) {
+    const day = addDays(input.tag, week * 7);
+
+    // Dieselbe Prüfung wie bei der Online-Buchung: der Termin muss tatsächlich
+    // noch frei sein, unabhängig davon, was das Formular zuvor anzeigte.
+    // Ohne Vorlaufzeit: wer im Team selbst erfasst, darf auch den Anruf vom
+    // Morgen für den Nachmittag eintragen.
+    const slots = await findSlots({
+      lessonType,
+      fromDay: day,
+      days: 1,
+      staffId: input.person,
+      ignoreLeadTime: true,
+    });
+    const slot = slots.find((entry) => entry.day === day && entry.time === input.zeit);
+
+    const result = slot
+      ? await createBooking({
+          lessonType,
+          staffId: input.person,
+          startsAt: slot.startsAt,
+          customerName: input.name,
+          customerEmail: input.email ?? "",
+          customerPhone: input.telefon,
+          customerNote: input.bemerkung,
+          priceRappen: priced.finalRappen,
+          promotionLabel: priced.promotion?.label ?? null,
+          retentionDays: env.retentionDays,
+        })
+      : { error: "Dieser Termin ist nicht mehr frei. Bitte wähle einen anderen." };
+
+    if ("error" in result) {
+      // Der gewählte erste Termin muss klappen; spätere Wochen werden
+      // übersprungen und danach gemeldet.
+      if (week === 0) return { error: result.error };
+      skipped.push(day);
+      continue;
+    }
+
+    booked.push({ day, time: input.zeit, reference: result.reference, cancelToken: result.cancelToken });
+    await record("buchung.manuell-erstellt", { id: staffUser.id, label: staffUser.name }, {
+      referenz: result.reference,
+      angebot: lessonType.slug,
+      fuer: input.person,
+      ...(count > 1 ? { serie: `${week + 1} von ${count}` } : {}),
+    });
   }
-
-  await record("buchung.manuell-erstellt", { id: staffUser.id, label: staffUser.name }, {
-    referenz: result.reference,
-    angebot: lessonType.slug,
-    fuer: input.person,
-  });
 
   if (input.email) {
     try {
-      await sendBookingConfirmation({
-        to: input.email,
-        name: input.name,
-        reference: result.reference,
-        cancelToken: result.cancelToken,
-        lessonName: lessonType.name,
-        day: input.tag,
-        time: input.zeit,
-        durationMinutes: lessonType.durationMinutes,
-        priceRappen: priced.finalRappen,
-        capacity: lessonType.capacity,
-      });
+      if (booked.length === 1) {
+        await sendBookingConfirmation({
+          to: input.email,
+          name: input.name,
+          reference: booked[0].reference,
+          cancelToken: booked[0].cancelToken,
+          lessonName: lessonType.name,
+          day: input.tag,
+          time: input.zeit,
+          durationMinutes: lessonType.durationMinutes,
+          priceRappen: priced.finalRappen,
+          capacity: lessonType.capacity,
+        });
+      } else {
+        await sendMultiBookingConfirmation({
+          to: input.email,
+          name: input.name,
+          lessonName: lessonType.name,
+          durationMinutes: lessonType.durationMinutes,
+          priceRappen: priced.finalRappen,
+          booked,
+          // Übersprungene Wochen wurden nie zugesagt — die Kundschaft
+          // bekommt nur, was wirklich eingetragen ist.
+          failedCount: 0,
+        });
+      }
     } catch (error) {
       console.error("Bestätigungsmail konnte nicht versendet werden:", error);
     }
@@ -164,7 +201,11 @@ async function createManualBooking(
 
   // Ausdrücklich in die Wochenansicht: dort steht der neue Termin mit allen
   // Angaben. Ohne `ansicht` landet man im Monat, der den Tag nicht anspringt.
+  const series =
+    count > 1
+      ? `&serie=${booked.length}` + (skipped.length > 0 ? `&uebersprungen=${skipped.join(",")}` : "")
+      : "";
   redirect(
-    `/team/kalender?ansicht=woche&woche=${input.tag}&erfasst=${encodeURIComponent(result.reference)}`,
+    `/team/kalender?ansicht=woche&woche=${input.tag}&erfasst=${encodeURIComponent(booked[0].reference)}${series}`,
   );
 }

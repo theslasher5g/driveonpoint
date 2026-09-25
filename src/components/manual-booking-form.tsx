@@ -13,6 +13,8 @@ export function ManualBookingForm({
   day,
   time,
   pickup,
+  repeatable = false,
+  weekdayLabel,
 }: {
   angebot: string;
   person: string;
@@ -20,6 +22,10 @@ export function ManualBookingForm({
   time: string;
   /** Abholung statt fester Kursort — nur als Hinweistext relevant. */
   pickup: boolean;
+  /** Fahrstunden lassen sich als Serie erfassen: jede Woche zur selben Zeit. */
+  repeatable?: boolean;
+  /** Zum Beispiel "Montag" — für die Beschriftung der Serie. */
+  weekdayLabel?: string;
 }) {
   const [state, action] = useActionState(createManualBookingAction, EMPTY);
 
@@ -78,6 +84,31 @@ export function ManualBookingForm({
           <p className="field-hint text-danger">{state.fieldErrors.bemerkung}</p>
         )}
       </div>
+
+      {repeatable && (
+        <div>
+          <label className="field-label" htmlFor="wiederholen">
+            Wiederholen
+          </label>
+          <select
+            id="wiederholen"
+            name="wiederholen"
+            className="field"
+            defaultValue={state.values?.wiederholen ?? "1"}
+          >
+            <option value="1">Nur dieser Termin</option>
+            {Array.from({ length: 11 }, (_, index) => index + 2).map((count) => (
+              <option key={count} value={count}>
+                {count} Termine, jeden {weekdayLabel ?? "gleichen Wochentag"} um {time} Uhr
+              </option>
+            ))}
+          </select>
+          <p className="field-hint">
+            Wochen, in denen die Zeit schon belegt oder keine Verfügbarkeit eingetragen ist, werden
+            übersprungen. Du siehst danach, welche.
+          </p>
+        </div>
+      )}
 
       <SubmitButton />
     </form>

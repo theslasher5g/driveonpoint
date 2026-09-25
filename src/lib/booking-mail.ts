@@ -63,6 +63,7 @@ function calendarAttachment(
         title: `${lessonName} — ${site.name}`,
         description: [
           `Referenz ${entry.reference}`,
+          `Verschieben bis 24 Stunden vorher: ${env.appUrl}/verschieben/${entry.cancelToken}`,
           `Absagen bis 24 Stunden vorher kostenlos: ${env.appUrl}/absagen/${entry.cancelToken}`,
           `Fragen: ${site.contact.phone}`,
         ].join("\n"),
@@ -106,6 +107,7 @@ export async function sendBookingConfirmation(details: {
 }): Promise<void> {
   const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
   const cancelUrl = `${env.appUrl}/absagen/${details.cancelToken}`;
+  const moveUrl = `${env.appUrl}/verschieben/${details.cancelToken}`;
 
   const text = [
     `Hallo ${details.name}`,
@@ -119,8 +121,9 @@ export async function sendBookingConfirmation(details: {
     "",
     ...meetingPointLines(details.capacity),
     "",
-    "Absagen bis 24 Stunden vorher ist kostenlos:",
-    cancelUrl,
+    "Verschieben oder absagen geht bis 24 Stunden vorher kostenlos:",
+    `Verschieben: ${moveUrl}`,
+    `Absagen: ${cancelUrl}`,
     "",
     `Fragen? ${site.contact.phone}`,
     "",
@@ -144,9 +147,10 @@ export async function sendBookingConfirmation(details: {
 </table>
 ${meetingPointHtml(details.capacity)}
 <p style="margin:0 0 20px;">
-  <a href="${escapeHtml(cancelUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;">Termin absagen</a>
+  <a href="${escapeHtml(moveUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;margin:0 8px 8px 0;">Termin verschieben</a>
+  <a href="${escapeHtml(cancelUrl)}" style="display:inline-block;border:2px solid #000103;color:#000103;text-decoration:none;font-weight:700;padding:11px 20px;margin:0 0 8px;">Termin absagen</a>
 </p>
-<p style="margin:0;color:#515052;font-size:14px;">Absagen bis 24 Stunden vor Beginn sind kostenlos. Den Termin für deinen Kalender findest du im Anhang. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
+<p style="margin:0;color:#515052;font-size:14px;">Verschieben und absagen sind bis 24 Stunden vor Beginn kostenlos. Den Termin für deinen Kalender findest du im Anhang. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
   );
 
   await sendMail({
@@ -362,6 +366,7 @@ export async function sendMultiBookingConfirmation(details: {
     "",
     ...sorted.flatMap((b) => [
       `${formatDayLong(b.day)}, ${b.time} Uhr — ${details.lessonName} (Referenz ${b.reference})`,
+      `Verschieben: ${env.appUrl}/verschieben/${b.cancelToken}`,
       `Absagen: ${env.appUrl}/absagen/${b.cancelToken}`,
       "",
     ]),
@@ -377,7 +382,7 @@ export async function sendMultiBookingConfirmation(details: {
     // also immer Abholung, nie ein Kursort.
     ...meetingPointLines(1),
     "",
-    "Jeder Termin ist einzeln bis 24 Stunden vorher kostenlos absagbar, über den jeweiligen Link oben.",
+    "Jeder Termin lässt sich einzeln bis 24 Stunden vorher kostenlos verschieben oder absagen, über die Links oben.",
     "",
     `Fragen? ${site.contact.phone}`,
     "",
@@ -389,7 +394,9 @@ export async function sendMultiBookingConfirmation(details: {
       (b) => `<tr>
   <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${escapeHtml(formatDayLong(b.day))}, ${escapeHtml(b.time)} Uhr</td>
   <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">${escapeHtml(b.reference)}</td>
-  <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;text-align:right;">
+  <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;text-align:right;white-space:nowrap;">
+    <a href="${escapeHtml(`${env.appUrl}/verschieben/${b.cancelToken}`)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Verschieben</a>
+    &nbsp;·&nbsp;
     <a href="${escapeHtml(`${env.appUrl}/absagen/${b.cancelToken}`)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Absagen</a>
   </td>
 </tr>`,
@@ -410,7 +417,7 @@ ${
     : ""
 }
 ${meetingPointHtml(1)}
-<p style="margin:0;color:#515052;font-size:14px;">Jeder Termin lässt sich einzeln bis 24 Stunden vorher kostenlos absagen, über den Link in der Tabelle oben. Alle Termine für deinen Kalender findest du im Anhang. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
+<p style="margin:0;color:#515052;font-size:14px;">Jeder Termin lässt sich einzeln bis 24 Stunden vorher kostenlos verschieben oder absagen, über die Links in der Tabelle oben. Alle Termine für deinen Kalender findest du im Anhang. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
   );
 
   await sendMail({
@@ -564,12 +571,13 @@ export async function sendBookingReminder(details: {
   const time = zurichTime(details.startsAt);
   const when = `${formatDayLong(day)}, ${time} Uhr`;
   const cancelUrl = `${env.appUrl}/absagen/${details.cancelToken}`;
+  const moveUrl = `${env.appUrl}/verschieben/${details.cancelToken}`;
   const deadline = new Date(details.startsAt.getTime() - 24 * 60 * 60 * 1000);
   const freeCancellation = deadline.getTime() > Date.now();
   const deadlineText = `${formatDayLong(zurichDay(deadline))}, ${zurichTime(deadline)} Uhr`;
 
   const cancelHint = freeCancellation
-    ? `Passt es doch nicht? Kostenlos absagen kannst du noch bis ${deadlineText}:`
+    ? `Passt es doch nicht? Kostenlos verschieben oder absagen kannst du noch bis ${deadlineText}:`
     : `Für eine kostenlose Absage ist es zu kurzfristig. Kommt etwas dazwischen, ruf uns an: ${site.contact.phone}`;
 
   const text = [
@@ -584,7 +592,7 @@ export async function sendBookingReminder(details: {
     ...meetingPointLines(details.capacity),
     "",
     cancelHint,
-    ...(freeCancellation ? [cancelUrl] : []),
+    ...(freeCancellation ? [`Verschieben: ${moveUrl}`, `Absagen: ${cancelUrl}`] : []),
     "",
     `Fragen? ${site.contact.phone}`,
   ].join("\n");
@@ -598,7 +606,7 @@ ${meetingPointHtml(details.capacity)}
 <p style="margin:0 0 ${freeCancellation ? "12" : "0"}px;color:#515052;">${escapeHtml(cancelHint)}</p>
 ${
   freeCancellation
-    ? `<p style="margin:0;"><a href="${escapeHtml(cancelUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Termin absagen</a></p>`
+    ? `<p style="margin:0;"><a href="${escapeHtml(moveUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Termin verschieben</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${escapeHtml(cancelUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Termin absagen</a></p>`
     : ""
 }`,
   );
@@ -744,6 +752,184 @@ ${details.message ? `<p style="margin:0 0 20px;white-space:pre-line;">${escapeHt
   await sendMail({
     to: details.to,
     subject: `Kurs abgesagt: ${details.lessonName} am ${formatDayLong(details.day)}`,
+    text,
+    html,
+  });
+}
+
+/**
+ * Ein Termin hat eine neue Zeit — ob von der Kundschaft selbst oder vom
+ * Team verschoben. Mit neuer Kalenderdatei: dieselbe UID ersetzt den alten
+ * Eintrag im Kalender der Kundschaft.
+ */
+export async function sendRescheduleConfirmation(details: {
+  to: string;
+  name: string;
+  reference: string;
+  cancelToken: string;
+  lessonName: string;
+  day: string;
+  time: string;
+  previousStartsAt: Date;
+  durationMinutes: number;
+  capacity: number;
+  /** Von der Kundschaft selbst verschoben oder von der Fahrschule. */
+  byCustomer: boolean;
+  /** Freitext aus dem Team, etwa der Grund (nur beim Verschieben durch die Fahrschule). */
+  message?: string | null;
+}): Promise<void> {
+  const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
+  const before = `${formatDayLong(zurichDay(details.previousStartsAt))}, ${zurichTime(details.previousStartsAt)} Uhr`;
+  const cancelUrl = `${env.appUrl}/absagen/${details.cancelToken}`;
+  const moveUrl = `${env.appUrl}/verschieben/${details.cancelToken}`;
+  const intro = details.byCustomer
+    ? `Dein Termin bei ${site.name} ist verschoben.`
+    : `Wir mussten deinen Termin bei ${site.name} verschieben.`;
+  const afterword = details.byCustomer
+    ? "Verschieben oder absagen geht weiterhin bis 24 Stunden vorher kostenlos."
+    : "Passt dir die neue Zeit nicht? Dann verschieben oder sag ab, kostenlos. Oder ruf uns an, wir finden etwas.";
+
+  const text = [
+    `Hallo ${details.name}`.trim(),
+    "",
+    intro,
+    "",
+    details.lessonName,
+    `Neu: ${when} (${details.durationMinutes} Minuten)`,
+    `Bisher: ${before}`,
+    `Referenz: ${details.reference}`,
+    ...(details.message ? ["", details.message] : []),
+    "",
+    ...meetingPointLines(details.capacity),
+    "",
+    afterword,
+    `Verschieben: ${moveUrl}`,
+    `Absagen: ${cancelUrl}`,
+    "",
+    `Fragen? ${site.contact.phone}`,
+  ].join("\n");
+
+  const html = mailLayout(
+    details.byCustomer ? "Dein Termin ist verschoben" : "Dein Termin wurde verschoben",
+    `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
+<p style="margin:0 0 16px;">${escapeHtml(intro)}</p>
+<p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
+<p style="margin:0 0 20px;">Neu: <strong>${escapeHtml(when)}</strong><br><span style="color:#515052;font-size:14px;">Bisher: <span style="text-decoration:line-through;">${escapeHtml(before)}</span> · Referenz ${escapeHtml(details.reference)}</span></p>
+${details.message ? `<p style="margin:0 0 20px;white-space:pre-line;">${escapeHtml(details.message)}</p>` : ""}
+${meetingPointHtml(details.capacity)}
+<p style="margin:0 0 12px;color:#515052;">${escapeHtml(afterword)}</p>
+<p style="margin:0 0 20px;"><a href="${escapeHtml(moveUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Termin verschieben</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${escapeHtml(cancelUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Termin absagen</a></p>
+<p style="margin:0;color:#515052;font-size:14px;">Den neuen Termin für deinen Kalender findest du im Anhang. Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
+  );
+
+  await sendMail({
+    to: details.to,
+    subject: `Termin verschoben — ${details.reference}`,
+    text,
+    html,
+    attachments: calendarAttachment(
+      [details],
+      details.lessonName,
+      details.durationMinutes,
+      meetingPointLocation(details.capacity),
+    ),
+  });
+}
+
+/** Meldung ans eigene Postfach, wenn die Kundschaft selbst verschoben hat. */
+export async function sendRescheduleNotification(details: {
+  reference: string;
+  lessonName: string;
+  previousStartsAt: Date;
+  startsAt: Date;
+  customerName: string | null;
+  customerPhone: string | null;
+  staffName: string | null;
+}): Promise<void> {
+  const format = (at: Date) => `${formatDayLong(zurichDay(at))}, ${zurichTime(at)} Uhr`;
+
+  const text = [
+    `Verschoben: ${details.lessonName}`,
+    `Neu: ${format(details.startsAt)}`,
+    `Bisher: ${format(details.previousStartsAt)}`,
+    "",
+    `Name: ${details.customerName ?? "—"}`,
+    `Telefon: ${details.customerPhone ?? "—"}`,
+    ...(details.staffName ? [`Bei: ${details.staffName}`] : []),
+    "",
+    `Referenz: ${details.reference}`,
+  ].join("\n");
+
+  const html = mailLayout(
+    "Termin von der Kundschaft verschoben",
+    `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;margin:0 0 20px;">
+  <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;width:38%;">Angebot</td>
+      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${escapeHtml(details.lessonName)}</td></tr>
+  <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Neu</td>
+      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${escapeHtml(format(details.startsAt))}</td></tr>
+  <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Bisher</td>
+      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;">${escapeHtml(format(details.previousStartsAt))}</td></tr>
+  <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Name</td>
+      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;">${escapeHtml(details.customerName ?? "—")}</td></tr>
+  <tr><td style="padding:10px 0;font-size:14px;color:#515052;">Telefon</td>
+      <td style="padding:10px 0;">${escapeHtml(details.customerPhone ?? "—")}</td></tr>
+</table>
+<p style="margin:0;color:#515052;font-size:14px;">Referenz ${escapeHtml(details.reference)}${details.staffName ? ` · bei ${escapeHtml(details.staffName)}` : ""} — im Kalender bereits auf der neuen Zeit.</p>`,
+  );
+
+  await sendMail({
+    to: site.contact.email,
+    subject: `Verschoben — ${details.reference}`,
+    text,
+    html,
+  });
+}
+
+/** Der Kurs, auf dessen Warteliste jemand steht, hat ein neues Datum. */
+export async function sendWaitlistMoved(details: {
+  to: string;
+  name: string;
+  lessonName: string;
+  day: string;
+  time: string;
+  previousStartsAt: Date;
+  message: string | null;
+  removeToken: string;
+}): Promise<void> {
+  const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
+  const before = `${formatDayLong(zurichDay(details.previousStartsAt))}, ${zurichTime(details.previousStartsAt)} Uhr`;
+  const removeUrl = `${env.appUrl}/warteliste/austragen/${details.removeToken}`;
+
+  const text = [
+    `Hallo ${details.name}`,
+    "",
+    `Der Kurs, für den du auf der Warteliste stehst, findet an einem anderen Datum statt:`,
+    "",
+    details.lessonName,
+    `Neu: ${when}`,
+    `Bisher: ${before}`,
+    ...(details.message ? ["", details.message] : []),
+    "",
+    "Du stehst weiterhin auf der Warteliste. Wird ein Platz frei, bekommst du sofort eine Mail.",
+    "",
+    "Passt dir das neue Datum nicht? Von der Warteliste streichen:",
+    removeUrl,
+  ].join("\n");
+
+  const html = mailLayout(
+    "Der Kurs hat ein neues Datum",
+    `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
+<p style="margin:0 0 16px;">Der Kurs, für den du auf der Warteliste stehst, findet an einem anderen Datum statt.</p>
+<p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
+<p style="margin:0 0 20px;">Neu: <strong>${escapeHtml(when)}</strong><br><span style="color:#515052;font-size:14px;">Bisher: <span style="text-decoration:line-through;">${escapeHtml(before)}</span></span></p>
+${details.message ? `<p style="margin:0 0 20px;white-space:pre-line;">${escapeHtml(details.message)}</p>` : ""}
+<p style="margin:0 0 20px;color:#515052;">Du stehst weiterhin auf der Warteliste. Wird ein Platz frei, bekommst du sofort eine Mail.</p>
+<p style="margin:0;color:#515052;font-size:14px;">Passt dir das neue Datum nicht? <a href="${escapeHtml(removeUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Von der Warteliste streichen</a></p>`,
+  );
+
+  await sendMail({
+    to: details.to,
+    subject: `Neues Datum: ${details.lessonName} am ${formatDayLong(details.day)}`,
     text,
     html,
   });

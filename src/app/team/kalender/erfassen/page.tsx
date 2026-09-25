@@ -5,7 +5,7 @@ import { can } from "@/lib/auth/permissions";
 import { findSlots, listLessonTypes } from "@/lib/booking";
 import { db } from "@/lib/db";
 import { staff, staffLessonTypes } from "@/lib/db/schema";
-import { formatDayLong, todayInZurich } from "@/lib/time";
+import { formatDayLong, todayInZurich, weekdayName, zurichWeekday } from "@/lib/time";
 import { ManualBookingForm } from "@/components/manual-booking-form";
 
 export const dynamic = "force-dynamic";
@@ -148,6 +148,8 @@ export default async function ErfassenPage({ searchParams }: { searchParams: Par
               day={chosenSlot.day}
               time={chosenSlot.time}
               pickup={lessonType.capacity <= 1}
+              repeatable={lessonType.slug === "fahrstunde"}
+              weekdayLabel={weekdayName(zurichWeekday(chosenSlot.day))}
             />
           </div>
         )}

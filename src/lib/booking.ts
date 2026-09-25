@@ -474,6 +474,136 @@ export function newConfirmToken(): string {
  * Transaktion wie das Einfügen — sonst könnten zwei gleichzeitige Anfragen
  * beide den letzten freien Platz bekommen.
  */
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Letzte, gesperrte Kontrolle vor dem Speichern: hält der gewählte Platz
+ * noch? Sperrt die Zeile dieser Person, damit parallele Anfragen
+ * nacheinander prüfen statt gleichzeitig. Gemeinsam für neue Buchungen und
+ * das Verschieben — beim Verschieben zählt der Termin selbst nicht mit.
+ */
+async function clashesInLock(
+  tx: Tx,
+  input: {
+    lessonType: LessonType;
+    staffId: string;
+    startsAt: Date;
+    endsAt: Date;
+    excludeBookingId?: string;
+  },
+): Promise<boolean> {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.staffId}))`);
+
+  // Dieselbe Regel wie in findSlots, inklusive Pause: vorher prüfte diese
+  // letzte, gesperrte Kontrolle nur die reine Überschneidung. Kamen zwei
+  // Anfragen gleichzeitig, konnte ein Termin so direkt an den anderen
+  // anschliessen, ohne die Fahrzeit dazwischen. 120 Minuten ist die
+  // grösste Pause, die sich im Team-Bereich einstellen lässt.
+  const reach = 120 * 60_000;
+  const nearby = await tx
+    .select({
+      id: bookings.id,
+      startsAt: bookings.startsAt,
+      endsAt: bookings.endsAt,
+      lessonTypeId: bookings.lessonTypeId,
+      bufferMinutes: lessonTypes.bufferMinutes,
+    })
+    .from(bookings)
+    .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
+    .where(
+      and(
+        eq(bookings.staffId, input.staffId),
+        occupiesTime(),
+        lt(bookings.startsAt, new Date(input.endsAt.getTime() + reach)),
+        gt(bookings.endsAt, new Date(input.startsAt.getTime() - reach)),
+        input.excludeBookingId ? ne(bookings.id, input.excludeBookingId) : undefined,
+      ),
+    );
+
+  const isGroupCourse = input.lessonType.capacity > 1;
+  const clash = nearby.filter((row) => {
+    // Mitanmeldungen und andere Termine desselben Kurses teilen sich
+    // keine Pause, wie in findSlots — nur echte Überschneidung zählt.
+    const shared = isGroupCourse && row.lessonTypeId === input.lessonType.id;
+    const pause = shared
+      ? 0
+      : Math.max(input.lessonType.bufferMinutes, row.bufferMinutes ?? 0) * 60_000;
+    // Ein Termin, der genau dann endet, wenn dieser beginnt, ist keine
+    // Überschneidung — sonst liessen sich zwei Kurse nicht hintereinander legen.
+    return (
+      row.startsAt.getTime() < input.endsAt.getTime() + pause &&
+      row.endsAt.getTime() > input.startsAt.getTime() - pause
+    );
+  });
+
+  if (input.lessonType.capacity <= 1) return clash.length > 0;
+
+  // Als Mitanmeldung zählt nur, wer denselben Kurs zur selben Zeit
+  // besucht. Ein Termin eines anderen Angebots ist eine Überschneidung,
+  // auch wenn er zufällig zur selben Minute beginnt.
+  const sameCourse = clash.filter(
+    (row) =>
+      row.lessonTypeId === input.lessonType.id &&
+      row.startsAt.getTime() === input.startsAt.getTime(),
+  );
+  return clash.length > sameCourse.length || sameCourse.length >= input.lessonType.capacity;
+}
+
+/**
+ * Verlegt einen bestehenden Termin — Referenz, Absagelink und Kundendaten
+ * bleiben. Prüft unter derselben Sperre wie eine neue Buchung, damit zwei
+ * gleichzeitige Wünsche nicht denselben Platz bekommen.
+ */
+export async function moveBooking(input: {
+  bookingId: string;
+  lessonType: LessonType;
+  staffId: string;
+  startsAt: Date;
+  retentionDays: number;
+}): Promise<{ ok: true } | { error: string }> {
+  const endsAt = new Date(input.startsAt.getTime() + input.lessonType.durationMinutes * 60_000);
+  const purgeAfter = new Date(
+    Math.max(endsAt.getTime(), Date.now()) + input.retentionDays * 24 * 60 * 60 * 1000,
+  );
+
+  try {
+    const moved = await db.transaction(async (tx) => {
+      if (
+        await clashesInLock(tx, {
+          lessonType: input.lessonType,
+          staffId: input.staffId,
+          startsAt: input.startsAt,
+          endsAt,
+          excludeBookingId: input.bookingId,
+        })
+      ) {
+        return false;
+      }
+      await tx
+        .update(bookings)
+        // Neue Zeit, neue Erinnerung: die alte ging (falls schon verschickt)
+        // noch an den früheren Termin.
+        .set({
+          staffId: input.staffId,
+          startsAt: input.startsAt,
+          endsAt,
+          purgeAfter,
+          reminderSentAt: null,
+          noShowAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(bookings.id, input.bookingId));
+      return true;
+    });
+    return moved
+      ? { ok: true }
+      : { error: "Dieser Termin wurde eben vergeben. Bitte wähle einen anderen." };
+  } catch (error) {
+    console.error("Termin konnte nicht verschoben werden:", error);
+    return { error: "Der Termin konnte nicht verschoben werden. Bitte versuche es erneut." };
+  }
+}
+
 export async function createBooking(input: {
   lessonType: LessonType;
   staffId: string;
@@ -501,65 +631,13 @@ export async function createBooking(input: {
 
   try {
     const created = await db.transaction(async (tx) => {
-      // Sperrt die Zeile dieser Person, damit parallele Anfragen
-      // nacheinander prüfen statt gleichzeitig.
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.staffId}))`);
-
-      // Dieselbe Regel wie in findSlots, inklusive Pause: vorher prüfte diese
-      // letzte, gesperrte Kontrolle nur die reine Überschneidung. Kamen zwei
-      // Anfragen gleichzeitig, konnte ein Termin so direkt an den anderen
-      // anschliessen, ohne die Fahrzeit dazwischen. 120 Minuten ist die
-      // grösste Pause, die sich im Team-Bereich einstellen lässt.
-      const reach = 120 * 60_000;
-      const nearby = await tx
-        .select({
-          id: bookings.id,
-          startsAt: bookings.startsAt,
-          endsAt: bookings.endsAt,
-          lessonTypeId: bookings.lessonTypeId,
-          bufferMinutes: lessonTypes.bufferMinutes,
-        })
-        .from(bookings)
-        .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
-        .where(
-          and(
-            eq(bookings.staffId, input.staffId),
-            occupiesTime(),
-            lt(bookings.startsAt, new Date(endsAt.getTime() + reach)),
-            gt(bookings.endsAt, new Date(input.startsAt.getTime() - reach)),
-          ),
-        );
-
-      const isGroupCourse = input.lessonType.capacity > 1;
-      const clash = nearby.filter((row) => {
-        // Mitanmeldungen und andere Termine desselben Kurses teilen sich
-        // keine Pause, wie in findSlots — nur echte Überschneidung zählt.
-        const shared = isGroupCourse && row.lessonTypeId === input.lessonType.id;
-        const pause = shared
-          ? 0
-          : Math.max(input.lessonType.bufferMinutes, row.bufferMinutes ?? 0) * 60_000;
-        // Ein Termin, der genau dann endet, wenn dieser beginnt, ist keine
-        // Überschneidung — sonst liessen sich zwei Kurse nicht hintereinander legen.
-        return (
-          row.startsAt.getTime() < endsAt.getTime() + pause &&
-          row.endsAt.getTime() > input.startsAt.getTime() - pause
-        );
+      const clash = await clashesInLock(tx, {
+        lessonType: input.lessonType,
+        staffId: input.staffId,
+        startsAt: input.startsAt,
+        endsAt,
       });
-
-      if (input.lessonType.capacity <= 1) {
-        if (clash.length > 0) return null;
-      } else {
-        // Als Mitanmeldung zählt nur, wer denselben Kurs zur selben Zeit
-        // besucht. Ein Termin eines anderen Angebots ist eine Überschneidung,
-        // auch wenn er zufällig zur selben Minute beginnt.
-        const sameCourse = clash.filter(
-          (row) =>
-            row.lessonTypeId === input.lessonType.id &&
-            row.startsAt.getTime() === input.startsAt.getTime(),
-        );
-        if (clash.length > sameCourse.length) return null;
-        if (sameCourse.length >= input.lessonType.capacity) return null;
-      }
+      if (clash) return null;
 
       await tx.insert(bookings).values({
         reference,

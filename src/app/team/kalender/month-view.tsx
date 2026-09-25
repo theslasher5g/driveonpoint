@@ -16,6 +16,7 @@ export async function MonthView({
   focus,
   seesEveryone,
   manages,
+  userId,
   mayEditAvailability,
 }: {
   yearMonth: string;
@@ -23,6 +24,7 @@ export async function MonthView({
   focus?: string;
   seesEveryone: boolean;
   manages: boolean;
+  userId: string;
   mayEditAvailability: boolean;
 }) {
   const days = monthGridDays(yearMonth);
@@ -45,6 +47,7 @@ export async function MonthView({
         staffName: staff.name,
         lessonName: lessonTypes.name,
         lessonCapacity: lessonTypes.capacity,
+        noShowAt: bookings.noShowAt,
       })
       .from(bookings)
       .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
@@ -118,6 +121,13 @@ export async function MonthView({
               course: (entry.lessonCapacity ?? 1) > 1,
             }),
             cancellableCourse: (entry.lessonCapacity ?? 1) > 1 && entry.startsAt.getTime() > now,
+            // Begonnene Termine: Leitung für alle, Fahrlehrperson für die eigenen.
+            noShow:
+              entry.startsAt.getTime() <= now && (manages || entry.staffId === userId)
+                ? entry.noShowAt
+                  ? "markiert"
+                  : "offen"
+                : null,
           }));
 
           const dayAbsences: DayAbsence[] = absenceRows

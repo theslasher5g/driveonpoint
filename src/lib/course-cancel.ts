@@ -31,6 +31,8 @@ export async function courseSession(lessonTypeId: string, startsAt: Date) {
         customerName: bookings.customerName,
         customerEmail: bookings.customerEmail,
         customerPhone: bookings.customerPhone,
+        staffId: bookings.staffId,
+        cancelToken: bookings.cancelToken,
       })
       .from(bookings)
       .where(

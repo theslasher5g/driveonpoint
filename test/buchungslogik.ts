@@ -26,9 +26,10 @@ import {
 } from "@/lib/db/schema";
 import { randomBytes } from "node:crypto";
 import { accountingReport } from "@/lib/accounting";
-import { createBooking, findSlots, lessonTypeBySlug, newConfirmToken } from "@/lib/booking";
+import { createBooking, findSlots, lessonTypeBySlug, moveBooking, newConfirmToken } from "@/lib/booking";
 import { markError, markOk } from "@/lib/checks";
 import { cancelCourseSession } from "@/lib/course-cancel";
+import { moveCourseSession } from "@/lib/course-move";
 import { customerHistories, describeHistory } from "@/lib/customer-history";
 import { currentProblems } from "@/lib/monitoring";
 import { deleteExpiredRequests, sendDueReminders } from "@/lib/reminders";
@@ -149,7 +150,18 @@ async function main() {
   await cleanup();
 
   // --- Testpersonen und Testtermine ------------------------------------
-  const [personA] = await db.select({ id: staff.id }).from(staff).limit(1);
+  // Eigene Testpersonen statt bestehender Konten: sonst hängt das Ergebnis
+  // davon ab, welche Zeiten in der Datenbank schon eingetragen sind.
+  const [personA] = await db
+    .insert(staff)
+    .values({
+      name: `${MARK} Erstperson`,
+      email: `${MARK.toLowerCase()}-a@example.invalid`,
+      passwordHash: "x",
+      calendarToken: `${MARK}-token-a`,
+      role: "bearbeiter",
+    })
+    .returning({ id: staff.id });
   const [personB] = await db
     .insert(staff)
     .values({
@@ -166,7 +178,20 @@ async function main() {
 
   // Ein Tag weit genug in der Zukunft, damit die Vorlaufzeiten (24 h / 48 h)
   // keine Termine wegschneiden.
-  const day = addDays(todayInZurich(), 10);
+  // Ausserdem ein Tag, an dem niemand sonst Fahrstunden-Zeiten eingetragen
+  // hat — die Abfragen unten schauen über alle Personen.
+  const busyWeekdays = new Set(
+    (
+      await db
+        .select({ weekday: availabilityRules.weekday })
+        .from(availabilityRules)
+        .where(eq(availabilityRules.lessonTypeId, fahrstunde.id))
+    ).map((row) => row.weekday),
+  );
+  let day = addDays(todayInZurich(), 10);
+  for (let step = 0; step < 7 && busyWeekdays.has(zurichWeekday(day)); step += 1) {
+    day = addDays(day, 1);
+  }
   const weekday = zurichWeekday(day);
 
   // Beide Personen bieten beide Angebote an.
@@ -612,6 +637,107 @@ async function main() {
     (await findSlots({ lessonType: vku, fromDay: tagN, days: 1 })).some((slot) => slot.time === "18:00"),
     false,
   );
+
+  // ===================================================================
+  console.log("\nSZENARIO P — Termin verschieben, mit Sperre");
+  // ===================================================================
+  // Person B, Fahrstunde, eigener Tag: 10:00 wird gebucht, dann auf 11:00
+  // verlegt; 11:00 darf danach niemand mehr bekommen, 10:00 wieder schon.
+  const tagP = addDays(day, 2);
+  await addRule(personB.id, fahrstunde.id, zurichWeekday(tagP), "10:00", "14:00");
+  const slotsP = await findSlots({ lessonType: fahrstunde, fromDay: tagP, days: 1, staffId: personB.id });
+  const zehn = slotsP.find((slot) => slot.time === "10:00")!;
+  const elf = slotsP.find((slot) => slot.time === "11:00")!;
+  const zwoelf = slotsP.find((slot) => slot.time === "12:00")!;
+  check("Testzeiten 10, 11, 12 Uhr frei", [zehn, elf, zwoelf].every(Boolean), true);
+  await book("fahrstunde", personB.id, zehn.startsAt, "P1");
+  await book("fahrstunde", personB.id, zwoelf.startsAt, "P2");
+  const [p1] = await db
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(eq(bookings.customerName, `${MARK} P1`));
+  const verschoben = await moveBooking({
+    bookingId: p1.id,
+    lessonType: fahrstunde,
+    staffId: personB.id,
+    startsAt: elf.startsAt,
+    retentionDays: 30,
+  });
+  check("P1 von 10 auf 11 Uhr verschoben", "ok" in verschoben, true);
+  const zeitenP = (await findSlots({ lessonType: fahrstunde, fromDay: tagP, days: 1, staffId: personB.id })).map(
+    (slot) => slot.time,
+  );
+  check("10 Uhr wieder frei, 11 Uhr belegt", [zeitenP.includes("10:00"), zeitenP.includes("11:00")], [true, false]);
+  const [p2] = await db
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(eq(bookings.customerName, `${MARK} P2`));
+  const kollision = await moveBooking({
+    bookingId: p2.id,
+    lessonType: fahrstunde,
+    staffId: personB.id,
+    startsAt: elf.startsAt,
+    retentionDays: 30,
+  });
+  check("P2 auf das belegte 11 Uhr wird abgewiesen", "error" in kollision, true);
+
+  // ===================================================================
+  console.log("\nSZENARIO Q — Ganzen Kurs verschieben");
+  // ===================================================================
+  const tagQ = addDays(todayInZurich(), 20);
+  const zielQ = addDays(todayInZurich(), 22);
+  await addCourseDate(personA.id, vku.id, tagQ, "18:00", "21:00");
+  const kursQ = (await findSlots({ lessonType: vku, fromDay: tagQ, days: 1, staffId: personA.id })).find(
+    (slot) => slot.time === "18:00",
+  )!;
+  for (const who of ["Q1", "Q2"]) await book("vku", personA.id, kursQ.startsAt, who);
+  await db.insert(waitlistEntries).values({
+    lessonTypeId: vku.id,
+    startsAt: kursQ.startsAt,
+    name: `${MARK} Wartend Q`,
+    email: "pruefstand-q@example.invalid",
+    phone: "079 000 00 03",
+    token: randomBytes(24).toString("base64url"),
+  });
+  const umzug = await moveCourseSession({
+    lessonTypeId: vku.id,
+    startsAt: kursQ.startsAt,
+    newDay: zielQ,
+    newTime: "19:00",
+    message: null,
+  });
+  check("Kurs verschoben, zwei Anmeldungen", "ok" in umzug ? umzug.moved.length : umzug.error, 2);
+  const zielStart = (await findSlots({ lessonType: vku, fromDay: zielQ, days: 1, staffId: personA.id })).find(
+    (slot) => slot.time === "19:00",
+  );
+  check("neuer Kurstermin buchbar, 2 Plätze weniger", zielStart ? vku.capacity - zielStart.seatsLeft : null, 2);
+  check(
+    "alter Kurstermin weg",
+    (await findSlots({ lessonType: vku, fromDay: tagQ, days: 1, staffId: personA.id })).some((slot) => slot.time === "18:00"),
+    false,
+  );
+  const wartendQ = await db
+    .select({ startsAt: waitlistEntries.startsAt })
+    .from(waitlistEntries)
+    .where(eq(waitlistEntries.email, "pruefstand-q@example.invalid"));
+  check("Warteliste zieht mit", wartendQ[0]?.startsAt.getTime() === zielStart?.startsAt.getTime(), true);
+  // Nachher aufräumen: addCourseDate hat die Zeile angelegt, die jetzt am
+  // neuen Tag steht — sie bleibt in createdCourseDates und wird gelöscht.
+
+  // Zweiter Umzug auf eine Zeit, zu der Person A eine Fahrstunde hat.
+  await addRule(personA.id, fahrstunde.id, zurichWeekday(zielQ), "08:00", "12:00");
+  const fahrQ = (await findSlots({ lessonType: fahrstunde, fromDay: zielQ, days: 1, staffId: personA.id })).find(
+    (slot) => slot.time === "09:00",
+  )!;
+  await book("fahrstunde", personA.id, fahrQ.startsAt, "Q3");
+  const konflikt = await moveCourseSession({
+    lessonTypeId: vku.id,
+    startsAt: zielStart!.startsAt,
+    newDay: zielQ,
+    newTime: "09:00",
+    message: null,
+  });
+  check("Umzug auf belegte Zeit abgewiesen", "error" in konflikt, true);
 
   // ===================================================================
   console.log("\nSZENARIO O — Überwachung erkennt Stillstand");

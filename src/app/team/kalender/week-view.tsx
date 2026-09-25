@@ -74,6 +74,7 @@ export async function WeekView({
   visibleIds,
   seesEveryone,
   manages,
+  userId,
   mayEditAvailability,
 }: {
   start: string;
@@ -81,6 +82,8 @@ export async function WeekView({
   focus?: string;
   seesEveryone: boolean;
   manages: boolean;
+  /** Eigene Termine darf auch die Fahrlehrperson als "nicht erschienen" markieren. */
+  userId: string;
   mayEditAvailability: boolean;
 }) {
   const end = addDays(start, 6);
@@ -339,6 +342,9 @@ export async function WeekView({
                   const { entry } = item;
                   const pending = entry.status === "angefragt";
                   const started = entry.startsAt.getTime() <= now;
+                  const isCourse = (entry.lessonCapacity ?? 1) > 1;
+                  const mayMarkNoShow =
+                    started && !pending && (manages || entry.staffId === userId);
                   return (
                     <li
                       key={entry.id}
@@ -353,12 +359,19 @@ export async function WeekView({
                         <p className="tabular-nums text-fine font-bold pt-1.5 whitespace-nowrap">
                           {zurichTime(entry.startsAt)}–{zurichTime(entry.endsAt)}
                         </p>
-                        {manages && (
+                        {(manages || mayMarkNoShow) && (
                           <ActionMenu label={`Termin von ${entry.customerName ?? "Kundschaft"} verwalten`}>
-                            <ActionMenuItem href={`/team/kalender/verschieben?id=${entry.id}`}>
-                              Verschieben
-                            </ActionMenuItem>
-                            {started && !pending && (
+                            {manages && (
+                              <ActionMenuItem href={`/team/kalender/verschieben?id=${entry.id}`}>
+                                Verschieben
+                              </ActionMenuItem>
+                            )}
+                            {manages && isCourse && !started && (
+                              <ActionMenuItem href={`/team/kalender/kurs-verschieben?id=${entry.id}`}>
+                                Ganzen Kurs verschieben
+                              </ActionMenuItem>
+                            )}
+                            {mayMarkNoShow && (
                               <form action={toggleNoShowAction}>
                                 <input type="hidden" name="id" value={entry.id} />
                                 <ActionMenuItem type="submit">
@@ -366,8 +379,8 @@ export async function WeekView({
                                 </ActionMenuItem>
                               </form>
                             )}
-                            <CancelBookingButton bookingId={entry.id} />
-                            {(entry.lessonCapacity ?? 1) > 1 && !started && (
+                            {manages && <CancelBookingButton bookingId={entry.id} />}
+                            {manages && isCourse && !started && (
                               <ActionMenuItem href={`/team/kalender/kurs-absagen?id=${entry.id}`} danger>
                                 Ganzen Kurs absagen
                               </ActionMenuItem>

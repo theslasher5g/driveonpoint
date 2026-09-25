@@ -141,8 +141,8 @@ function SlotPicker({ slots, id }: { slots: Awaited<ReturnType<typeof findSlots>
   return (
     <div className="border-t border-deep/15">
       {[...byDay.entries()].map(([day, entries]) => (
-        <div key={day} className="border-b border-deep/15 py-4 grid gap-3 sm:grid-cols-[13rem_1fr]">
-          <h3 className="text-base font-bold pt-1.5">{formatDayLong(day)}</h3>
+        <div key={day} className="border-b border-deep/15 py-4 grid gap-3 sm:grid-cols-[15rem_1fr]">
+          <h3 className="text-base font-bold pt-1.5 hyphens-none">{formatDayLong(day)}</h3>
           <ul className="flex flex-wrap gap-2">
             {entries.map((slot) => (
               <li key={slot.time}>

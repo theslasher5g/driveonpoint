@@ -162,9 +162,9 @@ function SlotList({ slots, token, isCourse }: { slots: Slot[]; token: string; is
       {[...byDay.entries()].map(([day, entries]) => (
         <div
           key={day}
-          className="surface bg-paper p-5 grid gap-3 sm:grid-cols-[13rem_1fr] sm:items-center"
+          className="surface bg-paper p-5 grid gap-3 sm:grid-cols-[15rem_1fr] sm:items-center"
         >
-          <h2 className="text-base font-bold">{formatDayLong(day)}</h2>
+          <h2 className="text-base font-bold hyphens-none">{formatDayLong(day)}</h2>
           <ul className="flex flex-wrap gap-2">
             {entries.map((slot) => (
               <li key={slot.time}>

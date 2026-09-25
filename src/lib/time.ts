@@ -127,14 +127,16 @@ export function monthName(month: number): string {
 export function formatDayLong(day: string): string {
   const [year, month, date] = day.split("-").map(Number);
   const weekday = zurichWeekday(day);
-  return `${WEEKDAY_LONG[weekday]}, ${date}. ${MONTHS[month - 1]} ${year}`;
+  // Geschütztes Leerzeichen zwischen Tag und Monat: "30. September" bleibt
+  // beisammen, umgebrochen wird höchstens nach dem Wochentag.
+  return `${WEEKDAY_LONG[weekday]}, ${date}.\u00a0${MONTHS[month - 1]} ${year}`;
 }
 
 /** "Di, 22. Sep." */
 export function formatDayShort(day: string): string {
   const [, month, date] = day.split("-").map(Number);
   const weekday = zurichWeekday(day);
-  return `${WEEKDAY_SHORT[weekday]}, ${date}. ${MONTHS[month - 1].slice(0, 3)}.`;
+  return `${WEEKDAY_SHORT[weekday]}, ${date}.\u00a0${MONTHS[month - 1].slice(0, 3)}.`;
 }
 
 export function todayInZurich(): string {

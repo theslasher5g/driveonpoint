@@ -1,0 +1,2 @@
+CREATE TYPE "public"."availability_frequency" AS ENUM('taeglich', 'woechentlich', 'monatlich');--> statement-breakpoint
+ALTER TABLE "availability_rules" ADD COLUMN "frequency" "availability_frequency" DEFAULT 'woechentlich' NOT NULL;

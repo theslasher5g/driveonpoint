@@ -78,6 +78,13 @@
       "when": 1790323339197,
       "tag": "0010_bewertung",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790333912098,
+      "tag": "0011_wiederholung",
+      "breakpoints": true
     }
   ]
 }

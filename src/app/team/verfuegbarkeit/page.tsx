@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, eq, gte } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, or } from "drizzle-orm";
 import { requirePermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
@@ -10,11 +10,14 @@ import {
   staff,
   staffLessonTypes,
 } from "@/lib/db/schema";
-import { formatDayLong, todayInZurich, weekdayName } from "@/lib/time";
-import { AvailabilityForms, AvailabilityExceptionForm, CourseDateForm } from "@/components/availability-forms";
+import { formatDayLong, todayInZurich } from "@/lib/time";
+import { AvailabilityExceptionForm, CourseDateForm, OfferingDateForm } from "@/components/availability-forms";
+import { describeRule, describeRuleRange } from "@/lib/availability-rules";
 import { DeleteRuleButton, DeleteExceptionButton } from "@/components/availability-delete";
 
 export const dynamic = "force-dynamic";
+
+const FREQUENCY_ORDER = { taeglich: 0, woechentlich: 1, monatlich: 2 } as const;
 
 export default async function VerfuegbarkeitPage({
   searchParams,
@@ -38,10 +41,13 @@ export default async function VerfuegbarkeitPage({
   const targetId = params.person && allowed.includes(params.person) ? params.person : user.id;
   const target = team.find((person) => person.id === targetId) ?? { id: user.id, name: user.name };
 
+  const today = todayInZurich();
+
   const [offerings, rules, exceptions] = await Promise.all([
     db
       .select({
         id: lessonTypes.id,
+        slug: lessonTypes.slug,
         name: lessonTypes.name,
         durationMinutes: lessonTypes.durationMinutes,
         capacity: lessonTypes.capacity,
@@ -54,15 +60,22 @@ export default async function VerfuegbarkeitPage({
       .select({
         id: availabilityRules.id,
         lessonTypeId: availabilityRules.lessonTypeId,
+        frequency: availabilityRules.frequency,
         weekday: availabilityRules.weekday,
         startTime: availabilityRules.startTime,
         endTime: availabilityRules.endTime,
-        lessonName: lessonTypes.name,
+        validFrom: availabilityRules.validFrom,
+        validUntil: availabilityRules.validUntil,
       })
       .from(availabilityRules)
-      .innerJoin(lessonTypes, eq(lessonTypes.id, availabilityRules.lessonTypeId))
-      .where(eq(availabilityRules.staffId, targetId))
-      .orderBy(asc(availabilityRules.weekday), asc(availabilityRules.startTime)),
+      .where(
+        and(
+          eq(availabilityRules.staffId, targetId),
+          // Abgelaufene Regeln bieten nichts mehr an und würden nur stören.
+          or(isNull(availabilityRules.validUntil), gte(availabilityRules.validUntil, today)),
+        ),
+      )
+      .orderBy(asc(availabilityRules.startTime)),
     db
       .select({
         id: availabilityExceptions.id,
@@ -79,20 +92,17 @@ export default async function VerfuegbarkeitPage({
       .where(
         and(
           eq(availabilityExceptions.staffId, targetId),
-          gte(availabilityExceptions.day, todayInZurich()),
+          gte(availabilityExceptions.day, today),
         ),
       )
       .orderBy(asc(availabilityExceptions.day), asc(availabilityExceptions.startTime)),
   ]);
 
-  // Kurstermine erscheinen bereits oben beim jeweiligen Kurs — hier unten
-  // bleiben nur Abwesenheiten und Zusatzzeiten für Einzelangebote, sonst
-  // stünde derselbe Kurstermin zweimal auf der Seite.
-  const courseOfferingIds = new Set(
-    offerings.filter((offering) => offering.capacity > 1).map((offering) => offering.id),
-  );
+  // Zeiten für ein Angebot stehen oben beim jeweiligen Angebot — hier unten
+  // bleiben Abwesenheiten, sonst stünde derselbe Eintrag zweimal auf der Seite.
+  const offeringIds = new Set(offerings.map((offering) => offering.id));
   const generalExceptions = exceptions.filter(
-    (entry) => !(entry.available && entry.lessonTypeId && courseOfferingIds.has(entry.lessonTypeId)),
+    (entry) => !(entry.available && entry.lessonTypeId && offeringIds.has(entry.lessonTypeId)),
   );
 
   return (
@@ -182,58 +192,76 @@ export default async function VerfuegbarkeitPage({
                 );
               }
 
-              const ownRules = rules.filter((rule) => rule.lessonTypeId === offering.id);
-              const byWeekday = new Map<number, typeof ownRules>();
-              for (const rule of ownRules) {
-                const list = byWeekday.get(rule.weekday) ?? [];
-                list.push(rule);
-                byWeekday.set(rule.weekday, list);
-              }
+              // Wiederkehrendes zuerst (wöchentlich nach Wochentag ab Montag),
+              // danach einzelne Daten der Reihe nach.
+              const ownRules = rules
+                .filter((rule) => rule.lessonTypeId === offering.id)
+                .sort(
+                  (a, b) =>
+                    FREQUENCY_ORDER[a.frequency] - FREQUENCY_ORDER[b.frequency] ||
+                    ((a.weekday + 6) % 7) - ((b.weekday + 6) % 7) ||
+                    a.startTime.localeCompare(b.startTime),
+                );
+              const ownDates = exceptions.filter(
+                (entry) => entry.lessonTypeId === offering.id && entry.available,
+              );
+              const repeatable = offering.slug === "fahrstunde";
 
               return (
                 <div key={offering.id} className="surface bg-paper p-5 md:p-6">
-                  <h2 className="font-display text-xl font-bold mb-4">{offering.name}</h2>
+                  <h2 className="font-display text-xl font-bold">{offering.name}</h2>
+                  <p className="text-fine text-slate mt-1 mb-4 max-w-[52ch]">
+                    {repeatable
+                      ? "Ein Datum wählen und bei Bedarf wiederholen: jeden Tag, jede Woche oder jeden Monat."
+                      : "Jedes Datum wird einzeln eingetragen."}
+                  </p>
 
-                  {/* Bestand links, Eingabe rechts. Vorher stand das Formular
-                      unter der Liste, viermal untereinander — dieselbe Seite
-                      war dadurch mehr als doppelt so hoch. */}
+                  {/* Bestand links, Eingabe rechts. */}
                   <div className="grid gap-6 lg:grid-cols-2 lg:gap-10 items-start">
-                    {ownRules.length === 0 ? (
+                    {ownRules.length === 0 && ownDates.length === 0 ? (
                       <p className="text-slate text-fine">Noch nichts eingetragen.</p>
                     ) : (
-                      <div className="rounded-[var(--radius-control)] bg-concrete overflow-hidden">
-                        {[1, 2, 3, 4, 5, 6, 0].map((weekday) => {
-                          const list = byWeekday.get(weekday);
-                          if (!list || list.length === 0) return null;
+                      <ul className="rounded-[var(--radius-control)] bg-concrete overflow-hidden">
+                        {ownRules.map((rule) => {
+                          const range = describeRuleRange(rule, today);
                           return (
-                            <div
-                              key={weekday}
-                              className="border-b border-deep/10 last:border-0 px-4 py-2.5 flex items-baseline gap-4"
+                            <li
+                              key={rule.id}
+                              className="border-b border-deep/10 last:border-0 px-4 py-2.5"
                             >
-                              <h3 className="text-fine font-bold w-[11ch] shrink-0 break-normal">
-                                {weekdayName(weekday)}
-                              </h3>
-                              <ul className="flex flex-wrap gap-x-4 gap-y-1">
-                                {list.map((rule) => (
-                                  <li key={rule.id} className="nums flex flex-wrap items-center gap-x-2">
-                                    <span className="font-semibold whitespace-nowrap">
-                                      {rule.startTime.slice(0, 5)} – {rule.endTime.slice(0, 5)}
-                                    </span>
-                                    <DeleteRuleButton id={rule.id} person={targetId} />
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
+                              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                                <span className="font-semibold hyphens-none">{describeRule(rule)}</span>
+                                <span className="nums text-slate whitespace-nowrap">
+                                  {rule.startTime.slice(0, 5)} – {rule.endTime.slice(0, 5)}
+                                </span>
+                                <DeleteRuleButton id={rule.id} person={targetId} />
+                              </div>
+                              {range && <p className="text-fine text-slate mt-0.5">{range}</p>}
+                            </li>
                           );
                         })}
-                      </div>
+                        {ownDates.map((entry) => (
+                          <li
+                            key={entry.id}
+                            className="border-b border-deep/10 last:border-0 px-4 py-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1"
+                          >
+                            <span className="font-semibold hyphens-none">{formatDayLong(entry.day)}</span>
+                            <span className="nums text-slate whitespace-nowrap">
+                              {entry.startTime.slice(0, 5)} – {entry.endTime.slice(0, 5)}
+                            </span>
+                            <DeleteExceptionButton id={entry.id} person={targetId} />
+                          </li>
+                        ))}
+                      </ul>
                     )}
 
-                    <AvailabilityForms
+                    <OfferingDateForm
                       person={targetId}
                       lessonTypeId={offering.id}
                       lessonTypeName={offering.name}
                       durationMinutes={offering.durationMinutes}
+                      repeatable={repeatable}
+                      today={today}
                     />
                   </div>
                 </div>
@@ -244,14 +272,14 @@ export default async function VerfuegbarkeitPage({
 
         <div className="mt-10">
           <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
-          <h2 className="font-display text-2xl font-bold">Einzelne Tage</h2>
+          <h2 className="font-display text-2xl font-bold">Abwesenheiten</h2>
           <p className="text-slate text-fine mt-1.5 mb-5 max-w-[60ch]">
-            Ferien, Arzttermin oder eine Zeit extra. Für mehrere Tage am Stück das Feld „Bis"
-            ausfüllen. Kurstermine trägst du oben direkt beim jeweiligen Kurs ein.
+            Ferien, Arzttermin oder Weiterbildung. Für mehrere Tage am Stück auch den
+            letzten Tag angeben. Zusätzliche Zeiten trägst du oben beim jeweiligen Angebot ein.
           </p>
 
           {generalExceptions.length === 0 ? (
-            <p className="text-slate text-fine">Keine Ausnahmen für die kommenden Tage.</p>
+            <p className="text-slate text-fine">Keine Abwesenheiten in den kommenden Tagen.</p>
           ) : (
             <ul className="surface bg-paper">
               {generalExceptions.map((entry) => (

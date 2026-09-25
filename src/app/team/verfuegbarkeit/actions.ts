@@ -8,7 +8,7 @@ import { assertPermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { availabilityExceptions, availabilityRules, lessonTypes, staffLessonTypes } from "@/lib/db/schema";
-import { addDays, minutesSinceMidnight } from "@/lib/time";
+import { addDays, minutesSinceMidnight, todayInZurich, zurichWeekday } from "@/lib/time";
 
 /** Höchstens rund zwei Monate am Stück, damit ein Tippfehler beim Enddatum
  * keine tausend Zeilen erzeugt. */
@@ -58,6 +58,17 @@ const timeRange = z
     message: "Das Ende muss nach dem Beginn liegen.",
   });
 
+/** Ein echtes Kalenderdatum: "2026-02-30" passt ins Muster, gibt es aber nicht. */
+function calendarDay(message: string) {
+  return z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, message)
+    .refine((day) => {
+      const parsed = new Date(`${day}T00:00:00Z`);
+      return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day;
+    }, message);
+}
+
 /**
  * Für wen darf die eingeloggte Person eintragen?
  *
@@ -96,7 +107,13 @@ async function assertOffering(staffId: string, lessonTypeId: string): Promise<bo
 
 export type AvailabilityState = { error?: string; ok?: string };
 
-export async function addRuleAction(
+/**
+ * Zeit für ein Einzelangebot (Fahrstunde, Schnupperstunde) an einem Datum.
+ * Einmalig wird es ein einzelner Tag wie ein Kurstermin; wiederkehrend eine
+ * Regel ab diesem Datum — täglich, wöchentlich am selben Wochentag oder
+ * monatlich am selben Kalendertag, auf Wunsch bis zu einem Enddatum.
+ */
+export async function addOfferingDateAction(
   _previous: AvailabilityState,
   formData: FormData,
 ): Promise<AvailabilityState> {
@@ -105,50 +122,86 @@ export async function addRuleAction(
   const parsed = z
     .object({
       lessonTypeId: z.string().uuid("Bitte ein Angebot wählen."),
-      wochentag: z.coerce.number().int().min(0).max(6),
+      tag: calendarDay("Bitte ein Datum wählen."),
+      wiederholung: z.enum(["einmalig", "taeglich", "woechentlich", "monatlich"]),
+      tagBis: calendarDay("Ungültiges Enddatum.").optional(),
       von: z.string(),
       bis: z.string(),
     })
     .safeParse({
       lessonTypeId: formData.get("lessonTypeId"),
-      wochentag: formData.get("wochentag"),
+      tag: formData.get("tag"),
+      wiederholung: formData.get("wiederholung") || "einmalig",
+      tagBis: formData.get("tagBis") || undefined,
       von: formData.get("von"),
       bis: formData.get("bis"),
     });
 
-  if (!parsed.success) return { error: "Bitte prüfe die Eingaben." };
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const input = parsed.data;
 
-  const range = timeRange.safeParse({ von: parsed.data.von, bis: parsed.data.bis });
+  const range = timeRange.safeParse({ von: input.von, bis: input.bis });
   if (!range.success) return { error: range.error.issues[0].message };
 
-  if (!(await assertOffering(staffId, parsed.data.lessonTypeId))) {
+  if (input.tag < todayInZurich()) return { error: "Das Datum liegt in der Vergangenheit." };
+
+  if (!(await assertOffering(staffId, input.lessonTypeId))) {
     return { error: "Dieses Angebot gehört nicht zu dieser Person." };
   }
 
-  const fitError = await assertWindowFitsOffering(
-    parsed.data.lessonTypeId,
-    parsed.data.von,
-    parsed.data.bis,
-  );
+  const [offering] = await db
+    .select({ slug: lessonTypes.slug, capacity: lessonTypes.capacity })
+    .from(lessonTypes)
+    .where(eq(lessonTypes.id, input.lessonTypeId))
+    .limit(1);
+  if (!offering || offering.capacity > 1) {
+    return { error: "Kurstermine werden beim jeweiligen Kurs eingetragen." };
+  }
+  // Wiederholen lässt sich nur die Fahrstunde; Schnupperstunden werden
+  // bewusst einzeln angeboten.
+  if (input.wiederholung !== "einmalig" && offering.slug !== "fahrstunde") {
+    return { error: "Dieses Angebot lässt sich nur an einzelnen Daten eintragen." };
+  }
+
+  const fitError = await assertWindowFitsOffering(input.lessonTypeId, input.von, input.bis);
   if (fitError) return { error: fitError };
 
-  await db.insert(availabilityRules).values({
-    staffId,
-    lessonTypeId: parsed.data.lessonTypeId,
-    weekday: parsed.data.wochentag,
-    startTime: parsed.data.von,
-    endTime: parsed.data.bis,
-  });
+  if (input.wiederholung === "einmalig") {
+    await db.insert(availabilityExceptions).values({
+      staffId,
+      lessonTypeId: input.lessonTypeId,
+      day: input.tag,
+      startTime: input.von,
+      endTime: input.bis,
+      available: true,
+    });
+  } else {
+    if (input.tagBis && input.tagBis < input.tag) {
+      return { error: "Das Enddatum darf nicht vor dem Startdatum liegen." };
+    }
+    await db.insert(availabilityRules).values({
+      staffId,
+      lessonTypeId: input.lessonTypeId,
+      frequency: input.wiederholung,
+      weekday: zurichWeekday(input.tag),
+      startTime: input.von,
+      endTime: input.bis,
+      validFrom: input.tag,
+      validUntil: input.tagBis ?? null,
+    });
+  }
 
-  await record("verfuegbarkeit.regel-erstellt", { id: user.id, label: user.name }, {
+  await record("verfuegbarkeit.datum-erstellt", { id: user.id, label: user.name }, {
     fuer: staffId,
-    lektionsart: parsed.data.lessonTypeId,
-    wochentag: parsed.data.wochentag,
+    lektionsart: input.lessonTypeId,
+    tag: input.tag,
+    wiederholung: input.wiederholung,
+    bis: input.tagBis,
   });
 
   revalidatePath("/team/verfuegbarkeit");
   revalidatePath("/team/kalender");
-  return { ok: "Zeitfenster eingetragen." };
+  return { ok: input.wiederholung === "einmalig" ? "Datum eingetragen." : "Wiederkehrende Zeit eingetragen." };
 }
 
 export async function deleteRuleAction(formData: FormData): Promise<void> {
@@ -201,6 +254,12 @@ export async function addExceptionAction(
 
   const range = timeRange.safeParse({ von: parsed.data.von, bis: parsed.data.bis });
   if (!range.success) return { error: range.error.issues[0].message };
+
+  // Zusätzliche Zeit gilt immer für ein bestimmtes Angebot: ohne Angebot
+  // stünde sie auch jedem Kurs offen und erschiene dort als Kurstermin.
+  if (parsed.data.art === "frei" && !parsed.data.lessonTypeId) {
+    return { error: "Zusätzliche Zeit bitte beim jeweiligen Angebot eintragen." };
+  }
 
   if (parsed.data.lessonTypeId && !(await assertOffering(staffId, parsed.data.lessonTypeId))) {
     return { error: "Dieses Angebot gehört nicht zu dieser Person." };

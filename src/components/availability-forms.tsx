@@ -1,68 +1,139 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   addExceptionAction,
-  addRuleAction,
+  addOfferingDateAction,
   type AvailabilityState,
 } from "@/app/team/verfuegbarkeit/actions";
-import { fromMinutes, minutesSinceMidnight, weekdayName } from "@/lib/time";
+import { formatDate, fromMinutes, minutesSinceMidnight, weekdayName, zurichWeekday } from "@/lib/time";
 
 const EMPTY: AvailabilityState = {};
 const DEFAULT_START = "08:00";
 
-export function AvailabilityForms({
+type Repeat = "einmalig" | "taeglich" | "woechentlich" | "monatlich";
+
+/**
+ * Zeit für Fahrstunde oder Schnupperstunde an einem Datum, wie bei den
+ * Kursterminen. Die Fahrstunde lässt sich zusätzlich wiederholen: täglich,
+ * jede Woche am selben Wochentag oder jeden Monat am selben Kalendertag.
+ */
+export function OfferingDateForm({
   person,
   lessonTypeId,
   lessonTypeName,
   durationMinutes,
+  repeatable,
+  today,
 }: {
   person: string;
   lessonTypeId: string;
   lessonTypeName: string;
   durationMinutes: number;
+  repeatable: boolean;
+  today: string;
 }) {
-  const [ruleState, ruleAction] = useActionState(addRuleAction, EMPTY);
+  const [state, action] = useActionState(addOfferingDateAction, EMPTY);
+  const [day, setDay] = useState("");
+  const [repeat, setRepeat] = useState<Repeat>("einmalig");
   // Ein Zeitfenster kürzer als die Termindauer zeigt nie einen buchbaren
-  // Slot — der Vorschlag passt sich darum je Angebot an (Nothilfekurs
-  // braucht 5 Stunden, eine Fahrstunde nur 45 Minuten).
+  // Slot — der Vorschlag passt sich darum je Angebot an.
   const defaultEnd = fromMinutes(minutesSinceMidnight(DEFAULT_START) + durationMinutes);
+  const repeating = repeatable && repeat !== "einmalig";
+
+  // Nach jeder Rückmeldung setzt React die Felder zurück, auch bei einem
+  // Fehler. Datum und Wiederholung müssen mit, sonst zeigt die Auswahl
+  // "Nicht wiederholen" und das Formular verhält sich wie beim letzten Mal.
+  const [handled, setHandled] = useState(state);
+  if (state !== handled) {
+    setHandled(state);
+    setDay("");
+    setRepeat("einmalig");
+  }
 
   return (
-    // Die vier Felder passen nebeneinander in eine Zeile. Untereinander
-    // brauchte jedes Angebot den Platz eines halben Bildschirms, bei vier
-    // Angeboten auf derselben Seite.
-    <form action={ruleAction} className="rounded-[var(--radius-control)] bg-concrete p-4">
+    <form action={action} className="rounded-[var(--radius-control)] bg-concrete p-4">
       <input type="hidden" name="person" value={person} />
       <input type="hidden" name="lessonTypeId" value={lessonTypeId} />
       <h3 className="text-fine font-bold mb-3">Zeit für {lessonTypeName} hinzufügen</h3>
-      <Feedback state={ruleState} />
+      <Feedback state={state} />
 
       <div className="flex flex-wrap items-end gap-3 mt-3">
-        <div className="min-w-[8.5rem] flex-1">
-          <label className="field-label text-fine" htmlFor={`wochentag-${lessonTypeId}`}>
-            Wochentag
+        <div className="min-w-[9rem]">
+          <label className="field-label text-fine" htmlFor={`datum-${lessonTypeId}`}>
+            {repeating ? "Ab" : "Datum"}
           </label>
-          <select
-            id={`wochentag-${lessonTypeId}`}
-            name="wochentag"
-            className="field py-2"
-            defaultValue="1"
-          >
-            {[1, 2, 3, 4, 5, 6, 0].map((weekday) => (
-              <option key={weekday} value={weekday}>
-                {weekdayName(weekday)}
-              </option>
-            ))}
-          </select>
+          <input
+            id={`datum-${lessonTypeId}`}
+            name="tag"
+            type="date"
+            min={today}
+            value={day}
+            onChange={(event) => setDay(event.target.value)}
+            className="field nums py-2"
+            required
+          />
         </div>
 
-        <TimePair idPrefix={`regel-${lessonTypeId}`} defaultFrom={DEFAULT_START} defaultTo={defaultEnd} />
+        {repeatable && (
+          <div className="min-w-[9rem]">
+            <label className="field-label text-fine" htmlFor={`wiederholung-${lessonTypeId}`}>
+              Wiederholen
+            </label>
+            <select
+              id={`wiederholung-${lessonTypeId}`}
+              name="wiederholung"
+              value={repeat}
+              onChange={(event) => setRepeat(event.target.value as Repeat)}
+              className="field py-2"
+            >
+              <option value="einmalig">Nicht wiederholen</option>
+              <option value="taeglich">Jeden Tag</option>
+              <option value="woechentlich">Jede Woche</option>
+              <option value="monatlich">Jeden Monat</option>
+            </select>
+          </div>
+        )}
+
+        {repeating && (
+          <div className="min-w-[9rem]">
+            <label className="field-label text-fine" htmlFor={`bis-datum-${lessonTypeId}`}>
+              Endet am <span className="font-normal text-slate">(freiwillig)</span>
+            </label>
+            <input
+              id={`bis-datum-${lessonTypeId}`}
+              name="tagBis"
+              type="date"
+              min={day || today}
+              className="field nums py-2"
+            />
+          </div>
+        )}
+
+        <TimePair idPrefix={`datum-${lessonTypeId}`} defaultFrom={DEFAULT_START} defaultTo={defaultEnd} />
         <Submit label="Eintragen" busy="…" />
       </div>
+
+      {repeating && day && (
+        <p className="text-fine text-slate mt-3">{repeatHint(repeat, day)}</p>
+      )}
     </form>
   );
+}
+
+function repeatHint(repeat: Repeat, day: string): string {
+  const date = Number(day.slice(8));
+  switch (repeat) {
+    case "taeglich":
+      return `Jeden Tag ab ${formatDate(day)}, auch am Wochenende.`;
+    case "woechentlich":
+      return `Jeden ${weekdayName(zurichWeekday(day))} ab ${formatDate(day)}.`;
+    default:
+      return date > 28
+        ? `Jeden Monat am ${date}., ab ${formatDate(day)}. Monate ohne diesen Tag fallen aus.`
+        : `Jeden Monat am ${date}., ab ${formatDate(day)}.`;
+  }
 }
 
 /**
@@ -114,6 +185,10 @@ export function CourseDateForm({
   );
 }
 
+/**
+ * Abwesenheiten: Ferien, Arzttermin, Weiterbildung. Zusätzliche Zeiten
+ * trägt man beim jeweiligen Angebot ein, damit klar ist, wofür sie gelten.
+ */
 export function AvailabilityExceptionForm({
   person,
   offerings,
@@ -126,51 +201,42 @@ export function AvailabilityExceptionForm({
   return (
     <form action={exceptionAction} className="surface bg-paper p-4 mt-5">
       <input type="hidden" name="person" value={person} />
-      <h3 className="text-fine font-bold mb-3">Einzelnen Tag ändern</h3>
+      <input type="hidden" name="art" value="abwesend" />
+      <h3 className="text-fine font-bold mb-3">Abwesenheit eintragen</h3>
       <Feedback state={exceptionState} />
 
       <div className="flex flex-wrap items-end gap-3 mt-3">
-        <div className="min-w-[13rem] flex-1">
-          <label className="field-label text-fine" htmlFor="art">
-            Was gilt an diesem Tag?
-          </label>
-          <select id="art" name="art" className="field py-2" defaultValue="abwesend">
-            <option value="abwesend">Abwesend — Zeit blockieren</option>
-            <option value="frei">Zusätzlich frei — Zeit anbieten</option>
-          </select>
-        </div>
-
-        {offerings.length > 0 && (
-          <div className="min-w-[11rem] flex-1">
-            <label className="field-label text-fine" htmlFor="lessonTypeId">
-              Angebot <span className="font-normal text-slate">(freiwillig)</span>
-            </label>
-            <select id="lessonTypeId" name="lessonTypeId" className="field py-2" defaultValue="">
-              <option value="">Alle Angebote</option>
-              {offerings.map((offering) => (
-                <option key={offering.id} value={offering.id}>
-                  {offering.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         <div className="min-w-[9rem]">
           <label className="field-label text-fine" htmlFor="tag">
-            Von (Datum)
+            Erster Tag
           </label>
           <input id="tag" name="tag" type="date" className="field nums py-2" required />
         </div>
 
         <div className="min-w-[9rem]">
           <label className="field-label text-fine" htmlFor="tagBis">
-            Bis <span className="font-normal text-slate">(freiwillig, z. B. Ferien)</span>
+            Letzter Tag <span className="font-normal text-slate">(freiwillig)</span>
           </label>
           <input id="tagBis" name="tagBis" type="date" className="field nums py-2" />
         </div>
 
         <TimePair idPrefix="ausnahme" defaultFrom="08:00" defaultTo="17:00" />
+
+        {offerings.length > 1 && (
+          <div className="min-w-[11rem] flex-1">
+            <label className="field-label text-fine" htmlFor="lessonTypeId">
+              Gilt für
+            </label>
+            <select id="lessonTypeId" name="lessonTypeId" className="field py-2" defaultValue="">
+              <option value="">Alle Angebote</option>
+              {offerings.map((offering) => (
+                <option key={offering.id} value={offering.id}>
+                  nur {offering.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="min-w-[13rem] flex-1">
           <label className="field-label text-fine" htmlFor="notiz">

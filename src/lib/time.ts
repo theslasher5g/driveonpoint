@@ -132,6 +132,12 @@ export function formatDayLong(day: string): string {
   return `${WEEKDAY_LONG[weekday]}, ${date}.\u00a0${MONTHS[month - 1]} ${year}`;
 }
 
+/** "22. September 2026", ohne Wochentag. */
+export function formatDate(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  return `${date}.\u00a0${MONTHS[month - 1]} ${year}`;
+}
+
 /** "Di, 22. Sep." */
 export function formatDayShort(day: string): string {
   const [, month, date] = day.split("-").map(Number);

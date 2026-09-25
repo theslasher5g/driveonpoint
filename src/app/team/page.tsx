@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, asc, count, eq, gte, lte } from "drizzle-orm";
+import { and, asc, count, eq, gte, isNull, lte, or } from "drizzle-orm";
 import { isConfirmed } from "@/lib/booking";
 import { PASSWORD_CHANGE_PAGE, requireUser } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
@@ -132,10 +132,15 @@ export default async function TeamDashboard({
     db
       .selectDistinct({ id: availabilityRules.lessonTypeId })
       .from(availabilityRules)
-      .where(eq(availabilityRules.staffId, user.id))
+      .where(
+        and(
+          eq(availabilityRules.staffId, user.id),
+          or(isNull(availabilityRules.validUntil), gte(availabilityRules.validUntil, today)),
+        ),
+      )
       .then((rows) => rows.map((row) => row.id)),
-    // Kurse laufen nicht über Wochenzeiten, sondern über einzelne
-    // Kurstermine — gedeckt ist ein Kurs, wenn ein künftiger eingetragen ist.
+    // Künftige einzelne Daten: für Kurse die einzige Art, für Fahr- und
+    // Schnupperstunden eine von zweien.
     db
       .selectDistinct({ id: availabilityExceptions.lessonTypeId })
       .from(availabilityExceptions)
@@ -152,7 +157,7 @@ export default async function TeamDashboard({
   const uncovered = ownOfferings.filter((offering) =>
     offering.capacity > 1
       ? !courseDateIds.includes(offering.id)
-      : !coveredOfferingIds.includes(offering.id),
+      : !coveredOfferingIds.includes(offering.id) && !courseDateIds.includes(offering.id),
   );
 
   // Stillstand beim Mailversand oder bei den Cron-Läufen — nur für die, die

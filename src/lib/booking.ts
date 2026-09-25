@@ -15,6 +15,7 @@ import {
   type PricePackage,
   type Promotion,
 } from "./db/schema";
+import { ruleAppliesOn } from "./availability-rules";
 import { subtract, type Interval } from "./intervals";
 import {
   addDays,
@@ -273,9 +274,7 @@ export async function findSlots(options: {
     // wöchentliche Regel dafür lässt sich im Team-Bereich weder sehen noch
     // löschen (siehe Verfügbarkeit) — sie darf also auch nichts anbieten.
     for (const rule of isGroupCourse ? [] : rules) {
-      if (rule.weekday !== weekday) continue;
-      if (rule.validFrom && day < rule.validFrom) continue;
-      if (rule.validUntil && day > rule.validUntil) continue;
+      if (!ruleAppliesOn(rule, day, weekday)) continue;
       plan.get(rule.staffId)?.push({
         start: minutesSinceMidnight(rule.startTime),
         end: minutesSinceMidnight(rule.endTime),

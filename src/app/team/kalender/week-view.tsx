@@ -9,6 +9,7 @@ import {
   staffLessonTypes,
 } from "@/lib/db/schema";
 import { occupiesTime } from "@/lib/booking";
+import { ruleAppliesOn } from "@/lib/availability-rules";
 import { customerHistories, describeHistory, type CustomerHistory } from "@/lib/customer-history";
 import { env } from "@/lib/env";
 import { reviewAskable } from "@/lib/reviews";
@@ -131,6 +132,7 @@ export async function WeekView({
     db
       .select({
         staffId: availabilityRules.staffId,
+        frequency: availabilityRules.frequency,
         weekday: availabilityRules.weekday,
         startTime: availabilityRules.startTime,
         endTime: availabilityRules.endTime,
@@ -224,9 +226,7 @@ export async function WeekView({
             free.set(key, block);
           };
           for (const rule of rules) {
-            if (rule.weekday !== weekday) continue;
-            if (rule.validFrom && day < rule.validFrom) continue;
-            if (rule.validUntil && day > rule.validUntil) continue;
+            if (!ruleAppliesOn(rule, day, weekday)) continue;
             addFree(rule.staffId, rule.startTime.slice(0, 5), rule.endTime.slice(0, 5), rule.lessonName);
           }
           for (const entry of exceptions) {

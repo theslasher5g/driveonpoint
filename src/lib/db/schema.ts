@@ -183,6 +183,17 @@ export const promotions = pgTable(
  * jedes Angebot gleichermassen gelten, obwohl ein Kurs faktisch nur zu
  * bestimmten Zeiten überhaupt stattfindet.
  */
+/**
+ * Wie oft eine Regel gilt. Wöchentlich am Wochentag (der bisherige Plan),
+ * täglich ab dem Startdatum oder monatlich am selben Kalendertag wie das
+ * Startdatum — ein 31. fällt in kürzeren Monaten einfach aus.
+ */
+export const availabilityFrequency = pgEnum("availability_frequency", [
+  "taeglich",
+  "woechentlich",
+  "monatlich",
+]);
+
 export const availabilityRules = pgTable(
   "availability_rules",
   {
@@ -193,7 +204,8 @@ export const availabilityRules = pgTable(
     lessonTypeId: uuid("lesson_type_id")
       .notNull()
       .references(() => lessonTypes.id, { onDelete: "cascade" }),
-    // 0 = Sonntag … 6 = Samstag
+    frequency: availabilityFrequency("frequency").notNull().default("woechentlich"),
+    // 0 = Sonntag … 6 = Samstag; zählt nur bei wöchentlichen Regeln.
     weekday: smallint("weekday").notNull(),
     startTime: time("start_time").notNull(),
     endTime: time("end_time").notNull(),

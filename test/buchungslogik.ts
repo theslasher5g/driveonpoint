@@ -31,6 +31,7 @@ import { markError, markOk } from "@/lib/checks";
 import { cancelCourseSession } from "@/lib/course-cancel";
 import { moveCourseSession } from "@/lib/course-move";
 import { customerHistories, describeHistory } from "@/lib/customer-history";
+import { ruleAppliesOn } from "@/lib/availability-rules";
 import { currentProblems } from "@/lib/monitoring";
 import { requestReviews } from "@/lib/reviews";
 import { deleteExpiredRequests, sendDueReminders } from "@/lib/reminders";
@@ -763,6 +764,56 @@ async function main() {
     message: null,
   });
   check("Umzug auf belegte Zeit abgewiesen", "error" in konflikt, true);
+
+  // ===================================================================
+  console.log("\nSZENARIO S — Wiederkehrende Verfügbarkeit: täglich, wöchentlich, monatlich");
+  // ===================================================================
+  const woche = { frequency: "woechentlich" as const, weekday: 2, validFrom: "2026-10-06", validUntil: null };
+  check(
+    "wöchentlich: nur am Wochentag und erst ab Startdatum",
+    [ruleAppliesOn(woche, "2026-09-29", 2), ruleAppliesOn(woche, "2026-10-06", 2), ruleAppliesOn(woche, "2026-10-07", 3)],
+    [false, true, false],
+  );
+  const monat = { frequency: "monatlich" as const, weekday: 6, validFrom: "2026-01-31", validUntil: "2026-12-31" };
+  check(
+    "monatlich am 31.: März ja, Februar und April fallen aus, nach dem Enddatum nichts",
+    ["2026-03-31", "2026-02-28", "2026-04-30", "2027-01-31"].map((d) => ruleAppliesOn(monat, d, zurichWeekday(d))),
+    [true, false, false, false],
+  );
+
+  // Eine eigene Person ohne andere Zeiten, damit nur die neue Regel zählt.
+  const [personC] = await db
+    .insert(staff)
+    .values({
+      name: `${MARK} Drittperson`,
+      email: `${MARK.toLowerCase()}-c@example.invalid`,
+      passwordHash: "x",
+      calendarToken: `${MARK}-token-c`,
+      role: "bearbeiter",
+    })
+    .returning({ id: staff.id });
+  await addOffering(personC.id, fahrstunde.id);
+  const tagS = addDays(day, 1);
+  const [taeglich] = await db
+    .insert(availabilityRules)
+    .values({
+      staffId: personC.id,
+      lessonTypeId: fahrstunde.id,
+      frequency: "taeglich",
+      weekday: zurichWeekday(tagS),
+      startTime: "14:00",
+      endTime: "15:00",
+      validFrom: tagS,
+      validUntil: addDays(tagS, 2),
+    })
+    .returning({ id: availabilityRules.id });
+  createdRules.push(taeglich.id);
+  const taeglichSlots = await findSlots({ lessonType: fahrstunde, fromDay: tagS, days: 4, staffId: personC.id });
+  check(
+    "täglich: drei Tage 14:00, am vierten nichts mehr",
+    taeglichSlots.map((s) => `${s.day} ${s.time}`),
+    [0, 1, 2].map((offset) => `${addDays(tagS, offset)} 14:00`),
+  );
 
   // ===================================================================
   console.log("\nSZENARIO R — Bitte um Google-Bewertung");

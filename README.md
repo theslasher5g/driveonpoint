@@ -361,13 +361,17 @@ der Nothilfekurs über ein Wochenende: Eingetragen wird die Verfügbarkeit für
 den Kursbeginn, gebucht wird der Platz, und die Folgetermine stehen im
 Kurstext auf der jeweiligen Seite.
 
-**Verfügbarkeit** wird je Angebot eingetragen, nicht nur je Person: Jede
-Mitarbeiterin hat für Nothilfekurs, VKU, Schnupperstunde und Fahrstunde ein
-eigenes Wochenraster, weil sich die Zeiten stark unterscheiden — der VKU
-findet praktisch immer abends statt, Fahrstunden eher tagsüber. Einzelne
-Ausnahmetage (Ferien, ein zusätzlicher Termin) gelten dagegen standardmässig
-für alle Angebote einer Person und lassen sich beim Eintragen optional auf
-ein einzelnes Angebot eingrenzen.
+**Verfügbarkeit** wird je Angebot eingetragen, nicht nur je Person, weil
+sich die Zeiten stark unterscheiden: der VKU findet praktisch immer abends
+statt, Fahrstunden eher tagsüber. Eingetragen wird immer ab einem Datum:
+
+- Kurse (VKU, Nothilfekurs) und Schnupperstunden: einzelne Daten.
+- Fahrstunden: ein Datum, auf Wunsch wiederholt, also jeden Tag, jede Woche
+  am selben Wochentag oder jeden Monat am selben Kalendertag. Ein Enddatum
+  ist freiwillig. Bei „jeden Monat am 31.“ fallen kürzere Monate aus.
+
+Abwesenheiten (Ferien, Arzttermin) gelten standardmässig für alle Angebote
+einer Person und lassen sich auf ein einzelnes Angebot eingrenzen.
 
 **In Dateien, danach neu bauen:**
 

@@ -143,12 +143,14 @@ export default async function HomePage() {
                   href={stage.href}
                   className="group relative grid md:grid-cols-[1fr_auto] items-center gap-3 md:gap-8 py-8 md:py-12 overflow-hidden"
                 >
+                  {/* Die Zahl kommt aus dem CSS (::before), nicht als Text:
+                      sie ist reine Dekoration und bewusst blass. Als Text
+                      prüfte Lighthouse sie auf Kontrast und meldete sie. */}
                   <span
                     aria-hidden="true"
-                    className="font-display pointer-events-none select-none absolute -top-2 right-0 md:right-4 text-[5.5rem] md:text-[9rem] leading-none font-bold text-signal/[0.08] group-hover:text-signal/[0.14] transition-colors"
-                  >
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
+                    data-nummer={String(index + 1).padStart(2, "0")}
+                    className="font-display pointer-events-none select-none absolute -top-2 right-0 md:right-4 text-[5.5rem] md:text-[9rem] leading-none font-bold text-signal/[0.08] group-hover:text-signal/[0.14] transition-colors before:content-[attr(data-nummer)]"
+                  />
 
                   <div className="relative min-w-0">
                     <span className="chip chip-quiet">{stage.step}</span>

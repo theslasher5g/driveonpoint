@@ -114,7 +114,7 @@ export function SiteFooter() {
               */}
               <Link
                 href="/team"
-                className="py-3 -my-3 text-fine text-paper/35 hover:text-paper/80 underline-offset-4 hover:underline"
+                className="py-3 -my-3 text-fine text-paper/55 hover:text-paper/80 underline-offset-4 hover:underline"
               >
                 Team-Login
               </Link>

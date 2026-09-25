@@ -457,6 +457,7 @@ Aufbewahrungspflicht und gehören nicht in diese Anwendung.
 | Sitzungsdiebstahl | Cookie `HttpOnly`, `Secure`, `SameSite=Lax`; in der Datenbank liegt nur der Hash |
 | CSRF | Next prüft bei jeder Server Action die Herkunft der Anfrage |
 | Passwortdiebstahl | argon2id nach OWASP-Empfehlung; Passwörter sind nirgends lesbar |
+| Überlastung durch Seitenaufrufe | Höchstens 300 Anfragen pro Minute und IP-Adresse (src/middleware.ts), darüber Antwort 429; Gesundheitsprüfung, Cron und Kalender-Abo ausgenommen. Nur im Produktionsbetrieb aktiv, zählt pro Serverprozess im Speicher |
 | Rechteausweitung | Jede Seite und jede Aktion prüft die Berechtigung serverseitig, nicht nur die Navigation |
 | Bekannte Sicherheitslücken im Unterbau | Automatische Sicherheitsupdates für Betriebssystem und Docker-Basisabbilder, siehe [Serverpflege](#serverpflege-automatische-updates-und-aufräumlauf) |
 

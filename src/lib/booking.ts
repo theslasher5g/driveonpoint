@@ -202,6 +202,12 @@ export async function findSlots(options: {
    * Fahrlehrperson — dann gilt nur noch: nicht in der Vergangenheit.
    */
   ignoreLeadTime?: boolean;
+  /**
+   * Aufhören, sobald so viele Termine gefunden sind (ganze Tage). Für "der
+   * nächste freie Termin" oder die nächsten paar Kurstermine muss nicht ein
+   * ganzes Jahr durchgerechnet werden — die Seiten sind öffentlich.
+   */
+  enough?: number;
 }): Promise<Slot[]> {
   const { lessonType } = options;
   const fromDay = options.fromDay ?? todayInZurich();
@@ -335,6 +341,9 @@ export async function findSlots(options: {
     !cuts.some((cut) => cut.start < end && cut.end > start);
 
   for (let offset = 0; offset < days; offset += 1) {
+    // Tage laufen aufsteigend: sind genug Termine beisammen, kommt kein
+    // früherer mehr dazu.
+    if (options.enough && new Set(result.map((slot) => slot.startsAt.getTime())).size >= options.enough) break;
     const day = addDays(fromDay, offset);
     const weekday = zurichWeekday(day);
 

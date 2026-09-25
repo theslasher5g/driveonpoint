@@ -4,7 +4,7 @@ import { requirePermission } from "@/lib/auth/guard";
 import { findSlots } from "@/lib/booking";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes, staff } from "@/lib/db/schema";
-import { formatDayLong, todayInZurich, zurichDay, zurichTime } from "@/lib/time";
+import { formatDayLong, formatDayShort, todayInZurich, zurichDay, zurichTime } from "@/lib/time";
 import { RescheduleConfirmForm } from "@/components/reschedule-confirm-form";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +33,8 @@ export default async function VerschiebenPage({ searchParams }: { searchParams: 
       status: bookings.status,
       startsAt: bookings.startsAt,
       endsAt: bookings.endsAt,
+      secondStartsAt: bookings.secondStartsAt,
+      secondEndsAt: bookings.secondEndsAt,
       customerName: bookings.customerName,
       reference: bookings.reference,
       staffName: staff.name,
@@ -94,6 +96,9 @@ export default async function VerschiebenPage({ searchParams }: { searchParams: 
           <p className="nums text-slate">
             Bisher: {formatDayLong(zurichDay(entry.startsAt))}, {zurichTime(entry.startsAt)}–
             {zurichTime(entry.endsAt)} Uhr
+            {entry.secondStartsAt && entry.secondEndsAt
+              ? ` und ${formatDayLong(zurichDay(entry.secondStartsAt))}, ${zurichTime(entry.secondStartsAt)}–${zurichTime(entry.secondEndsAt)} Uhr`
+              : ""}
             {entry.staffName ? ` · ${entry.staffName}` : ""}
           </p>
           <p className="text-fine text-slate mt-1">Referenz {entry.reference}</p>
@@ -113,7 +118,13 @@ export default async function VerschiebenPage({ searchParams }: { searchParams: 
         ) : (
           <div className="mt-10">
             <p className="text-slate max-w-[52ch] mb-5">
-              Neu: <strong className="text-deep">{formatDayLong(chosenSlot.day)}, {chosenSlot.time} Uhr</strong>.
+              Neu:{" "}
+              <strong className="text-deep">
+                {formatDayLong(chosenSlot.day)}, {chosenSlot.time} Uhr
+                {chosenSlot.second &&
+                  ` und ${formatDayLong(chosenSlot.second.day)}, ${chosenSlot.second.time} Uhr`}
+              </strong>
+              .
               Die Kundschaft wird per Mail informiert, falls eine Adresse hinterlegt ist.
             </p>
             <RescheduleConfirmForm id={id} day={chosenSlot.day} time={chosenSlot.time} />
@@ -151,6 +162,11 @@ function SlotPicker({ slots, id }: { slots: Awaited<ReturnType<typeof findSlots>
                   className="nums block bg-paper border border-deep/20 px-3.5 py-2 font-bold hover:bg-signal hover:text-deep hover:border-signal transition-colors"
                 >
                   {slot.time}
+                  {slot.second && (
+                    <span className="block text-fine font-semibold">
+                      und {formatDayShort(slot.second.day)}, {slot.second.time}
+                    </span>
+                  )}
                 </Link>
               </li>
             ))}

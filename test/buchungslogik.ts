@@ -956,6 +956,11 @@ async function main() {
     );
   const wocheV = (n: number) => `${addDays(tagV, n * 7)} 18:00`;
   check("Serie bietet jede Woche einen Kurstermin an", await vkuV(), [wocheV(0), wocheV(1), wocheV(2)]);
+  check(
+    "früher Abbruch: nur der nächste Kurstermin",
+    (await findSlots({ lessonType: vku, fromDay: tagV, days: 366, staffId: personC.id, enough: 1 })).map((s) => s.day),
+    [tagV],
+  );
   // Am zweiten Serientermin hätte die Person auch Fahrstunden-Zeit.
   await addCourseDate(personC.id, fahrstunde.id, addDays(tagV, 7), "18:00", "21:00");
   const fahrV = async () =>

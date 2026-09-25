@@ -22,6 +22,8 @@ export async function bookingForToken(token: string) {
       reference: bookings.reference,
       status: bookings.status,
       startsAt: bookings.startsAt,
+      secondStartsAt: bookings.secondStartsAt,
+      secondEndsAt: bookings.secondEndsAt,
       staffId: bookings.staffId,
       lessonTypeId: bookings.lessonTypeId,
       customerName: bookings.customerName,

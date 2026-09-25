@@ -43,7 +43,7 @@ const REMIND_AFTER = 7 * DAY;
 /** Warum ist dieses Angebot nicht buchbar? Null, wenn es buchbar ist. */
 export async function offeringGap(lessonType: LessonType, now: Date = new Date()): Promise<OfferingGap | null> {
   const horizon = horizonDays(lessonType);
-  const slots = await findSlots({ lessonType, days: horizon });
+  const slots = await findSlots({ lessonType, days: horizon, enough: 1 });
   if (slots.length > 0) return null;
 
   const isCourse = lessonType.capacity > 1;

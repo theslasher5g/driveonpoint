@@ -32,7 +32,7 @@ export async function OfferBookingCard({ slug }: { slug: string }) {
     lessonType = await lessonTypeBySlug(slug);
     if (lessonType?.active) {
       priced = applyPromotions(lessonType, promotions);
-      slot = (await findSlots({ lessonType, days: horizonDays(lessonType) }))[0];
+      slot = (await findSlots({ lessonType, days: horizonDays(lessonType), enough: 1 }))[0];
       // Alles ausgebucht: dann wenigstens der Weg auf die Warteliste.
       if (!slot) fullSession = (await fullCourseSessions(lessonType))[0];
     }

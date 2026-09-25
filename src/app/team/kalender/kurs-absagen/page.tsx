@@ -17,7 +17,11 @@ export default async function KursAbsagenPage({ searchParams }: { searchParams: 
 
   const [entry] = /^[0-9a-f-]{36}$/i.test(id)
     ? await db
-        .select({ lessonTypeId: bookings.lessonTypeId, startsAt: bookings.startsAt })
+        .select({
+          lessonTypeId: bookings.lessonTypeId,
+          startsAt: bookings.startsAt,
+          secondStartsAt: bookings.secondStartsAt,
+        })
         .from(bookings)
         .where(eq(bookings.id, id))
         .limit(1)
@@ -46,6 +50,8 @@ export default async function KursAbsagenPage({ searchParams }: { searchParams: 
           <p className="font-bold text-lg">{lessonType.name}</p>
           <p className="nums text-slate">
             {formatDayLong(day)}, {zurichTime(entry.startsAt)} Uhr
+            {entry.secondStartsAt &&
+              ` und ${formatDayLong(zurichDay(entry.secondStartsAt))}, ${zurichTime(entry.secondStartsAt)} Uhr`}
           </p>
           <p className="mt-3">
             {participants.length} {participants.length === 1 ? "Anmeldung" : "Anmeldungen"}

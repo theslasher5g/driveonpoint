@@ -5,7 +5,7 @@ import { requirePermission } from "@/lib/auth/guard";
 import { courseSession } from "@/lib/course-cancel";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/db/schema";
-import { formatDayLong, todayInZurich, zurichDay, zurichTime } from "@/lib/time";
+import { daysBetween, formatDayLong, todayInZurich, zurichDay, zurichTime } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,11 @@ export default async function KursVerschiebenPage({ searchParams }: { searchPara
 
   const [entry] = /^[0-9a-f-]{36}$/i.test(id)
     ? await db
-        .select({ lessonTypeId: bookings.lessonTypeId, startsAt: bookings.startsAt })
+        .select({
+          lessonTypeId: bookings.lessonTypeId,
+          startsAt: bookings.startsAt,
+          secondStartsAt: bookings.secondStartsAt,
+        })
         .from(bookings)
         .where(eq(bookings.id, id))
         .limit(1)
@@ -47,7 +51,16 @@ export default async function KursVerschiebenPage({ searchParams }: { searchPara
           <p className="font-bold text-lg">{lessonType.name}</p>
           <p className="nums text-slate">
             Bisher: {formatDayLong(day)}, {time} Uhr
+            {entry.secondStartsAt &&
+              ` und ${formatDayLong(zurichDay(entry.secondStartsAt))}, ${zurichTime(entry.secondStartsAt)} Uhr`}
           </p>
+          {entry.secondStartsAt && (
+            <p className="text-fine text-slate mt-1">
+              Der 2. Kurstag wandert im selben Abstand mit (
+              {daysBetween(day, zurichDay(entry.secondStartsAt))}{" "}
+              {daysBetween(day, zurichDay(entry.secondStartsAt)) === 1 ? "Tag" : "Tage"} später).
+            </p>
+          )}
           <p className="mt-3">
             {participants.length} {participants.length === 1 ? "Anmeldung" : "Anmeldungen"}
             {waiting.length > 0 && `, ${waiting.length} auf der Warteliste`}

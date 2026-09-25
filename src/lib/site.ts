@@ -128,8 +128,8 @@ export const site = {
     },
     {
       title: "Verkehrskundeunterricht",
-      body: "Vier Abende zu je zwei Lektionen. Obligatorisch, bevor du zur praktischen Prüfung antreten darfst.",
-      meta: "8 Lektionen an 4 Abenden",
+      body: "Zwei Abende zu je vier Lektionen. Obligatorisch, bevor du zur praktischen Prüfung antreten darfst.",
+      meta: "8 Lektionen an 2 Abenden",
     },
     {
       title: "Fahrstunden",

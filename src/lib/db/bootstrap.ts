@@ -23,10 +23,9 @@ const LOCK_KEY = 4_919_233_071;
 /**
  * Die buchbaren Angebote mit den Preisen der bestehenden Seite.
  *
- * Bei den Kursen ist `durationMinutes` die Länge des ersten Termins, der im
- * Kalender erscheint — nicht die Gesamtdauer des Kurses. Der VKU läuft über
- * vier Abende, der Nothilfekurs über ein Wochenende; gebucht wird jeweils der
- * Kursplatz, und die Folgetermine stehen im Kurstext.
+ * Bei den Kursen ist `durationMinutes` nur ein Vorschlag fürs Formular: die
+ * Zeiten kommen aus dem eingetragenen Kurstermin, auf Wunsch mit 2. Kurstag
+ * (VKU an zwei Abenden, Nothilfekurs Freitag und Samstag oder ein ganzer Tag).
  */
 const OFFERS = [
   {
@@ -44,7 +43,7 @@ const OFFERS = [
   {
     slug: "vku",
     name: "Verkehrskundeunterricht",
-    shortDescription: "8 Lektionen an 4 Abenden, inklusive Unterlagen",
+    shortDescription: "8 Lektionen an 2 Abenden, inklusive Unterlagen",
     durationMinutes: 180,
     bufferMinutes: 0,
     priceRappen: 18000,

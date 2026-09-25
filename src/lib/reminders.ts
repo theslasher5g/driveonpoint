@@ -46,6 +46,9 @@ export async function sendDueReminders(): Promise<number> {
       reference: bookings.reference,
       cancelToken: bookings.cancelToken,
       startsAt: bookings.startsAt,
+      endsAt: bookings.endsAt,
+      secondStartsAt: bookings.secondStartsAt,
+      secondEndsAt: bookings.secondEndsAt,
       lessonTypeId: bookings.lessonTypeId,
       customerName: bookings.customerName,
       customerEmail: bookings.customerEmail,
@@ -79,6 +82,16 @@ export async function sendDueReminders(): Promise<number> {
         durationMinutes: offering?.durationMinutes ?? null,
         // Ohne Angebot (gelöscht) im Zweifel als Einzellektion behandeln.
         capacity: offering?.capacity ?? 1,
+        // Kurse: mit Ende und 2. Kurstag.
+        ...((offering?.capacity ?? 1) > 1
+          ? {
+              endsAt: entry.endsAt,
+              second:
+                entry.secondStartsAt && entry.secondEndsAt
+                  ? { startsAt: entry.secondStartsAt, endsAt: entry.secondEndsAt }
+                  : null,
+            }
+          : {}),
       });
       sent += 1;
     } catch (error) {

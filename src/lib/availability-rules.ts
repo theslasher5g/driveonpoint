@@ -108,3 +108,28 @@ export function nextOccurrences(rule: RuleDates, from: string, limit: number): s
   }
   return days;
 }
+
+/** Der 2. Kurstag liegt höchstens so viele Tage nach dem ersten. */
+export const SECOND_DAY_MAX_OFFSET = 14;
+
+export type SecondPartSource = {
+  secondDayOffset: number | null;
+  secondStartTime: string | null;
+  secondEndTime: string | null;
+};
+
+export type SecondPart = { day: string; startTime: string; endTime: string };
+
+/**
+ * Der 2. Kurstag zu einem Kurstermin am Tag `day` — etwa VKU Montag und
+ * Mittwoch (2 Tage später) oder Nothelfer Freitag und Samstag (1 Tag).
+ * Null, wenn der Kurs an einem Tag stattfindet.
+ */
+export function secondPartOf(source: SecondPartSource, day: string): SecondPart | null {
+  if (!source.secondDayOffset || !source.secondStartTime || !source.secondEndTime) return null;
+  return {
+    day: addDays(day, source.secondDayOffset),
+    startTime: source.secondStartTime.slice(0, 5),
+    endTime: source.secondEndTime.slice(0, 5),
+  };
+}

@@ -61,6 +61,8 @@ export async function GET(
       reference: bookings.reference,
       startsAt: bookings.startsAt,
       endsAt: bookings.endsAt,
+      secondStartsAt: bookings.secondStartsAt,
+      secondEndsAt: bookings.secondEndsAt,
       status: bookings.status,
       updatedAt: bookings.updatedAt,
       lessonName: lessonTypes.name,
@@ -80,21 +82,35 @@ export async function GET(
       ),
     );
 
-  const entries: CalendarEntry[] = rows.map((row) => {
+  const entries: CalendarEntry[] = rows.flatMap((row) => {
     const firstName = row.customerName?.trim().split(/\s+/)[0];
     const contact = [firstName, row.customerPhone].filter(Boolean).join(" · ");
+    const two = !!(row.secondStartsAt && row.secondEndsAt);
 
-    return {
+    const entry = {
       uid: `${row.id}@${site.domain}`,
       startsAt: row.startsAt,
       endsAt: row.endsAt,
-      title: `${row.lessonName ?? "Termin"} — ${row.reference}`,
+      title: `${row.lessonName ?? "Termin"}${two ? ", 1. Kurstag" : ""} — ${row.reference}`,
       description: contact
         ? `${contact}\nWeitere Details im Team-Bereich von ${site.name}.`
         : `Details im Team-Bereich von ${site.name}.`,
       cancelled: row.status === "abgesagt",
       updatedAt: row.updatedAt,
     };
+    // Ein Kurs über zwei Tage ergibt zwei Einträge im Kalender.
+    return two
+      ? [
+          entry,
+          {
+            ...entry,
+            uid: `${row.id}-2@${site.domain}`,
+            startsAt: row.secondStartsAt!,
+            endsAt: row.secondEndsAt!,
+            title: `${row.lessonName ?? "Termin"}, 2. Kurstag — ${row.reference}`,
+          },
+        ]
+      : [entry];
   });
 
   return new Response(buildCalendar(`${site.name} — ${owner.name}`, entries), {

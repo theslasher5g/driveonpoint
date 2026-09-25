@@ -42,25 +42,77 @@ function meetingPointLocation(capacity: number): string | undefined {
 }
 
 /**
+ * Kurse dauern, wie sie eingetragen sind, und gehen manchmal über zwei Tage
+ * (VKU an zwei Abenden, Nothelfer Freitag und Samstag). Ohne diese Angaben
+ * gilt die feste Dauer des Angebots, wie bei einer Fahrstunde.
+ */
+export type CourseParts = {
+  endsAt?: Date | null;
+  second?: { startsAt: Date; endsAt: Date } | null;
+};
+
+/** "Montag, 28. September 2026, 18:00–21:00 Uhr (1. Kurstag)" usw. */
+function whenLines(startsAt: Date, parts: CourseParts = {}): string[] {
+  const span = (from: Date, to: Date) =>
+    `${formatDayLong(zurichDay(from))}, ${zurichTime(from)}–${zurichTime(to)} Uhr`;
+  const first = parts.endsAt
+    ? span(startsAt, parts.endsAt)
+    : `${formatDayLong(zurichDay(startsAt))}, ${zurichTime(startsAt)} Uhr`;
+  if (!parts.second) return [first];
+  return [`${first} (1. Kurstag)`, `${span(parts.second.startsAt, parts.second.endsAt)} (2. Kurstag)`];
+}
+
+/** "45 Minuten" oder "2 Kurstage" — für die Zeile "Dauer". */
+function durationLabel(startsAt: Date, durationMinutes: number, parts: CourseParts = {}): string {
+  if (parts.second) return "2 Kurstage";
+  const minutes = parts.endsAt
+    ? Math.round((parts.endsAt.getTime() - startsAt.getTime()) / 60_000)
+    : durationMinutes;
+  return minutes % 60 === 0 && minutes >= 120 ? `${minutes / 60} Stunden` : `${minutes} Minuten`;
+}
+
+/**
  * Kalenderdatei für die Bestätigung. Die UID hängt an der Referenz, damit
  * ein zweites Öffnen desselben Anhangs den Eintrag ersetzt statt ihn zu
  * verdoppeln.
  */
 function calendarAttachment(
-  appointments: { day: string; time: string; reference: string; cancelToken: string }[],
+  appointments: ({ day: string; time: string; reference: string; cancelToken: string } & CourseParts)[],
   lessonName: string,
   durationMinutes: number,
   location: string | undefined,
 ): NonNullable<Mail["attachments"]> {
   const now = new Date();
+  // Ein Kurs über zwei Tage ergibt zwei Einträge im Kalender.
+  const parts = appointments.flatMap((entry) => {
+    const startsAt = zurichToInstant(entry.day, entry.time);
+    const first = {
+      entry,
+      uid: `${entry.reference}@${site.domain}`,
+      startsAt,
+      endsAt: entry.endsAt ?? new Date(startsAt.getTime() + durationMinutes * 60_000),
+      suffix: entry.second ? " (1. Kurstag)" : "",
+    };
+    return entry.second
+      ? [
+          first,
+          {
+            entry,
+            uid: `${entry.reference}-2@${site.domain}`,
+            startsAt: entry.second.startsAt,
+            endsAt: entry.second.endsAt,
+            suffix: " (2. Kurstag)",
+          },
+        ]
+      : [first];
+  });
   const ics = buildInvite(
-    appointments.map((entry) => {
-      const startsAt = zurichToInstant(entry.day, entry.time);
+    parts.map(({ entry, uid, startsAt, endsAt, suffix }) => {
       return {
-        uid: `${entry.reference}@${site.domain}`,
+        uid,
         startsAt,
-        endsAt: new Date(startsAt.getTime() + durationMinutes * 60_000),
-        title: `${lessonName} — ${site.name}`,
+        endsAt,
+        title: `${lessonName}${suffix} — ${site.name}`,
         description: [
           `Referenz ${entry.reference}`,
           `Verschieben bis 24 Stunden vorher: ${env.appUrl}/verschieben/${entry.cancelToken}`,
@@ -104,8 +156,10 @@ export async function sendBookingConfirmation(details: {
   priceRappen: number;
   /** Ein Platz oder mehrere — entscheidet zwischen Treffpunkt und Kursort. */
   capacity: number;
-}): Promise<void> {
-  const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
+} & CourseParts): Promise<void> {
+  const startsAt = zurichToInstant(details.day, details.time);
+  const when = whenLines(startsAt, details);
+  const duration = durationLabel(startsAt, details.durationMinutes, details);
   const cancelUrl = `${env.appUrl}/absagen/${details.cancelToken}`;
   const moveUrl = `${env.appUrl}/verschieben/${details.cancelToken}`;
 
@@ -115,7 +169,8 @@ export async function sendBookingConfirmation(details: {
     `Dein Termin bei ${site.name} ist eingetragen:`,
     "",
     details.lessonName,
-    `${when} (${details.durationMinutes} Minuten)`,
+    ...when,
+    `Dauer: ${duration}`,
     `Preis: CHF ${formatPrice(details.priceRappen)}`,
     `Referenz: ${details.reference}`,
     "",
@@ -137,9 +192,9 @@ export async function sendBookingConfirmation(details: {
   <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;width:38%;">Angebot</td>
       <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${escapeHtml(details.lessonName)}</td></tr>
   <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Termin</td>
-      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${escapeHtml(when)}</td></tr>
+      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${when.map(escapeHtml).join("<br>")}</td></tr>
   <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Dauer</td>
-      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;">${details.durationMinutes} Minuten</td></tr>
+      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;">${escapeHtml(duration)}</td></tr>
   <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Preis</td>
       <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;">CHF ${formatPrice(details.priceRappen)}</td></tr>
   <tr><td style="padding:10px 0;font-size:14px;color:#515052;">Referenz</td>
@@ -184,12 +239,12 @@ export async function sendNewBookingNotification(details: {
   customerEmail: string;
   customerPhone: string;
   customerNote?: string;
-}): Promise<void> {
-  const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
+} & CourseParts): Promise<void> {
+  const when = whenLines(zurichToInstant(details.day, details.time), details);
 
   const text = [
     `Neue Online-Buchung: ${details.lessonName}`,
-    `${when}`,
+    ...when,
     "",
     `Name: ${details.customerName}`,
     `Telefon: ${details.customerPhone}`,
@@ -205,7 +260,7 @@ export async function sendNewBookingNotification(details: {
   <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;width:38%;">Angebot</td>
       <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${escapeHtml(details.lessonName)}</td></tr>
   <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Termin</td>
-      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${escapeHtml(when)}</td></tr>
+      <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-weight:700;">${when.map(escapeHtml).join("<br>")}</td></tr>
   <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Name</td>
       <td style="padding:10px 0;border-bottom:1px solid #D6D6D2;">${escapeHtml(details.customerName)}</td></tr>
   <tr><td style="padding:10px 0;border-bottom:1px solid #D6D6D2;font-size:14px;color:#515052;">Telefon</td>
@@ -504,14 +559,14 @@ export async function sendConfirmationRequest(details: {
   name: string;
   confirmToken: string;
   lessonName: string;
-  appointments: { day: string; time: string }[];
+  appointments: ({ day: string; time: string } & CourseParts)[];
   expiresMinutes: number;
 }): Promise<void> {
   const confirmUrl = `${env.appUrl}/bestaetigen/${details.confirmToken}`;
   const sorted = [...details.appointments].sort((a, b) =>
     (a.day + a.time).localeCompare(b.day + b.time),
   );
-  const whenLines = sorted.map((entry) => `${formatDayLong(entry.day)}, ${entry.time} Uhr`);
+  const lines = sorted.flatMap((entry) => whenLines(zurichToInstant(entry.day, entry.time), entry));
   const several = sorted.length > 1;
 
   const text = [
@@ -522,7 +577,7 @@ export async function sendConfirmationRequest(details: {
       : `Bitte bestätige deinen Termin bei ${site.name}:`,
     "",
     details.lessonName,
-    ...whenLines,
+    ...lines,
     "",
     confirmUrl,
     "",
@@ -535,7 +590,7 @@ export async function sendConfirmationRequest(details: {
     several ? "Bitte bestätige deine Termine" : "Bitte bestätige deinen Termin",
     `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
 <p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
-<p style="margin:0 0 20px;">${whenLines.map(escapeHtml).join("<br>")}</p>
+<p style="margin:0 0 20px;">${lines.map(escapeHtml).join("<br>")}</p>
 <p style="margin:0 0 20px;">
   <a href="${escapeHtml(confirmUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;">${several ? "Termine bestätigen" : "Termin bestätigen"}</a>
 </p>
@@ -568,10 +623,14 @@ export async function sendBookingReminder(details: {
   durationMinutes: number | null;
   /** Ein Platz oder mehrere — entscheidet zwischen Treffpunkt und Kursort. */
   capacity: number;
-}): Promise<void> {
+} & CourseParts): Promise<void> {
   const day = zurichDay(details.startsAt);
   const time = zurichTime(details.startsAt);
-  const when = `${formatDayLong(day)}, ${time} Uhr`;
+  const when = whenLines(details.startsAt, details);
+  const duration =
+    details.durationMinutes || details.endsAt || details.second
+      ? durationLabel(details.startsAt, details.durationMinutes ?? 0, details)
+      : null;
   const cancelUrl = `${env.appUrl}/absagen/${details.cancelToken}`;
   const moveUrl = `${env.appUrl}/verschieben/${details.cancelToken}`;
   const deadline = new Date(details.startsAt.getTime() - 24 * 60 * 60 * 1000);
@@ -591,7 +650,8 @@ export async function sendBookingReminder(details: {
     `Kurze Erinnerung an deinen Termin bei ${site.name}:`,
     "",
     details.lessonName,
-    `${when}${details.durationMinutes ? ` (${details.durationMinutes} Minuten)` : ""}`,
+    ...when,
+    ...(duration ? [`Dauer: ${duration}`] : []),
     `Referenz: ${details.reference}`,
     "",
     ...meetingPointLines(details.capacity),
@@ -607,7 +667,7 @@ export async function sendBookingReminder(details: {
     "Erinnerung an deinen Termin",
     `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
 <p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
-<p style="margin:0 0 20px;">${escapeHtml(when)}${details.durationMinutes ? ` · ${details.durationMinutes} Minuten` : ""}<br><span style="color:#515052;font-size:14px;">Referenz ${escapeHtml(details.reference)}</span></p>
+<p style="margin:0 0 20px;">${when.map(escapeHtml).join("<br>")}${duration ? ` · ${escapeHtml(duration)}` : ""}<br><span style="color:#515052;font-size:14px;">Referenz ${escapeHtml(details.reference)}</span></p>
 ${meetingPointHtml(details.capacity)}
 <p style="margin:0 0 ${freeCancellation ? "12" : "0"}px;color:#515052;">${escapeHtml(cancelHint)}</p>
 ${
@@ -831,8 +891,10 @@ export async function sendRescheduleConfirmation(details: {
   byCustomer: boolean;
   /** Freitext aus dem Team, etwa der Grund (nur beim Verschieben durch die Fahrschule). */
   message?: string | null;
-}): Promise<void> {
-  const when = `${formatDayLong(details.day)}, ${details.time} Uhr`;
+} & CourseParts): Promise<void> {
+  const newStartsAt = zurichToInstant(details.day, details.time);
+  const when = whenLines(newStartsAt, details).join(" und ");
+  const duration = durationLabel(newStartsAt, details.durationMinutes, details);
   const before = `${formatDayLong(zurichDay(details.previousStartsAt))}, ${zurichTime(details.previousStartsAt)} Uhr`;
   const cancelUrl = `${env.appUrl}/absagen/${details.cancelToken}`;
   const moveUrl = `${env.appUrl}/verschieben/${details.cancelToken}`;
@@ -849,7 +911,7 @@ export async function sendRescheduleConfirmation(details: {
     intro,
     "",
     details.lessonName,
-    `Neu: ${when} (${details.durationMinutes} Minuten)`,
+    `Neu: ${when} (${duration})`,
     `Bisher: ${before}`,
     `Referenz: ${details.reference}`,
     ...(details.message ? ["", details.message] : []),

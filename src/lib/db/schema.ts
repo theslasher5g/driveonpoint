@@ -209,6 +209,11 @@ export const availabilityRules = pgTable(
     weekday: smallint("weekday").notNull(),
     startTime: time("start_time").notNull(),
     endTime: time("end_time").notNull(),
+    // Kurse über zwei Tage (VKU an zwei Abenden, Nothelfer Freitag und
+    // Samstag): der 2. Kurstag so viele Tage später, mit eigener Zeit.
+    secondDayOffset: smallint("second_day_offset"),
+    secondStartTime: time("second_start_time"),
+    secondEndTime: time("second_end_time"),
     validFrom: date("valid_from"),
     validUntil: date("valid_until"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -241,6 +246,10 @@ export const availabilityExceptions = pgTable(
     day: date("day").notNull(),
     startTime: time("start_time").notNull(),
     endTime: time("end_time").notNull(),
+    // 2. Kurstag eines Kurstermins, wie bei den Regeln.
+    secondDayOffset: smallint("second_day_offset"),
+    secondStartTime: time("second_start_time"),
+    secondEndTime: time("second_end_time"),
     // true = zusätzlich verfügbar, false = an diesem Tag blockiert
     available: boolean("available").notNull(),
     // Ein einzelner Termin einer Kursserie fällt aus (abgesagt oder auf ein
@@ -265,6 +274,9 @@ export const bookings = pgTable(
     }),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    // 2. Kurstag bei Kursen über zwei Tage; sonst leer.
+    secondStartsAt: timestamp("second_starts_at", { withTimezone: true }),
+    secondEndsAt: timestamp("second_ends_at", { withTimezone: true }),
     status: bookingStatus("status").notNull().default("angefragt"),
 
     // Personendaten. Werden durch den Aufräumlauf geleert, sobald

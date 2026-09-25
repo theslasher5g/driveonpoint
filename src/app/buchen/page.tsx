@@ -17,7 +17,7 @@ import { COURSE_SESSIONS_SHOWN } from "@/lib/course-horizon";
 import type { LessonType } from "@/lib/db/schema";
 import { withSoftHyphens } from "@/lib/hyphenate";
 import { site } from "@/lib/site";
-import { formatDayLong, formatDayShort, formatPrice, todayInZurich } from "@/lib/time";
+import { formatDayLong, formatDayShort, formatPrice, todayInZurich, zurichTime } from "@/lib/time";
 import { fullCourseSessions, type FullSession } from "@/lib/waitlist";
 
 export const dynamic = "force-dynamic";
@@ -133,11 +133,23 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
     const chosen = slots.find((slot) => slot.day === params.tag && slot.time === params.zeit);
 
     if (chosen) {
+      const isCourse = lessonType.capacity > 1;
+      // Kurse: mit Zeitspanne und, falls es einen gibt, dem 2. Kurstag.
+      const firstDay = isCourse
+        ? `${formatDayLong(chosen.day)}, ${chosen.time}–${zurichTime(chosen.endsAt)} Uhr`
+        : `${formatDayLong(chosen.day)}, ${chosen.time} Uhr`;
+      const secondDay = chosen.second
+        ? `${formatDayLong(chosen.second.day)}, ${chosen.second.time}–${chosen.second.endTime} Uhr`
+        : null;
       return (
         <>
           <PageHeader
             title="Deine Angaben"
-            lead={`${lessonType.name} am ${formatDayLong(chosen.day)} um ${chosen.time} Uhr. Jetzt noch deine Angaben.`}
+            lead={
+              secondDay
+                ? `${lessonType.name} an zwei Tagen: ${firstDay} und ${secondDay}. Jetzt noch deine Angaben.`
+                : `${lessonType.name} am ${formatDayLong(chosen.day)} um ${chosen.time} Uhr. Jetzt noch deine Angaben.`
+            }
           />
           <section className="shell band">
             <div className="lane max-w-2xl">
@@ -145,10 +157,18 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
                 <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
                   <div>
                     <p className="font-bold text-lg">{lessonType.name}</p>
-                    <p className="nums text-slate">
-                      {formatDayLong(chosen.day)}, {chosen.time} Uhr ·{" "}
-                      {lessonType.durationMinutes} Minuten
-                    </p>
+                    {secondDay ? (
+                      <ul className="nums text-slate">
+                        <li>{firstDay} (1. Kurstag)</li>
+                        <li>{secondDay} (2. Kurstag)</li>
+                      </ul>
+                    ) : isCourse ? (
+                      <p className="nums text-slate">{firstDay}</p>
+                    ) : (
+                      <p className="nums text-slate">
+                        {firstDay} · {lessonType.durationMinutes} Minuten
+                      </p>
+                    )}
                   </div>
                   <p className="nums font-display text-2xl font-bold text-signal-ink">
                     CHF {formatPrice(priced.finalRappen)}
@@ -239,7 +259,24 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
   );
 }
 
-type ListEntry = { day: string; time: string; seatsLeft: number | null };
+type ListEntry = {
+  day: string;
+  time: string;
+  /** Kurse: Ende des (1.) Kurstags. */
+  endTime: string | null;
+  second: { day: string; startTime: string; endTime: string } | null;
+  seatsLeft: number | null;
+};
+
+/** "und Mi, 30. Sep., 18:00–21:00" — der 2. Kurstag unter der Uhrzeit. */
+function SecondDay({ second }: { second: ListEntry["second"] }) {
+  if (!second) return null;
+  return (
+    <span className="block text-fine font-semibold">
+      und {formatDayShort(second.day)}, {second.startTime}–{second.endTime}
+    </span>
+  );
+}
 
 function SlotList({
   slots,
@@ -263,8 +300,20 @@ function SlotList({
   // Ausgebuchte Kurstermine (seatsLeft null) stehen zwischen den freien,
   // in zeitlicher Reihenfolge.
   const all: ListEntry[] = [
-    ...slots.map((slot) => ({ day: slot.day, time: slot.time, seatsLeft: slot.seatsLeft })),
-    ...full.map((session) => ({ day: session.day, time: session.time, seatsLeft: null })),
+    ...slots.map((slot) => ({
+      day: slot.day,
+      time: slot.time,
+      endTime: isCourse ? zurichTime(slot.endsAt) : null,
+      second: slot.second ? { day: slot.second.day, startTime: slot.second.time, endTime: slot.second.endTime } : null,
+      seatsLeft: slot.seatsLeft,
+    })),
+    ...full.map((session) => ({
+      day: session.day,
+      time: session.time,
+      endTime: session.endTime,
+      second: session.second,
+      seatsLeft: null,
+    })),
   ].sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
   // Kurse: nur die nächsten paar, sonst stünde eine wöchentliche Serie mit
   // einem ganzen Jahr Terminen da. Spätere rücken nach.
@@ -295,6 +344,8 @@ function SlotList({
                     className="nums block rounded-[var(--radius-control)] border border-dashed border-deep/25 px-4 py-2.5 font-bold text-slate hover:border-deep hover:text-deep transition-colors"
                   >
                     {slot.time}
+                    {slot.endTime && `–${slot.endTime}`}
+                    <SecondDay second={slot.second} />
                     <span className="block text-fine font-normal">Ausgebucht, Warteliste</span>
                   </Link>
                 </li>
@@ -305,6 +356,8 @@ function SlotList({
                   className="nums block rounded-[var(--radius-control)] bg-concrete px-4 py-2.5 font-bold hover:bg-signal hover:text-deep transition-colors"
                 >
                   {slot.time}
+                  {slot.endTime && `–${slot.endTime}`}
+                  <SecondDay second={slot.second} />
                   {isCourse && (
                     <span className="block text-fine font-normal opacity-75">
                       {slot.seatsLeft} {slot.seatsLeft === 1 ? "Platz" : "Plätze"}

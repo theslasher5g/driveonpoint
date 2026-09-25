@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, gt, gte, inArray, isNull, lte, ne, or } from "drizzle-orm";
-import { ruleAppliesOn } from "./availability-rules";
+import { ruleAppliesOn, secondPartOf, type SecondPart, type SecondPartSource } from "./availability-rules";
 import { db } from "./db";
 import {
   availabilityExceptions,
@@ -29,6 +29,8 @@ export type CourseWindow = {
   startTime: string;
   endTime: string;
   bufferMinutes: number;
+  /** 2. Kurstag, falls der Kurs über zwei Tage geht. */
+  second: SecondPart | null;
 };
 
 type Query = {
@@ -70,6 +72,9 @@ export async function courseWindows(query: Query): Promise<CourseWindow[]> {
         day: availabilityExceptions.day,
         startTime: availabilityExceptions.startTime,
         endTime: availabilityExceptions.endTime,
+        secondDayOffset: availabilityExceptions.secondDayOffset,
+        secondStartTime: availabilityExceptions.secondStartTime,
+        secondEndTime: availabilityExceptions.secondEndTime,
         available: availabilityExceptions.available,
         cancelledSession: availabilityExceptions.cancelledSession,
       })
@@ -112,7 +117,14 @@ export async function courseWindows(query: Query): Promise<CourseWindow[]> {
   );
 
   const windows = new Map<string, CourseWindow>();
-  const add = (staffId: string, lessonTypeId: string, day: string, startTime: string, endTime: string) => {
+  const add = (
+    staffId: string,
+    lessonTypeId: string,
+    day: string,
+    startTime: string,
+    endTime: string,
+    source: SecondPartSource,
+  ) => {
     const start = startTime.slice(0, 5);
     const id = key(staffId, lessonTypeId, day, start);
     if (cancelled.has(id) || windows.has(id)) return;
@@ -124,18 +136,19 @@ export async function courseWindows(query: Query): Promise<CourseWindow[]> {
       startTime: start,
       endTime: endTime.slice(0, 5),
       bufferMinutes: buffer.get(lessonTypeId) ?? 0,
+      second: secondPartOf(source, day),
     });
   };
 
   for (const row of dates) {
-    if (row.available) add(row.staffId, row.lessonTypeId!, row.day, row.startTime, row.endTime);
+    if (row.available) add(row.staffId, row.lessonTypeId!, row.day, row.startTime, row.endTime, row);
   }
   if (rules.length > 0) {
     for (let day = query.fromDay; day <= query.untilDay; day = addDays(day, 1)) {
       const weekday = zurichWeekday(day);
       for (const rule of rules) {
         if (ruleAppliesOn(rule, day, weekday)) {
-          add(rule.staffId, rule.lessonTypeId, day, rule.startTime, rule.endTime);
+          add(rule.staffId, rule.lessonTypeId, day, rule.startTime, rule.endTime, rule);
         }
       }
     }
@@ -230,6 +243,9 @@ export async function keepBookedSessions(
       day,
       startTime: time,
       endTime: rule.endTime,
+      secondDayOffset: rule.secondDayOffset,
+      secondStartTime: rule.secondStartTime,
+      secondEndTime: rule.secondEndTime,
       available: true,
     })),
   );

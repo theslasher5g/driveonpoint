@@ -37,7 +37,7 @@ import { currentProblems } from "@/lib/monitoring";
 import { offeringGap, shouldAlert } from "@/lib/offering-gaps";
 import { requestReviews } from "@/lib/reviews";
 import { deleteExpiredRequests, sendDueReminders } from "@/lib/reminders";
-import { addDays, todayInZurich, zurichDay, zurichToInstant, zurichWeekday } from "@/lib/time";
+import { addDays, todayInZurich, zurichDay, zurichTime, zurichToInstant, zurichWeekday } from "@/lib/time";
 import { fullCourseSessions, isSessionFull, notifyWaitlist, removeFromWaitlist } from "@/lib/waitlist";
 
 const MARK = "PRUEFSTAND";
@@ -987,6 +987,127 @@ async function main() {
     "Serie gelöscht: belegter Termin bleibt als einzelnes Datum, der verschobene auch",
     await vkuV(),
     [wocheV(0), `${addDays(tagV, 15)} 18:00`],
+  );
+
+  // ===================================================================
+  console.log("\nSZENARIO W — Kurs über zwei Tage (VKU an zwei Abenden)");
+  // ===================================================================
+  const tagW = addDays(day, 30);
+  const [zweiTage] = await db
+    .insert(availabilityExceptions)
+    .values({
+      staffId: personC.id,
+      lessonTypeId: vku.id,
+      day: tagW,
+      startTime: "18:00",
+      endTime: "21:30",
+      secondDayOffset: 2,
+      secondStartTime: "18:00",
+      secondEndTime: "21:30",
+      available: true,
+    })
+    .returning({ id: availabilityExceptions.id });
+  createdCourseDates.push(zweiTage.id);
+  const vkuW = (await findSlots({ lessonType: vku, fromDay: tagW, days: 1, staffId: personC.id }))[0];
+  check(
+    "Kurstermin mit 2. Kurstag zwei Tage später, Ende wie eingetragen",
+    vkuW && [vkuW.time, zurichTime(vkuW.endsAt), vkuW.second?.day, vkuW.second?.time, vkuW.second?.endTime],
+    ["18:00", "21:30", addDays(tagW, 2), "18:00", "21:30"],
+  );
+
+  await addCourseDate(personC.id, fahrstunde.id, addDays(tagW, 2), "17:00", "22:00");
+  const fahrW = await findSlots({ lessonType: fahrstunde, fromDay: addDays(tagW, 2), days: 1, staffId: personC.id });
+  // Kurs 18:00–21:30 samt 15 Minuten Pause: frei bleibt nur, was vorher
+  // endet oder nachher beginnt.
+  check(
+    "2. Kurstag sperrt Fahrstunden am Abend",
+    fahrW.filter((s) => s.endsAt > zurichToInstant(addDays(tagW, 2), "17:45") && s.startsAt < zurichToInstant(addDays(tagW, 2), "21:45")).length,
+    0,
+  );
+
+  // Wie die Buchungsseite: Ende und 2. Kurstag kommen aus dem Kurstermin.
+  const erstellt = await createBooking({
+    lessonType: vku,
+    staffId: personC.id,
+    startsAt: vkuW.startsAt,
+    endsAt: vkuW.endsAt,
+    second: vkuW.second,
+    customerName: `${MARK} W1`,
+    customerEmail: "",
+    customerPhone: "079 000 00 00",
+    priceRappen: 0,
+    retentionDays: 30,
+  });
+  const anmeldungW = "reference" in erstellt ? { ok: true, message: erstellt.reference } : { ok: false, message: "" };
+  check("Anmeldung für den zweitägigen Kurs", anmeldungW.ok, true);
+  const [gespeichert] = await db
+    .select({ second: bookings.secondStartsAt, secondEnd: bookings.secondEndsAt, endsAt: bookings.endsAt })
+    .from(bookings)
+    .where(eq(bookings.reference, anmeldungW.message));
+  check(
+    "Buchung speichert beide Kurstage",
+    [zurichTime(gespeichert.endsAt), gespeichert.second && zurichDay(gespeichert.second), gespeichert.secondEnd && zurichTime(gespeichert.secondEnd)],
+    ["21:30", addDays(tagW, 2), "21:30"],
+  );
+
+  const fahrImZweiten = await createBooking({
+    lessonType: fahrstunde,
+    staffId: personC.id,
+    startsAt: zurichToInstant(addDays(tagW, 2), "19:00"),
+    customerName: `${MARK} W2`,
+    customerEmail: "",
+    customerPhone: "079 000 00 00",
+    priceRappen: 0,
+    retentionDays: 30,
+  });
+  check("Fahrstunde am 2. Kurstag wird auch in der letzten Prüfung abgewiesen", "error" in fahrImZweiten, true);
+
+  // Ist der 2. Kurstag schon belegt, wird der Kurs gar nicht angeboten.
+  const tagW2 = addDays(tagW, 7);
+  const [zweiTage2] = await db
+    .insert(availabilityExceptions)
+    .values({
+      staffId: personC.id,
+      lessonTypeId: vku.id,
+      day: tagW2,
+      startTime: "18:00",
+      endTime: "21:30",
+      secondDayOffset: 2,
+      secondStartTime: "18:00",
+      secondEndTime: "21:30",
+      available: true,
+    })
+    .returning({ id: availabilityExceptions.id });
+  createdCourseDates.push(zweiTage2.id);
+  await createBooking({
+    lessonType: fahrstunde,
+    staffId: personC.id,
+    startsAt: zurichToInstant(addDays(tagW2, 2), "19:00"),
+    customerName: `${MARK} W3`,
+    customerEmail: "",
+    customerPhone: "079 000 00 00",
+    priceRappen: 0,
+    retentionDays: 30,
+  });
+  const vkuW2 = await findSlots({ lessonType: vku, fromDay: tagW2, days: 1, staffId: personC.id });
+  check("2. Kurstag belegt: Kurs wird nicht angeboten", vkuW2.length, 0);
+
+  const zweiVerschoben = await moveCourseSession({
+    lessonTypeId: vku.id,
+    startsAt: vkuW.startsAt,
+    newDay: addDays(tagW, 14),
+    newTime: "18:00",
+    message: null,
+  });
+  check("zweitägigen Kurs verschieben", "ok" in zweiVerschoben, true);
+  const [nachher] = await db
+    .select({ startsAt: bookings.startsAt, second: bookings.secondStartsAt })
+    .from(bookings)
+    .where(eq(bookings.reference, anmeldungW.message));
+  check(
+    "2. Kurstag wandert im selben Abstand mit",
+    [zurichDay(nachher.startsAt), nachher.second && zurichDay(nachher.second)],
+    [addDays(tagW, 14), addDays(tagW, 16)],
   );
 
   // ===================================================================

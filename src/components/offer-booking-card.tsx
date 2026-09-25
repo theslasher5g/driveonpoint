@@ -9,7 +9,7 @@ import {
 } from "@/lib/booking";
 import type { LessonType } from "@/lib/db/schema";
 import { site } from "@/lib/site";
-import { formatDayLong, formatPrice } from "@/lib/time";
+import { formatDayLong, formatPrice, zurichTime } from "@/lib/time";
 import { fullCourseSessions, type FullSession } from "@/lib/waitlist";
 
 /**
@@ -85,9 +85,22 @@ export async function OfferBookingCard({ slug }: { slug: string }) {
               {formatDayLong(slot.day)}
             </p>
             <p className="text-fine text-slate mt-0.5">
-              <span className="tabular-nums font-semibold text-deep">{slot.time} Uhr</span>
+              <span className="tabular-nums font-semibold text-deep">
+                {isCourse ? `${slot.time}–${zurichTime(slot.endsAt)}` : slot.time} Uhr
+              </span>
               {isCourse && `, noch ${slot.seatsLeft} ${slot.seatsLeft === 1 ? "Platz" : "Plätze"} frei`}
             </p>
+            {slot.second && (
+              <p className="text-fine text-slate mt-0.5">
+                und{" "}
+                <span className="font-semibold text-deep">
+                  {formatDayLong(slot.second.day)},{" "}
+                  <span className="tabular-nums">
+                    {slot.second.time}–{slot.second.endTime} Uhr
+                  </span>
+                </span>
+              </p>
+            )}
             <Link href={slotHref} className="btn btn-primary w-full mt-5">
               Diesen Termin buchen
             </Link>
@@ -106,6 +119,8 @@ export async function OfferBookingCard({ slug }: { slug: string }) {
             </p>
             <p className="text-fine text-slate mt-0.5">
               <span className="tabular-nums font-semibold text-deep">{fullSession.time} Uhr</span>
+              {fullSession.second &&
+                ` und ${formatDayLong(fullSession.second.day)}, ${fullSession.second.startTime} Uhr`}
               . Sagt jemand ab, bekommst du eine Mail.
             </p>
             <Link

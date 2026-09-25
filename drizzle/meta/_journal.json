@@ -92,6 +92,13 @@
       "when": 1790340578514,
       "tag": "0012_kursserien",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790341921301,
+      "tag": "0013_zwei_kurstage",
+      "breakpoints": true
     }
   ]
 }

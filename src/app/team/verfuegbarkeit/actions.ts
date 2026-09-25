@@ -11,7 +11,8 @@ import { db } from "@/lib/db";
 import { availabilityExceptions, availabilityRules, lessonTypes, staffLessonTypes } from "@/lib/db/schema";
 import { cancelCourseSession, courseSession } from "@/lib/course-cancel";
 import { keepBookedSessions } from "@/lib/course-dates";
-import { addDays, minutesSinceMidnight, todayInZurich, zurichToInstant, zurichWeekday } from "@/lib/time";
+import { SECOND_DAY_MAX_OFFSET } from "@/lib/availability-rules";
+import { addDays, daysBetween, minutesSinceMidnight, todayInZurich, zurichToInstant, zurichWeekday } from "@/lib/time";
 
 /** Höchstens rund zwei Monate am Stück, damit ein Tippfehler beim Enddatum
  * keine tausend Zeilen erzeugt. */
@@ -132,10 +133,19 @@ export async function addOfferingDateAction(
       tagBis: calendarDay("Ungültiges Enddatum.").optional(),
       von: z.string(),
       bis: z.string(),
+      // Kurse über zwei Tage: 2. Kurstag mit eigener Zeit.
+      kurstage: z.enum(["1", "2"]),
+      tag2: calendarDay("Bitte den 2. Kurstag wählen.").optional(),
+      von2: z.string().optional(),
+      bis2: z.string().optional(),
     })
     .safeParse({
       lessonTypeId: formData.get("lessonTypeId"),
       tag: formData.get("tag"),
+      kurstage: formData.get("kurstage") || "1",
+      tag2: formData.get("tag2") || undefined,
+      von2: formData.get("von2") || undefined,
+      bis2: formData.get("bis2") || undefined,
       wiederholung: formData.get("wiederholung") || "einmalig",
       tagBis: formData.get("tagBis") || undefined,
       von: formData.get("von"),
@@ -162,8 +172,24 @@ export async function addOfferingDateAction(
   if (!offering) return { error: "Dieses Angebot gibt es nicht mehr." };
   const isCourse = offering.capacity > 1;
 
-  const fitError = await assertWindowFitsOffering(input.lessonTypeId, input.von, input.bis);
-  if (fitError) return { error: fitError };
+  // Ein Kurs dauert, wie er eingetragen ist (ein ganzer Tag oder zwei
+  // halbe); nur Einzellektionen müssen ihre feste Dauer ins Fenster passen.
+  if (!isCourse) {
+    const fitError = await assertWindowFitsOffering(input.lessonTypeId, input.von, input.bis);
+    if (fitError) return { error: fitError };
+  }
+
+  let second: { secondDayOffset: number; secondStartTime: string; secondEndTime: string } | null = null;
+  if (isCourse && input.kurstage === "2") {
+    if (!input.tag2 || !input.von2 || !input.bis2) return { error: "Bitte den 2. Kurstag mit Zeit angeben." };
+    const offset = daysBetween(input.tag, input.tag2);
+    if (offset < 1 || offset > SECOND_DAY_MAX_OFFSET) {
+      return { error: `Der 2. Kurstag muss 1 bis ${SECOND_DAY_MAX_OFFSET} Tage nach dem ersten liegen.` };
+    }
+    const range2 = timeRange.safeParse({ von: input.von2, bis: input.bis2 });
+    if (!range2.success) return { error: `2. Kurstag: ${range2.error.issues[0].message}` };
+    second = { secondDayOffset: offset, secondStartTime: input.von2, secondEndTime: input.bis2 };
+  }
 
   if (input.tagBis && input.tagBis < input.tag) {
     return { error: "Das Enddatum darf nicht vor dem Startdatum liegen." };
@@ -177,6 +203,7 @@ export async function addOfferingDateAction(
       day: input.tag,
       startTime: input.von,
       endTime: input.bis,
+      ...second,
       available: true,
     });
     message = isCourse ? "Kurstermin eingetragen." : "Datum eingetragen.";
@@ -188,6 +215,7 @@ export async function addOfferingDateAction(
       weekday: zurichWeekday(input.tag),
       startTime: input.von,
       endTime: input.bis,
+      ...second,
       validFrom: input.tag,
       validUntil: input.tagBis ?? null,
     });

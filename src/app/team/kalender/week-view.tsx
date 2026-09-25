@@ -46,6 +46,8 @@ type Entry = {
   lessonCapacity: number | null;
   reviewConsent: boolean;
   reviewRequestedAt: Date | null;
+  /** Kurs über zwei Tage: 1. oder 2. Kurstag; sonst null. */
+  part: 1 | 2 | null;
 };
 
 /** Ein Verfügbarkeitsfenster einer Person — mehrere Angebote zur selben Zeit zusammengefasst. */
@@ -102,6 +104,8 @@ export async function WeekView({
         id: bookings.id,
         startsAt: bookings.startsAt,
         endsAt: bookings.endsAt,
+        secondStartsAt: bookings.secondStartsAt,
+        secondEndsAt: bookings.secondEndsAt,
         status: bookings.status,
         noShowAt: bookings.noShowAt,
         cancelledBy: bookings.cancelledBy,
@@ -125,8 +129,17 @@ export async function WeekView({
           // Abgesagte bleiben sichtbar, verfallene Anfragen (nie per Mail
           // bestätigt) dagegen nicht.
           or(eq(bookings.status, "abgesagt"), occupiesTime()),
-          gte(bookings.startsAt, zurichToInstant(start, "00:00")),
-          lte(bookings.startsAt, zurichToInstant(end, "23:59")),
+          or(
+            and(
+              gte(bookings.startsAt, zurichToInstant(start, "00:00")),
+              lte(bookings.startsAt, zurichToInstant(end, "23:59")),
+            ),
+            // Kurse, deren 2. Kurstag in diese Woche fällt.
+            and(
+              gte(bookings.secondStartsAt, zurichToInstant(start, "00:00")),
+              lte(bookings.secondStartsAt, zurichToInstant(end, "23:59")),
+            ),
+          ),
         ),
       ),
     db
@@ -199,6 +212,16 @@ export async function WeekView({
       ? await waitlistsBetween(zurichToInstant(start, "00:00"), zurichToInstant(end, "23:59"))
       : [];
 
+  // Ein Kurs über zwei Tage erscheint an beiden Tagen, als 1. und 2. Kurstag.
+  const shown = entries.flatMap((entry): Entry[] => {
+    const { secondStartsAt, secondEndsAt, ...rest } = entry;
+    if (!secondStartsAt || !secondEndsAt) return [{ ...rest, part: null }];
+    return [
+      { ...rest, part: 1 },
+      { ...rest, startsAt: secondStartsAt, endsAt: secondEndsAt, part: 2 },
+    ];
+  });
+
   const nameOf = new Map(people.map((person) => [person.id, person.name]));
   // Wer nur den eigenen Kalender sieht, muss seinen Namen nicht auf jeder Karte lesen.
   const showPerson = seesEveryone;
@@ -257,7 +280,7 @@ export async function WeekView({
             );
           }
 
-          const dayEntries = entries.filter((entry) => zurichDay(entry.startsAt) === day);
+          const dayEntries = shown.filter((entry) => zurichDay(entry.startsAt) === day);
           const cancelled = dayEntries
             .filter((entry) => entry.status === "abgesagt")
             .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
@@ -446,6 +469,7 @@ export async function WeekView({
                       />
                       <p className="text-fine text-slate leading-snug pr-1.5">
                         {entry.lessonName && shortLesson(entry.lessonName)}
+                        {entry.part && `, ${entry.part}. Kurstag`}
                       </p>
                       {showPerson && entry.staffName && (
                         <p className="text-fine text-slate leading-snug pr-1.5">bei {firstName(entry.staffName)}</p>

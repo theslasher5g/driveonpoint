@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte, or } from "drizzle-orm";
 import { isConfirmed } from "@/lib/booking";
 import { customerHistories, describeHistory } from "@/lib/customer-history";
 import { env } from "@/lib/env";
@@ -41,6 +41,8 @@ export async function MonthView({
         id: bookings.id,
         startsAt: bookings.startsAt,
         endsAt: bookings.endsAt,
+        secondStartsAt: bookings.secondStartsAt,
+        secondEndsAt: bookings.secondEndsAt,
         customerName: bookings.customerName,
         customerEmail: bookings.customerEmail,
         customerPhone: bookings.customerPhone,
@@ -61,8 +63,17 @@ export async function MonthView({
         and(
           inArray(bookings.staffId, visibleIds),
           isConfirmed(),
-          gte(bookings.startsAt, zurichToInstant(gridStart, "00:00")),
-          lte(bookings.startsAt, zurichToInstant(gridEnd, "23:59")),
+          or(
+            and(
+              gte(bookings.startsAt, zurichToInstant(gridStart, "00:00")),
+              lte(bookings.startsAt, zurichToInstant(gridEnd, "23:59")),
+            ),
+            // Kurse, deren 2. Kurstag in diesen Ausschnitt fällt.
+            and(
+              gte(bookings.secondStartsAt, zurichToInstant(gridStart, "00:00")),
+              lte(bookings.secondStartsAt, zurichToInstant(gridEnd, "23:59")),
+            ),
+          ),
         ),
       )
       .orderBy(asc(bookings.startsAt)),
@@ -94,6 +105,15 @@ export async function MonthView({
   ]);
 
   const histories = await customerHistories(entries);
+  // Ein Kurs über zwei Tage steht an beiden Tagen, als 1. und 2. Kurstag.
+  const byDayParts = entries.flatMap((entry) =>
+    entry.secondStartsAt && entry.secondEndsAt
+      ? [
+          { ...entry, part: 1 as 1 | 2 | null },
+          { ...entry, startsAt: entry.secondStartsAt, endsAt: entry.secondEndsAt, part: 2 as 1 | 2 | null },
+        ]
+      : [{ ...entry, part: null as 1 | 2 | null }],
+  );
 
   return (
     <div className="rounded-[var(--radius-surface)] border border-deep/12 bg-deep/12 overflow-hidden" style={{ display: "grid", gap: "1px" }}>
@@ -111,7 +131,9 @@ export async function MonthView({
         {days.map((day) => {
           const inMonth = yearMonthOf(day) === yearMonth;
           const isToday = day === today;
-          const dayEntries = entries.filter((entry) => zurichDay(entry.startsAt) === day);
+          const dayEntries = byDayParts
+            .filter((entry) => zurichDay(entry.startsAt) === day)
+            .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
           const shown = dayEntries.slice(0, MAX_CHIPS_PER_DAY);
           const overflow = dayEntries.length - shown.length;
           const dayHref = `/team/kalender?ansicht=woche&woche=${day}${focus ? `&person=${focus}` : ""}`;
@@ -122,7 +144,7 @@ export async function MonthView({
             customerName: entry.customerName ?? "Angaben gelöscht",
             customerPhone: entry.customerPhone,
             customerNote: entry.customerNote,
-            lessonName: entry.lessonName,
+            lessonName: entry.part && entry.lessonName ? `${entry.lessonName}, ${entry.part}. Kurstag` : entry.lessonName,
             staffName: seesEveryone && !focus ? entry.staffName : null,
             history: describeHistory(histories.get(entry.id), {
               course: (entry.lessonCapacity ?? 1) > 1,

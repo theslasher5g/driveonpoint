@@ -11,6 +11,7 @@ import {
   createBooking,
   findSlots,
   lessonTypeBySlug,
+  type Slot,
 } from "@/lib/booking";
 import {
   sendBookingConfirmation,
@@ -116,6 +117,7 @@ async function createManualBooking(
   const count = lessonType.slug === "fahrstunde" ? input.wiederholen : 1;
 
   const booked: BookedAppointment[] = [];
+  let firstSlot: Slot | undefined;
   const skipped: string[] = [];
 
   for (let week = 0; week < count; week += 1) {
@@ -139,6 +141,8 @@ async function createManualBooking(
           lessonType,
           staffId: input.person,
           startsAt: slot.startsAt,
+          endsAt: slot.endsAt,
+          second: slot.second,
           customerName: input.name,
           customerEmail: input.email ?? "",
           customerPhone: input.telefon,
@@ -159,6 +163,7 @@ async function createManualBooking(
     }
 
     booked.push({ day, time: input.zeit, reference: result.reference, cancelToken: result.cancelToken });
+    firstSlot ??= slot;
     await record("buchung.manuell-erstellt", { id: staffUser.id, label: staffUser.name }, {
       referenz: result.reference,
       angebot: lessonType.slug,
@@ -181,6 +186,10 @@ async function createManualBooking(
           durationMinutes: lessonType.durationMinutes,
           priceRappen: priced.finalRappen,
           capacity: lessonType.capacity,
+          // Kurse: mit Ende und 2. Kurstag in Mail und Kalenderdatei.
+          ...(lessonType.capacity > 1 && firstSlot
+            ? { endsAt: firstSlot.endsAt, second: firstSlot.second }
+            : {}),
         });
       } else {
         await sendMultiBookingConfirmation({

@@ -1,8 +1,9 @@
 import "server-only";
-import { and, eq, gt, inArray, lt, notInArray } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, notInArray, or } from "drizzle-orm";
 import { occupiesTime } from "./booking";
 import { sendRescheduleConfirmation, sendWaitlistMoved } from "./booking-mail";
 import { courseSession } from "./course-cancel";
+import { secondPartOf } from "./availability-rules";
 import { sessionSources } from "./course-dates";
 import { db } from "./db";
 import { availabilityExceptions, bookings, lessonTypes, staff, waitlistEntries } from "./db/schema";
@@ -56,7 +57,12 @@ export async function moveCourseSession({
   if (newEndMinutes > 24 * 60) return { error: "Der Kurs würde über Mitternacht dauern." };
   const newEndTime = toTime(newEndMinutes);
 
-  const newEndsAt = new Date(newStartsAt.getTime() + lessonType.durationMinutes * 60_000);
+  // Der Kurs dauert, wie er eingetragen ist; ein 2. Kurstag wandert im
+  // selben Abstand mit (VKU Montag und Mittwoch bleibt Montag und Mittwoch).
+  const newEndsAt = zurichToInstant(newDay, newEndTime);
+  const newSecond = source ? secondPartOf(source, newDay) : null;
+  const newSecondStartsAt = newSecond ? zurichToInstant(newSecond.day, newSecond.startTime) : null;
+  const newSecondEndsAt = newSecond ? zurichToInstant(newSecond.day, newSecond.endTime) : null;
   const staffIds = [
     ...new Set([
       ...dates.map((date) => date.staffId),
@@ -82,8 +88,13 @@ export async function moveCourseSession({
         and(
           inArray(bookings.staffId, staffIds),
           occupiesTime(),
-          lt(bookings.startsAt, newEndsAt),
-          gt(bookings.endsAt, newStartsAt),
+          or(
+            and(lt(bookings.startsAt, newEndsAt), gt(bookings.endsAt, newStartsAt)),
+            // Der neue 2. Kurstag darf ebenso nicht belegt sein.
+            newSecondStartsAt && newSecondEndsAt
+              ? and(lt(bookings.startsAt, newSecondEndsAt), gt(bookings.endsAt, newSecondStartsAt))
+              : undefined,
+          ),
           participants.length > 0
             ? notInArray(bookings.id, participants.map((entry) => entry.id))
             : undefined,
@@ -120,7 +131,8 @@ export async function moveCourseSession({
   }
 
   const purgeAfter = new Date(
-    Math.max(newEndsAt.getTime(), Date.now()) + env.retentionDays * 24 * 60 * 60 * 1000,
+    Math.max((newSecondEndsAt ?? newEndsAt).getTime(), Date.now()) +
+      env.retentionDays * 24 * 60 * 60 * 1000,
   );
 
   await db.transaction(async (tx) => {
@@ -167,6 +179,9 @@ export async function moveCourseSession({
             day: newDay,
             startTime: newTime,
             endTime: newEndTime,
+            secondDayOffset: rule.secondDayOffset,
+            secondStartTime: rule.secondStartTime,
+            secondEndTime: rule.secondEndTime,
             available: true,
           },
         ]),
@@ -178,6 +193,8 @@ export async function moveCourseSession({
         .set({
           startsAt: newStartsAt,
           endsAt: newEndsAt,
+          secondStartsAt: newSecondStartsAt,
+          secondEndsAt: newSecondEndsAt,
           purgeAfter,
           reminderSentAt: null,
           movedBy: "fahrschule",
@@ -211,6 +228,11 @@ export async function moveCourseSession({
         capacity: lessonType.capacity,
         byCustomer: false,
         message,
+        endsAt: newEndsAt,
+        second:
+          newSecondStartsAt && newSecondEndsAt
+            ? { startsAt: newSecondStartsAt, endsAt: newSecondEndsAt }
+            : null,
       });
     } catch (error) {
       mailsFailed += 1;

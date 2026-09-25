@@ -365,11 +365,14 @@ kein Kalendertermin — es erscheint in der Preisliste, und die einzelnen
 Lektionen daraus werden danach ganz normal als Fahrstunde gebucht. Bezahlt
 wird ausserhalb der Website.
 
-**Bei Kursen** ist die hinterlegte Dauer die Länge des ersten Termins, der im
-Kalender erscheint, nicht die Gesamtdauer. Der VKU läuft über vier Abende,
-der Nothilfekurs über ein Wochenende: Eingetragen wird die Verfügbarkeit für
-den Kursbeginn, gebucht wird der Platz, und die Folgetermine stehen im
-Kurstext auf der jeweiligen Seite.
+**Bei Kursen** gilt die Zeit des eingetragenen Kurstermins, nicht die
+hinterlegte Dauer des Angebots: der Nothilfekurs kann ein ganzer Tag sein
+oder zwei halbe. Ein Kurstermin kann einen **2. Kurstag** haben (VKU an zwei
+Abenden, Nothilfekurs Freitagabend und Samstag), 1 bis 14 Tage nach dem
+ersten, mit eigener Zeit. Gebucht wird der Kurs als Ganzes; beide Tage
+stehen in Buchung, Mails, Kalenderdatei und Team-Kalender, und beide müssen
+frei sein. Die hinterlegte Dauer dient bei Kursen nur als Vorschlag im
+Formular.
 
 **Verfügbarkeit** wird je Angebot eingetragen, nicht nur je Person, weil
 sich die Zeiten stark unterscheiden: der VKU findet praktisch immer abends

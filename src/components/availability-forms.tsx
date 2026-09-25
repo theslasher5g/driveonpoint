@@ -2,14 +2,14 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { occurrences, ordinalLabel } from "@/lib/availability-rules";
+import { occurrences, ordinalLabel, SECOND_DAY_MAX_OFFSET } from "@/lib/availability-rules";
 import { COURSE_SESSIONS_SHOWN } from "@/lib/course-horizon";
 import {
   addExceptionAction,
   addOfferingDateAction,
   type AvailabilityState,
 } from "@/app/team/verfuegbarkeit/actions";
-import { formatDate, formatDayLong, fromMinutes, minutesSinceMidnight, weekdayName, zurichWeekday } from "@/lib/time";
+import { addDays, daysBetween, formatDate, formatDayLong, fromMinutes, minutesSinceMidnight, weekdayName, zurichWeekday } from "@/lib/time";
 
 const EMPTY: AvailabilityState = {};
 const DEFAULT_START = "08:00";
@@ -44,7 +44,7 @@ export function OfferingDateForm({
   lessonTypeId: string;
   lessonTypeName: string;
   durationMinutes: number;
-  /** Kurse: jeder Termin wird einzeln angelegt, dafür braucht es ein Enddatum. */
+  /** Kurse: auf Wunsch über zwei Kurstage. */
   course: boolean;
   today: string;
 }) {
@@ -58,6 +58,12 @@ export function OfferingDateForm({
   const [to, setTo] = useState(defaultEnd);
   const [repeat, setRepeat] = useState<Repeat>("einmalig");
   const repeating = repeat !== "einmalig";
+  // Kurse über zwei Tage: VKU an zwei Abenden, Nothelfer Freitag und Samstag.
+  const [twoDays, setTwoDays] = useState(false);
+  const [day2, setDay2] = useState("");
+  const [from2, setFrom2] = useState(DEFAULT_START);
+  const [to2, setTo2] = useState(defaultEnd);
+  const withSecond = course && twoDays;
 
   // Nach jeder Rückmeldung setzt React die Felder zurück, auch bei einem
   // Fehler. Der eigene Zustand muss mit, sonst zeigen Felder und
@@ -70,6 +76,10 @@ export function OfferingDateForm({
     setFrom(DEFAULT_START);
     setTo(defaultEnd);
     setRepeat("einmalig");
+    setTwoDays(false);
+    setDay2("");
+    setFrom2(DEFAULT_START);
+    setTo2(defaultEnd);
   }
 
   const id = (name: string) => `${name}-${lessonTypeId}`;
@@ -87,7 +97,7 @@ export function OfferingDateForm({
         <DayField
           id={id("datum")}
           name="tag"
-          label={repeating ? "Erster Tag" : "Datum"}
+          label={withSecond ? "1. Kurstag" : repeating ? "Erster Tag" : "Datum"}
           min={today}
           value={day}
           onChange={setDay}
@@ -96,26 +106,56 @@ export function OfferingDateForm({
         <TimeRange idPrefix={id("zeit")} from={from} to={to} onFrom={setFrom} onTo={setTo} />
       </div>
 
-      <fieldset className="mt-5">
-        <legend className="field-label text-fine">Wiederholen</legend>
-        <div className="flex flex-wrap gap-2">
-          {REPEAT_OPTIONS.map((option) => (
-            <label key={option.value} className="cursor-pointer">
-              <input
-                type="radio"
-                name="wiederholung"
-                value={option.value}
-                checked={repeat === option.value}
-                onChange={() => setRepeat(option.value)}
-                className="peer sr-only"
+      {course && (
+        <>
+          <PillGroup
+            legend="Kurstage"
+            name="kurstage"
+            options={[
+              { value: "1", label: "1 Tag" },
+              { value: "2", label: "2 Tage" },
+            ]}
+            value={twoDays ? "2" : "1"}
+            onChange={(value) => {
+              setTwoDays(value === "2");
+              // Meist dieselbe Zeit wie am ersten Tag (VKU zweimal abends).
+              setFrom2(from);
+              setTo2(to);
+            }}
+          />
+          {withSecond && (
+            <div className="flex flex-wrap gap-x-5 gap-y-4 mt-4">
+              <DayField
+                id={id("datum2")}
+                name="tag2"
+                label="2. Kurstag"
+                hint={repeating ? "Beim ersten Termin; die weiteren im selben Abstand." : undefined}
+                min={day ? addDays(day, 1) : today}
+                max={day ? addDays(day, SECOND_DAY_MAX_OFFSET) : undefined}
+                value={day2}
+                onChange={setDay2}
+                required
               />
-              <span className="block rounded-full border border-deep/30 bg-paper px-4 py-2 text-fine font-semibold text-deep/80 transition-colors hover:border-deep/60 peer-checked:border-deep peer-checked:bg-deep peer-checked:text-paper peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-signal">
-                {option.label}
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+              <TimeRange
+                idPrefix={id("zeit2")}
+                names={["von2", "bis2"]}
+                from={from2}
+                to={to2}
+                onFrom={setFrom2}
+                onTo={setTo2}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      <PillGroup
+        legend="Wiederholen"
+        name="wiederholung"
+        options={REPEAT_OPTIONS}
+        value={repeat}
+        onChange={(value) => setRepeat(value as Repeat)}
+      />
 
       {repeating && (
         <div className="mt-5">
@@ -131,7 +171,17 @@ export function OfferingDateForm({
         </div>
       )}
 
-      <FormFooter summary={summarize({ repeat, day, endDay, from, to, course })} />
+      <FormFooter
+        summary={summarize({
+          repeat,
+          day,
+          endDay,
+          from,
+          to,
+          course,
+          second: withSecond ? { day: day2, from: from2, to: to2 } : null,
+        })}
+      />
     </form>
   );
 }
@@ -144,6 +194,7 @@ function summarize({
   from,
   to,
   course = false,
+  second = null,
 }: {
   repeat: Repeat;
   day: string;
@@ -151,9 +202,12 @@ function summarize({
   from: string;
   to: string;
   course?: boolean;
+  /** 2. Kurstag, wie im Formular gewählt. */
+  second?: { day: string; from: string; to: string } | null;
 }): { pattern: string; rest: string } | null {
   if (!day) return null;
-  const sentence = plainSummary(repeat, day, endDay, from, to);
+  if (second && !second.day) return { pattern: "", rest: "Noch den 2. Kurstag wählen." };
+  const sentence = plainSummary(repeat, day, endDay, from, to, second);
   if (!course || repeat === "einmalig") return sentence;
   // Kursserie: mit Ende sagen, wie viele Kurstermine es werden; ohne Ende,
   // dass beim Buchen jeweils nur die nächsten erscheinen.
@@ -176,9 +230,18 @@ function plainSummary(
   endDay: string | undefined,
   from: string,
   to: string,
+  second: { day: string; from: string; to: string } | null,
 ): { pattern: string; rest: string } {
   // Wortverbinder um den Strich: "08:00–13:00 Uhr" bricht nicht mittendrin um.
-  const time = `${from}\u2060–\u2060${to}\u00a0Uhr`;
+  const span = (a: string, b: string) => `${a}\u2060–\u2060${b}\u00a0Uhr`;
+  let time = span(from, to);
+  if (second) {
+    const offset = daysBetween(day, second.day);
+    time +=
+      repeat === "einmalig"
+        ? `, und ${formatDayLong(second.day)}, ${span(second.from, second.to)}`
+        : `, und jeweils ${offset === 1 ? "am Tag darauf" : `${offset} Tage später`} (${weekdayName(zurichWeekday(second.day))}), ${span(second.from, second.to)}`;
+  }
   const until = endDay && endDay >= day ? ` bis ${formatDate(endDay)}` : "";
   switch (repeat) {
     case "taeglich":
@@ -198,12 +261,51 @@ function plainSummary(
   }
 }
 
+/** Auswahlknöpfe statt Dropdown: alle Möglichkeiten auf einen Blick. */
+function PillGroup({
+  legend,
+  name,
+  options,
+  value,
+  onChange,
+}: {
+  legend: string;
+  name: string;
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <fieldset className="mt-5">
+      <legend className="field-label text-fine">{legend}</legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <label key={option.value} className="cursor-pointer">
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={value === option.value}
+              onChange={() => onChange(option.value)}
+              className="peer sr-only"
+            />
+            <span className="block rounded-full border border-deep/30 bg-paper px-4 py-2 text-fine font-semibold text-deep/80 transition-colors hover:border-deep/60 peer-checked:border-deep peer-checked:bg-deep peer-checked:text-paper peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-signal">
+              {option.label}
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 function DayField({
   id,
   name,
   label,
   hint,
   min,
+  max,
   value,
   onChange,
   required,
@@ -213,6 +315,7 @@ function DayField({
   label: string;
   hint?: string;
   min?: string;
+  max?: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
@@ -227,6 +330,7 @@ function DayField({
         name={name}
         type="date"
         min={min}
+        max={max}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="field nums py-2"
@@ -339,6 +443,7 @@ export function AvailabilityExceptionForm({
  */
 function TimeRange({
   idPrefix,
+  names = ["von", "bis"],
   from,
   to,
   onFrom,
@@ -347,6 +452,7 @@ function TimeRange({
   defaultTo,
 }: {
   idPrefix: string;
+  names?: [string, string];
   from?: string;
   to?: string;
   onFrom?: (value: string) => void;
@@ -368,7 +474,7 @@ function TimeRange({
         </label>
         <input
           id={`${idPrefix}-von`}
-          name="von"
+          name={names[0]}
           type="time"
           step={900}
           {...controlled(from, onFrom, defaultFrom)}
@@ -383,7 +489,7 @@ function TimeRange({
         </label>
         <input
           id={`${idPrefix}-bis`}
-          name="bis"
+          name={names[1]}
           type="time"
           step={900}
           {...controlled(to, onTo, defaultTo)}

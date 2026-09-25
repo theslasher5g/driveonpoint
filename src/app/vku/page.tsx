@@ -43,7 +43,7 @@ export default function VkuPage() {
         aside={<OfferBookingCard slug="vku" />}
       />
 
-      <Section title="Die vier Abende" tone="paper">
+      <Section title="Zwei Abende, vier Themen" tone="paper">
         <ol className="timeline max-w-3xl">
           {EVENINGS.map(([title, body], index) => (
             <li key={title}>
@@ -58,8 +58,8 @@ export default function VkuPage() {
           ))}
         </ol>
         <p className="text-fine text-slate mt-6 max-w-[58ch]">
-          Die Abende bauen aufeinander auf. Verpasst du einen, holst du ihn im nächsten Kurs
-          nach. Die Bescheinigung bekommst du, wenn du alle vier besucht hast.
+          Die Themen bauen aufeinander auf. Verpasst du einen Abend, holst du ihn im nächsten
+          Kurs nach. Die Bescheinigung bekommst du, wenn du beide Abende besucht hast.
         </p>
       </Section>
 
@@ -83,7 +83,7 @@ export default function VkuPage() {
         <div className="max-w-2xl">
           <PriceTable onlySlug="vku" />
           <p className="text-fine text-slate mt-5">
-            Der Betrag gilt für alle vier Abende inklusive Unterlagen und wird vor Kursbeginn
+            Der Betrag gilt für beide Abende inklusive Unterlagen und wird vor Kursbeginn
             bezahlt.
           </p>
           <Link href="/buchen?angebot=vku" className="btn btn-primary mt-7">

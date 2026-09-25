@@ -14,7 +14,7 @@ import {
   newConfirmToken,
   withinBookingHorizon,
 } from "@/lib/booking";
-import { sendConfirmationRequest } from "@/lib/booking-mail";
+import { sendConfirmationRequest, type CourseParts } from "@/lib/booking-mail";
 import { redeemSolution } from "@/lib/captcha";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/db/schema";
@@ -210,6 +210,8 @@ async function bookSingle(
     lessonType,
     staffId: slot.staffIds[0],
     startsAt: slot.startsAt,
+    endsAt: slot.endsAt,
+    second: slot.second,
     customerName: input.name,
     customerEmail: input.email,
     customerPhone: input.telefon,
@@ -236,7 +238,14 @@ async function bookSingle(
     name: input.name,
     token: confirmation.token,
     lessonName: lessonType.name,
-    appointments: [{ day: input.tag, time: input.zeit }],
+    appointments: [
+      {
+        day: input.tag,
+        time: input.zeit,
+        // Kurse: mit Ende und 2. Kurstag in der Mail.
+        ...(lessonType.capacity > 1 ? { endsAt: slot.endsAt, second: slot.second } : {}),
+      },
+    ],
   });
   if (mailError) return { error: mailError };
 
@@ -262,7 +271,7 @@ async function requestConfirmation(details: {
   name: string;
   token: string;
   lessonName: string;
-  appointments: { day: string; time: string }[];
+  appointments: ({ day: string; time: string } & CourseParts)[];
 }): Promise<string | null> {
   try {
     await sendConfirmationRequest({
@@ -394,6 +403,8 @@ async function bookSeveral(
       lessonType,
       staffId,
       startsAt: slot.startsAt,
+      endsAt: slot.endsAt,
+      second: slot.second,
       customerName: input.name,
       customerEmail: input.email,
       customerPhone: input.telefon,

@@ -35,7 +35,7 @@ const STAGES = [
     // In der schmalen Karte passt das ganze Wort nicht in eine Zeile und
     // bräche ohne Trennstrich mitten im Wort um.
     title: "Verkehrskunde",
-    meta: "8 Lektionen an 4 Abenden",
+    meta: "8 Lektionen an 2 Abenden",
     body: "Gefahren früh erkennen und einschätzen. Pflicht vor der praktischen Prüfung.",
   },
   {

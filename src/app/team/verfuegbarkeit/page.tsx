@@ -14,7 +14,13 @@ import {
 } from "@/lib/db/schema";
 import { formatDayLong, formatDayShort, todayInZurich, zurichToInstant } from "@/lib/time";
 import { AvailabilityExceptionForm, OfferingDateForm } from "@/components/availability-forms";
-import { describeRule, describeRuleRange, nextOccurrences } from "@/lib/availability-rules";
+import {
+  describeRule,
+  describeRuleRange,
+  nextOccurrences,
+  secondPartOf,
+  type SecondPart,
+} from "@/lib/availability-rules";
 import { DeleteRuleButton, DeleteExceptionButton } from "@/components/availability-delete";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +40,7 @@ function DateRow({
   day,
   startTime,
   endTime,
+  second,
   signups,
 }: {
   id: string;
@@ -41,6 +48,7 @@ function DateRow({
   day: string;
   startTime: string;
   endTime: string;
+  second: SecondPart | null;
   signups: number;
 }) {
   return (
@@ -49,6 +57,11 @@ function DateRow({
       <span className="nums text-slate whitespace-nowrap">
         {startTime.slice(0, 5)} – {endTime.slice(0, 5)}
       </span>
+      {second && (
+        <span className="basis-full text-fine text-slate">
+          und {formatDayLong(second.day)}, <span className="nums">{second.startTime} – {second.endTime}</span>
+        </span>
+      )}
       {signups > 0 ? (
         <>
           <span className="text-fine text-slate">{signups} angemeldet</span>
@@ -111,6 +124,9 @@ export default async function VerfuegbarkeitPage({
         weekday: availabilityRules.weekday,
         startTime: availabilityRules.startTime,
         endTime: availabilityRules.endTime,
+        secondDayOffset: availabilityRules.secondDayOffset,
+        secondStartTime: availabilityRules.secondStartTime,
+        secondEndTime: availabilityRules.secondEndTime,
         validFrom: availabilityRules.validFrom,
         validUntil: availabilityRules.validUntil,
       })
@@ -130,6 +146,9 @@ export default async function VerfuegbarkeitPage({
         day: availabilityExceptions.day,
         startTime: availabilityExceptions.startTime,
         endTime: availabilityExceptions.endTime,
+        secondDayOffset: availabilityExceptions.secondDayOffset,
+        secondStartTime: availabilityExceptions.secondStartTime,
+        secondEndTime: availabilityExceptions.secondEndTime,
         available: availabilityExceptions.available,
         cancelledSession: availabilityExceptions.cancelledSession,
         note: availabilityExceptions.note,
@@ -269,6 +288,7 @@ export default async function VerfuegbarkeitPage({
                   day={entry.day}
                   startTime={entry.startTime}
                   endTime={entry.endTime}
+                  second={secondPartOf(entry, entry.day)}
                   signups={isCourse ? signupsFor(offering.id, entry.day, entry.startTime) : 0}
                 />
               );
@@ -305,6 +325,18 @@ export default async function VerfuegbarkeitPage({
                                   </span>
                                   <DeleteRuleButton id={rule.id} person={targetId} />
                                 </div>
+                                {rule.secondDayOffset && rule.secondStartTime && rule.secondEndTime && (
+                                  <p className="text-fine text-slate mt-0.5">
+                                    und jeweils{" "}
+                                    {rule.secondDayOffset === 1
+                                      ? "am Tag darauf"
+                                      : `${rule.secondDayOffset} Tage später`}
+                                    ,{" "}
+                                    <span className="nums">
+                                      {rule.secondStartTime.slice(0, 5)} – {rule.secondEndTime.slice(0, 5)}
+                                    </span>
+                                  </p>
+                                )}
                                 {range && <p className="text-fine text-slate mt-0.5">{range}</p>}
                                 {next.length > 0 && (
                                   <ul className="flex flex-wrap gap-1.5 mt-2" aria-label="Nächste Termine">

@@ -48,6 +48,8 @@ export async function selfRescheduleAction(
     lessonType: booking.lessonType,
     staffId,
     startsAt: slot.startsAt,
+    endsAt: slot.endsAt,
+    second: slot.second,
     retentionDays: env.retentionDays,
     movedBy: "kundschaft",
   });
@@ -83,6 +85,7 @@ export async function selfRescheduleAction(
         durationMinutes: booking.lessonType.durationMinutes,
         capacity: booking.lessonType.capacity,
         byCustomer: true,
+        ...(booking.lessonType.capacity > 1 ? { endsAt: slot.endsAt, second: slot.second } : {}),
       });
     }
   } catch (error) {

@@ -199,6 +199,8 @@ export async function rescheduleBookingAction(
     lessonType,
     staffId: entry.staffId,
     startsAt: slot.startsAt,
+    endsAt: slot.endsAt,
+    second: slot.second,
     retentionDays: env.retentionDays,
     movedBy: "fahrschule",
   });
@@ -230,6 +232,7 @@ export async function rescheduleBookingAction(
         durationMinutes: lessonType.durationMinutes,
         capacity: lessonType.capacity,
         byCustomer: false,
+        ...(lessonType.capacity > 1 ? { endsAt: slot.endsAt, second: slot.second } : {}),
       });
     } catch (error) {
       console.error("Mail zum verschobenen Termin konnte nicht versendet werden:", error);

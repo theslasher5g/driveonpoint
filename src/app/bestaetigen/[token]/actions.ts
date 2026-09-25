@@ -48,6 +48,9 @@ export async function confirmBookingAction(formData: FormData): Promise<void> {
       reference: bookings.reference,
       cancelToken: bookings.cancelToken,
       startsAt: bookings.startsAt,
+      endsAt: bookings.endsAt,
+      secondStartsAt: bookings.secondStartsAt,
+      secondEndsAt: bookings.secondEndsAt,
       lessonTypeId: bookings.lessonTypeId,
       priceRappen: bookings.priceRappen,
       customerName: bookings.customerName,
@@ -96,6 +99,16 @@ export async function confirmBookingAction(formData: FormData): Promise<void> {
     time: zurichTime(entry.startsAt),
     reference: entry.reference,
     cancelToken: entry.cancelToken,
+    // Kurse: mit Ende und 2. Kurstag in Mail und Kalenderdatei.
+    ...(capacity > 1
+      ? {
+          endsAt: entry.endsAt,
+          second:
+            entry.secondStartsAt && entry.secondEndsAt
+              ? { startsAt: entry.secondStartsAt, endsAt: entry.secondEndsAt }
+              : null,
+        }
+      : {}),
   }));
 
   // Ein Mailproblem darf die Bestätigung nicht zurücknehmen — die Seite

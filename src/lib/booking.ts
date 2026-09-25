@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { and, asc, eq, gt, gte, inArray, lt, lte, ne, or, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
   availabilityExceptions,
@@ -15,7 +15,12 @@ import {
   type PricePackage,
   type Promotion,
 } from "./db/schema";
-import { ruleAppliesOn } from "./availability-rules";
+import {
+  ruleAppliesOn,
+  SECOND_DAY_MAX_OFFSET,
+  secondPartOf,
+  type SecondPart,
+} from "./availability-rules";
 import { courseWindows } from "./course-dates";
 import { COURSE_HORIZON_DAYS } from "./course-horizon";
 import { subtract, type Interval } from "./intervals";
@@ -99,7 +104,11 @@ export type Slot = {
   /** Wer diesen Termin übernehmen kann. Mehrere bedeutet: freie Wahl. */
   staffIds: string[];
   seatsLeft: number;
+  /** 2. Kurstag bei Kursen über zwei Tage. */
+  second: SlotPart | null;
 };
+
+export type SlotPart = { day: string; time: string; endTime: string; startsAt: Date; endsAt: Date };
 
 export async function listLessonTypes(): Promise<LessonType[]> {
   return db
@@ -199,6 +208,7 @@ export async function findSlots(options: {
   // Kurse sind bis ein Jahr voraus buchbar (course-horizon.ts).
   const days = Math.min(options.days ?? 21, COURSE_HORIZON_DAYS);
   const untilDay = addDays(fromDay, days);
+  const reachDay = addDays(untilDay, SECOND_DAY_MAX_OFFSET);
 
   const eligible = await db
     .select({ id: staff.id })
@@ -238,7 +248,8 @@ export async function findSlots(options: {
             eq(availabilityExceptions.lessonTypeId, lessonType.id),
           ),
           gte(availabilityExceptions.day, fromDay),
-          lte(availabilityExceptions.day, untilDay),
+          // Bis zum spätesten 2. Kurstag: auch dort darf nichts im Weg sein.
+          lte(availabilityExceptions.day, reachDay),
         ),
       ),
     db
@@ -246,6 +257,8 @@ export async function findSlots(options: {
         staffId: bookings.staffId,
         startsAt: bookings.startsAt,
         endsAt: bookings.endsAt,
+        secondStartsAt: bookings.secondStartsAt,
+        secondEndsAt: bookings.secondEndsAt,
         lessonTypeId: bookings.lessonTypeId,
         // Die Pause gehört zum bereits gebuchten Termin, nicht zum gesuchten:
         // nach einer Fahrstunde braucht es die Fahrzeit zum Kursraum auch
@@ -258,8 +271,9 @@ export async function findSlots(options: {
         and(
           inArray(bookings.staffId, staffIds),
           occupiesTime(),
-          gte(bookings.startsAt, zurichToInstant(fromDay, "00:00")),
-          lte(bookings.startsAt, zurichToInstant(untilDay, "23:59")),
+          // Auch Kurse, die vorher beginnen und deren 2. Tag hier liegt.
+          gte(bookings.startsAt, zurichToInstant(addDays(fromDay, -SECOND_DAY_MAX_OFFSET), "00:00")),
+          lte(bookings.startsAt, zurichToInstant(reachDay, "23:59")),
           options.excludeBookingId ? ne(bookings.id, options.excludeBookingId) : undefined,
         ),
       ),
@@ -267,7 +281,12 @@ export async function findSlots(options: {
     // Person steht dann im Kursraum, auch wenn sich noch niemand angemeldet
     // hat. Vorher liess sich in diese Zeit eine Fahrstunde buchen, und der
     // Kurstermin verschwand danach stillschweigend aus der Buchung.
-    courseWindows({ fromDay, untilDay, excludeLessonTypeId: lessonType.id, staffIds }),
+    courseWindows({
+      fromDay: addDays(fromDay, -SECOND_DAY_MAX_OFFSET),
+      untilDay: reachDay,
+      excludeLessonTypeId: lessonType.id,
+      staffIds,
+    }),
   ]);
 
   const isGroupCourse = lessonType.capacity > 1;
@@ -276,15 +295,100 @@ export async function findSlots(options: {
   );
   const result: Slot[] = [];
 
+  /**
+   * Alles, was die Person an einem Tag schon belegt: Abwesenheiten,
+   * Buchungen (auch 2. Kurstage) samt Pause und geplante Kurstermine anderer
+   * Kurse. Für Kurse ohne die Mitanmeldungen zum selben Kurs — die teilen
+   * sich den Termin und zählen in pushSlot als Plätze.
+   */
+  const cutsFor = (id: string, day: string): Interval[] => {
+    const cuts: Interval[] = [];
+    for (const exception of exceptions) {
+      if (exception.day !== day || exception.staffId !== id || exception.available) continue;
+      cuts.push({
+        start: minutesSinceMidnight(exception.startTime),
+        end: minutesSinceMidnight(exception.endTime),
+      });
+    }
+    // Ein Termin eines anderen Angebots blockiert die Person, sonst stünde
+    // sie zur selben Zeit im Kursraum und im Auto.
+    cuts.push(
+      ...bookingCutsFor(id, day, taken, lessonType.bufferMinutes, isGroupCourse ? lessonType.id : undefined),
+    );
+    for (const course of otherCourseDates) {
+      if (course.staffId !== id) continue;
+      const pause = Math.max(lessonType.bufferMinutes, course.bufferMinutes);
+      for (const part of [
+        { day: course.day, startTime: course.startTime, endTime: course.endTime },
+        course.second,
+      ]) {
+        if (!part || part.day !== day) continue;
+        cuts.push({
+          start: minutesSinceMidnight(part.startTime) - pause,
+          end: minutesSinceMidnight(part.endTime) + pause,
+        });
+      }
+    }
+    return cuts;
+  };
+  const isFree = (cuts: Interval[], start: number, end: number) =>
+    !cuts.some((cut) => cut.start < end && cut.end > start);
+
   for (let offset = 0; offset < days; offset += 1) {
     const day = addDays(fromDay, offset);
     const weekday = zurichWeekday(day);
-    const plan: StaffDayPlan = new Map();
 
+    // Kurse: jeder Kurstermin ist ein fester Block, eingetragen als Datum
+    // oder Serie, auf Wunsch mit 2. Kurstag. Er beginnt, wann er
+    // eingetragen ist — vorher begann er am Anfang des freien Rests, und
+    // Absagen, Verschieben und Warteliste fanden ihn dann nicht mehr.
+    if (isGroupCourse) {
+      const sessions: { staffId: string; start: string; end: string; second: SecondPart | null }[] = [];
+      for (const rule of rules) {
+        if (!ruleAppliesOn(rule, day, weekday)) continue;
+        sessions.push({ staffId: rule.staffId, start: rule.startTime, end: rule.endTime, second: secondPartOf(rule, day) });
+      }
+      for (const exception of exceptions) {
+        // Ein alter Eintrag "zusätzlich frei für alle Angebote" erzeugt
+        // keinen Kurstermin.
+        if (exception.day !== day || !exception.available || exception.lessonTypeId !== lessonType.id) continue;
+        sessions.push({
+          staffId: exception.staffId,
+          start: exception.startTime,
+          end: exception.endTime,
+          second: secondPartOf(exception, day),
+        });
+      }
+      // Derselbe Kurstermin zweimal eingetragen zählt einmal, sonst
+      // verdoppelten sich die freien Plätze in der Anzeige.
+      const seen = new Set<string>();
+      for (const session of sessions) {
+        const start = minutesSinceMidnight(session.start);
+        const key = `${session.staffId}|${start}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const end = minutesSinceMidnight(session.end);
+        if (!isFree(cutsFor(session.staffId, day), start, end)) continue;
+        // Der 2. Kurstag muss ebenso frei sein.
+        const second = session.second;
+        if (
+          second &&
+          !isFree(
+            cutsFor(session.staffId, second.day),
+            minutesSinceMidnight(second.startTime),
+            minutesSinceMidnight(second.endTime),
+          )
+        ) {
+          continue;
+        }
+        pushSlot(result, day, start, lessonType, [session.staffId], taken, earliest, end, second);
+      }
+      continue;
+    }
+
+    const plan: StaffDayPlan = new Map();
     for (const id of staffIds) plan.set(id, []);
 
-    // Serien gelten auch für Kurse: jede Woche oder jeden 4. Montag ein
-    // Kurstermin. Fällt einer aus, sperrt ihn eine Ausnahme dieses Kurses.
     for (const rule of rules) {
       if (!ruleAppliesOn(rule, day, weekday)) continue;
       plan.get(rule.staffId)?.push({
@@ -292,12 +396,8 @@ export async function findSlots(options: {
         end: minutesSinceMidnight(rule.endTime),
       });
     }
-
     for (const exception of exceptions) {
       if (exception.day !== day || !exception.available) continue;
-      // Ein Kurs braucht einen eigenen Kurstermin. Ein alter Eintrag
-      // "zusätzlich frei für alle Angebote" darf keinen erzeugen.
-      if (isGroupCourse && exception.lessonTypeId !== lessonType.id) continue;
       plan.get(exception.staffId)?.push({
         start: minutesSinceMidnight(exception.startTime),
         end: minutesSinceMidnight(exception.endTime),
@@ -306,61 +406,9 @@ export async function findSlots(options: {
 
     for (const [id, blocks] of plan) {
       if (blocks.length === 0) continue;
-
-      const cuts: Interval[] = [];
-
-      for (const exception of exceptions) {
-        if (exception.day !== day || exception.staffId !== id || exception.available) continue;
-        cuts.push({
-          start: minutesSinceMidnight(exception.startTime),
-          end: minutesSinceMidnight(exception.endTime),
-        });
-      }
-
-      // Bei Gruppenkursen zählen die Anmeldungen zum selben Kurs als belegte
-      // Plätze, nicht als Sperre — mehrere Personen teilen sich denselben
-      // Termin. Ein Termin eines anderen Angebots blockiert die Person aber
-      // sehr wohl, sonst stünde sie zur selben Zeit im Kursraum und im Auto.
-      cuts.push(
-        ...bookingCutsFor(
-          id,
-          day,
-          taken,
-          lessonType.bufferMinutes,
-          isGroupCourse ? lessonType.id : undefined,
-        ),
-      );
-
-      for (const course of otherCourseDates) {
-        if (course.day !== day || course.staffId !== id) continue;
-        const pause = Math.max(lessonType.bufferMinutes, course.bufferMinutes);
-        cuts.push({
-          start: minutesSinceMidnight(course.startTime) - pause,
-          end: minutesSinceMidnight(course.endTime) + pause,
-        });
-      }
-
-      const free = subtract(blocks, cuts);
-
-      // Ein Kurs beginnt, wann er eingetragen ist. Vorher begann er am
-      // Anfang des freien Rests: lag davor eine Fahrstunde, rückte der
-      // Kursbeginn nach hinten, und Absagen, Verschieben und Warteliste
-      // fanden den Kurstermin nicht mehr.
-      if (isGroupCourse) {
-        // Derselbe Kurstermin zweimal eingetragen zählt einmal, sonst
-        // verdoppelten sich die freien Plätze in der Anzeige.
-        for (const start of new Set(blocks.map((block) => block.start))) {
-          const end = start + lessonType.durationMinutes;
-          if (free.some((window) => window.start <= start && end <= window.end)) {
-            pushSlot(result, day, start, lessonType, [id], taken, earliest);
-          }
-        }
-        continue;
-      }
-
+      const free = subtract(blocks, cutsFor(id, day));
+      const step = lessonType.durationMinutes + lessonType.bufferMinutes;
       for (const window of free) {
-        const step = lessonType.durationMinutes + lessonType.bufferMinutes;
-
         for (
           let start = window.start;
           start + lessonType.durationMinutes <= window.end;
@@ -389,6 +437,8 @@ function bookingCutsFor(
     staffId: string | null;
     startsAt: Date;
     endsAt: Date;
+    secondStartsAt: Date | null;
+    secondEndsAt: Date | null;
     lessonTypeId: string | null;
     bufferMinutes: number | null;
   }[],
@@ -398,15 +448,22 @@ function bookingCutsFor(
   const cuts: Interval[] = [];
   for (const booking of taken) {
     if (booking.staffId !== staffId) continue;
-    if (zurichDay(booking.startsAt) !== day) continue;
     if (sharedLessonTypeId && booking.lessonTypeId === sharedLessonTypeId) continue;
 
     // Die grössere der beiden Pausen gewinnt: die des bestehenden Termins
     // und die des gesuchten Angebots.
     const pause = Math.max(bufferMinutes, booking.bufferMinutes ?? 0);
-    const start = minutesSinceMidnight(localTime(booking.startsAt));
-    const end = minutesSinceMidnight(localTime(booking.endsAt));
-    cuts.push({ start: start - pause, end: end + pause });
+    const parts: [Date, Date][] = [[booking.startsAt, booking.endsAt]];
+    // Der 2. Kurstag eines Kurses belegt die Person ebenso.
+    if (booking.secondStartsAt && booking.secondEndsAt) {
+      parts.push([booking.secondStartsAt, booking.secondEndsAt]);
+    }
+    for (const [from, to] of parts) {
+      if (zurichDay(from) !== day) continue;
+      const start = minutesSinceMidnight(localTime(from));
+      const end = minutesSinceMidnight(localTime(to));
+      cuts.push({ start: start - pause, end: end + pause });
+    }
   }
   return cuts;
 }
@@ -434,12 +491,20 @@ function pushSlot(
     lessonTypeId: string | null;
   }[],
   earliest: Date,
+  /** Kurse: Ende des eingetragenen Kurstermins statt der festen Dauer. */
+  endMinutes?: number,
+  second: SecondPart | null = null,
 ): void {
   const time = fromMinutes(startMinutes);
   const startsAt = zurichToInstant(day, time);
   if (startsAt < earliest) return;
 
-  const endsAt = new Date(startsAt.getTime() + lessonType.durationMinutes * 60_000);
+  // Ein Kurs dauert, wie er eingetragen ist: der Nothelfer mal einen ganzen
+  // Tag, mal zwei halbe. Einzellektionen haben ihre feste Dauer.
+  const endsAt =
+    endMinutes !== undefined
+      ? zurichToInstant(day, fromMinutes(endMinutes))
+      : new Date(startsAt.getTime() + lessonType.durationMinutes * 60_000);
 
   const sameOffering = taken.filter(
     (b) => b.lessonTypeId === lessonType.id && staffIds.includes(b.staffId ?? ""),
@@ -459,7 +524,23 @@ function pushSlot(
   const seatsLeft = lessonType.capacity - alreadyBooked;
   if (seatsLeft <= 0) return;
 
-  into.push({ day, time, startsAt, endsAt, staffIds, seatsLeft });
+  into.push({
+    day,
+    time,
+    startsAt,
+    endsAt,
+    staffIds,
+    seatsLeft,
+    second: second
+      ? {
+          day: second.day,
+          time: second.startTime,
+          endTime: second.endTime,
+          startsAt: zurichToInstant(second.day, second.startTime),
+          endsAt: zurichToInstant(second.day, second.endTime),
+        }
+      : null,
+  });
 }
 
 /** Gleiche Startzeit bei mehreren Personen zu einem Eintrag zusammenfassen. */
@@ -536,6 +617,8 @@ async function clashesInLock(
     staffId: string;
     startsAt: Date;
     endsAt: Date;
+    /** 2. Kurstag, der ebenso frei sein muss. */
+    second?: { startsAt: Date; endsAt: Date } | null;
     excludeBookingId?: string;
   },
 ): Promise<boolean> {
@@ -547,11 +630,20 @@ async function clashesInLock(
   // anschliessen, ohne die Fahrzeit dazwischen. 120 Minuten ist die
   // grösste Pause, die sich im Team-Bereich einstellen lässt.
   const reach = 120 * 60_000;
+  // Beide Kurstage des neuen Termins gegen beide Kurstage der bestehenden.
+  const windows = [{ startsAt: input.startsAt, endsAt: input.endsAt }];
+  if (input.second) windows.push(input.second);
+  // Grob vorsortieren: alles im Umkreis beider Kurstage; genau geprüft
+  // wird darunter, mit Pause.
+  const low = new Date(Math.min(...windows.map((w) => w.startsAt.getTime())) - reach);
+  const high = new Date(Math.max(...windows.map((w) => w.endsAt.getTime())) + reach);
   const nearby = await tx
     .select({
       id: bookings.id,
       startsAt: bookings.startsAt,
       endsAt: bookings.endsAt,
+      secondStartsAt: bookings.secondStartsAt,
+      secondEndsAt: bookings.secondEndsAt,
       lessonTypeId: bookings.lessonTypeId,
       bufferMinutes: lessonTypes.bufferMinutes,
     })
@@ -561,8 +653,14 @@ async function clashesInLock(
       and(
         eq(bookings.staffId, input.staffId),
         occupiesTime(),
-        lt(bookings.startsAt, new Date(input.endsAt.getTime() + reach)),
-        gt(bookings.endsAt, new Date(input.startsAt.getTime() - reach)),
+        or(
+          and(lt(bookings.startsAt, high), gt(bookings.endsAt, low)),
+          and(
+            isNotNull(bookings.secondStartsAt),
+            lt(bookings.secondStartsAt, high),
+            gt(bookings.secondEndsAt, low),
+          ),
+        ),
         input.excludeBookingId ? ne(bookings.id, input.excludeBookingId) : undefined,
       ),
     );
@@ -575,11 +673,18 @@ async function clashesInLock(
     const pause = shared
       ? 0
       : Math.max(input.lessonType.bufferMinutes, row.bufferMinutes ?? 0) * 60_000;
+    const parts = [{ startsAt: row.startsAt, endsAt: row.endsAt }];
+    if (row.secondStartsAt && row.secondEndsAt) {
+      parts.push({ startsAt: row.secondStartsAt, endsAt: row.secondEndsAt });
+    }
     // Ein Termin, der genau dann endet, wenn dieser beginnt, ist keine
     // Überschneidung — sonst liessen sich zwei Kurse nicht hintereinander legen.
-    return (
-      row.startsAt.getTime() < input.endsAt.getTime() + pause &&
-      row.endsAt.getTime() > input.startsAt.getTime() - pause
+    return parts.some((part) =>
+      windows.some(
+        (window) =>
+          part.startsAt.getTime() < window.endsAt.getTime() + pause &&
+          part.endsAt.getTime() > window.startsAt.getTime() - pause,
+      ),
     );
   });
 
@@ -606,13 +711,19 @@ export async function moveBooking(input: {
   lessonType: LessonType;
   staffId: string;
   startsAt: Date;
+  /** Kurse: Ende und 2. Kurstag aus dem gewählten Kurstermin (Slot). */
+  endsAt?: Date;
+  second?: { startsAt: Date; endsAt: Date } | null;
   retentionDays: number;
   /** Verschiebt die Fahrschule, darf die Kundschaft danach kostenlos absagen. */
   movedBy: "kundschaft" | "fahrschule";
 }): Promise<{ ok: true } | { error: string }> {
-  const endsAt = new Date(input.startsAt.getTime() + input.lessonType.durationMinutes * 60_000);
+  const endsAt =
+    input.endsAt ?? new Date(input.startsAt.getTime() + input.lessonType.durationMinutes * 60_000);
+  const second = input.second ?? null;
+  const lastEnd = second?.endsAt ?? endsAt;
   const purgeAfter = new Date(
-    Math.max(endsAt.getTime(), Date.now()) + input.retentionDays * 24 * 60 * 60 * 1000,
+    Math.max(lastEnd.getTime(), Date.now()) + input.retentionDays * 24 * 60 * 60 * 1000,
   );
 
   try {
@@ -623,6 +734,7 @@ export async function moveBooking(input: {
           staffId: input.staffId,
           startsAt: input.startsAt,
           endsAt,
+          second,
           excludeBookingId: input.bookingId,
         })
       ) {
@@ -636,6 +748,8 @@ export async function moveBooking(input: {
           staffId: input.staffId,
           startsAt: input.startsAt,
           endsAt,
+          secondStartsAt: second?.startsAt ?? null,
+          secondEndsAt: second?.endsAt ?? null,
           purgeAfter,
           reminderSentAt: null,
           noShowAt: null,
@@ -673,12 +787,19 @@ export async function createBooking(input: {
   confirmation?: { token: string; expiresAt: Date };
   /** Häkchen "darf einmal um eine Google-Bewertung bitten". */
   reviewConsent?: boolean;
+  /** Kurse: Ende und 2. Kurstag aus dem gewählten Kurstermin (Slot). */
+  endsAt?: Date;
+  second?: { startsAt: Date; endsAt: Date } | null;
 }): Promise<{ reference: string; cancelToken: string } | { error: string }> {
-  const endsAt = new Date(input.startsAt.getTime() + input.lessonType.durationMinutes * 60_000);
+  const endsAt =
+    input.endsAt ?? new Date(input.startsAt.getTime() + input.lessonType.durationMinutes * 60_000);
+  const second = input.second ?? null;
   const reference = newReference();
   const cancelToken = newCancelToken();
+  // Aufbewahrt wird ab dem letzten Kurstag.
+  const lastEnd = second?.endsAt ?? endsAt;
   const purgeAfter = new Date(
-    Math.max(endsAt.getTime(), Date.now()) + input.retentionDays * 24 * 60 * 60 * 1000,
+    Math.max(lastEnd.getTime(), Date.now()) + input.retentionDays * 24 * 60 * 60 * 1000,
   );
 
   try {
@@ -688,6 +809,7 @@ export async function createBooking(input: {
         staffId: input.staffId,
         startsAt: input.startsAt,
         endsAt,
+        second,
       });
       if (clash) return null;
 
@@ -698,6 +820,8 @@ export async function createBooking(input: {
         lessonTypeId: input.lessonType.id,
         startsAt: input.startsAt,
         endsAt,
+        secondStartsAt: second?.startsAt ?? null,
+        secondEndsAt: second?.endsAt ?? null,
         status: input.confirmation ? "angefragt" : "bestaetigt",
         confirmToken: input.confirmation?.token ?? null,
         confirmExpiresAt: input.confirmation?.expiresAt ?? null,

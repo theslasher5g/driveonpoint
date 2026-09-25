@@ -1,6 +1,7 @@
 import "server-only";
 import { and, asc, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
 import { occupiesTime } from "./booking";
+import type { SecondPart } from "./availability-rules";
 import { courseWindows } from "./course-dates";
 import { COURSE_HORIZON_DAYS } from "./course-horizon";
 import { sendWaitlistNotification } from "./booking-mail";
@@ -18,7 +19,14 @@ import { addDays, todayInZurich, zurichDay, zurichTime, zurichToInstant } from "
  * bucht, hat ihn.
  */
 
-export type FullSession = { day: string; time: string; startsAt: Date };
+export type FullSession = {
+  day: string;
+  time: string;
+  startsAt: Date;
+  endTime: string;
+  /** 2. Kurstag bei Kursen über zwei Tage. */
+  second: SecondPart | null;
+};
 
 async function takenSeats(lessonTypeId: string, startsAt: Date): Promise<number> {
   const [row] = await db
@@ -78,7 +86,7 @@ export async function fullCourseSessions(
     if (seen.has(key) || startsAt.getTime() <= now) continue;
     seen.add(key);
     if ((taken.get(key) ?? 0) >= lessonType.capacity) {
-      full.push({ day: date.day, time, startsAt });
+      full.push({ day: date.day, time, startsAt, endTime: date.endTime, second: date.second });
     }
   }
 

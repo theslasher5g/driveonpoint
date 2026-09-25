@@ -157,7 +157,7 @@ keine sonstigen Aktualisierungen. Protokoll unter
 
 | Wann | Skript | Macht |
 |---|---|---|
-| stündlich, :07 | `deploy/stuendlich.sh` | Verschickt die Erinnerungen vor dem Termin, löscht Online-Buchungen, die nie bestätigt wurden, und Wartelisten vergangener Kurse |
+| stündlich, :07 | `deploy/stuendlich.sh` | Verschickt die Erinnerungen vor dem Termin, löscht Online-Buchungen, die nie bestätigt wurden, und Wartelisten vergangener Kurse; meldet Angebote, die nicht buchbar sind |
 | täglich 03:17 | `deploy/aufraeumen.sh` | Löscht Kundendaten nach Ablauf der Frist, entfernt abgelaufene Sitzungen und alte Zähler ([Aufbewahrung](#rechtliches)) |
 | wöchentlich, So 04:00 | `deploy/docker-updates.sh` | Holt Sicherheitskorrekturen der Docker-Basisabbilder (siehe unten) |
 
@@ -218,6 +218,16 @@ Die letzte Stelle ist für einen externen Monitor gedacht, etwa den
 kostenlosen von [UptimeRobot](https://uptimerobot.com): dort diese Adresse
 alle 5 Minuten prüfen lassen. Er meldet sich auch dann, wenn der ganze
 Server ausgefallen ist — das kann die Anwendung selbst nicht.
+
+### Wenn ein Angebot nicht buchbar ist
+
+Der stündliche Lauf prüft jedes aktive Angebot: Findet die Kundschaft in
+den nächsten 4 Wochen keinen einzigen freien Termin, geht eine Mail an
+dieselbe Adresse (`ALERT_EMAIL`, sonst die Kontaktadresse). Sie sagt, woran
+es liegt: niemand zugeteilt, keine Zeiten oder Kurstermine eingetragen, oder
+alles ausgebucht bzw. durch Abwesenheiten blockiert; bei Kursen auch, wie
+viele auf einer Warteliste stehen. Pro Lücke kommt eine Mail, solange sie
+besteht höchstens einmal pro Woche.
 
 ---
 

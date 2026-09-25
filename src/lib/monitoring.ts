@@ -99,7 +99,7 @@ export async function currentProblems(now: Date = new Date()): Promise<Problem[]
   return problems;
 }
 
-function alertRecipient(): string {
+export function alertRecipient(): string {
   return process.env.ALERT_EMAIL || site.contact.email;
 }
 

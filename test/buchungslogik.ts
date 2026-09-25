@@ -33,6 +33,7 @@ import { moveCourseSession } from "@/lib/course-move";
 import { customerHistories, describeHistory } from "@/lib/customer-history";
 import { ruleAppliesOn } from "@/lib/availability-rules";
 import { currentProblems } from "@/lib/monitoring";
+import { offeringGap, shouldAlert } from "@/lib/offering-gaps";
 import { requestReviews } from "@/lib/reviews";
 import { deleteExpiredRequests, sendDueReminders } from "@/lib/reminders";
 import { addDays, todayInZurich, zurichDay, zurichWeekday } from "@/lib/time";
@@ -107,6 +108,8 @@ async function cleanup() {
       );
   }
   createdOfferings.length = 0;
+
+  await db.delete(lessonTypes).where(like(lessonTypes.slug, "pruefstand-%"));
 
   const testStaff = await db.select({ id: staff.id }).from(staff).where(like(staff.name, `${MARK}%`));
   const ids = testStaff.map((row) => row.id);
@@ -814,6 +817,61 @@ async function main() {
     taeglichSlots.map((s) => `${s.day} ${s.time}`),
     [0, 1, 2].map((offset) => `${addDays(tagS, offset)} 14:00`),
   );
+
+  // ===================================================================
+  console.log("\nSZENARIO T — Hinweis, wenn ein Angebot nicht buchbar ist");
+  // ===================================================================
+  const jetzt = new Date();
+  check(
+    "noch nie gemeldet: melden",
+    shouldAlert(undefined, jetzt),
+    true,
+  );
+  check(
+    "dieselbe Lücke vor 2 Tagen gemeldet: nicht nochmals",
+    shouldAlert({ alertedAt: new Date(jetzt.getTime() - 2 * 24 * HOUR), lastOkAt: new Date(jetzt.getTime() - 3 * 24 * HOUR) }, jetzt),
+    false,
+  );
+  check(
+    "dieselbe Lücke seit 8 Tagen: wöchentliche Erinnerung",
+    shouldAlert({ alertedAt: new Date(jetzt.getTime() - 8 * 24 * HOUR), lastOkAt: null }, jetzt),
+    true,
+  );
+  check(
+    "neue Lücke 2 h nach der letzten Meldung: erst einen Tag später",
+    shouldAlert({ alertedAt: new Date(jetzt.getTime() - 3 * HOUR), lastOkAt: new Date(jetzt.getTime() - 2 * HOUR) }, jetzt),
+    false,
+  );
+  check(
+    "neue Lücke 2 Tage nach der letzten Meldung: melden",
+    shouldAlert({ alertedAt: new Date(jetzt.getTime() - 2 * 24 * HOUR), lastOkAt: new Date(jetzt.getTime() - HOUR) }, jetzt),
+    true,
+  );
+
+  // Ein eigenes, inaktives Angebot: erscheint nirgends öffentlich, und
+  // fremde Zeiten spielen keine Rolle.
+  const [luecke] = await db
+    .insert(lessonTypes)
+    .values({
+      slug: "pruefstand-luecke",
+      name: `${MARK} Lücke`,
+      durationMinutes: 45,
+      bufferMinutes: 0,
+      leadTimeHours: 0,
+      capacity: 1,
+      active: false,
+    })
+    .returning();
+  check("niemand zugeteilt", (await offeringGap(luecke))?.reason, "niemand");
+  await addOffering(personC.id, luecke.id);
+  check("zugeteilt, aber keine Zeiten", (await offeringGap(luecke))?.reason, "keine-zeiten");
+  const tagT = addDays(day, 5);
+  await addCourseDate(personC.id, luecke.id, tagT, "09:00", "09:45");
+  check("eine freie Zeit: buchbar", await offeringGap(luecke), null);
+  const einzige = (await findSlots({ lessonType: luecke, fromDay: tagT, days: 1 }))[0];
+  const gebucht = await book("pruefstand-luecke", personC.id, einzige.startsAt, "T1");
+  check("die einzige Zeit gebucht", gebucht.ok, true);
+  check("danach ausgebucht", (await offeringGap(luecke))?.reason, "ausgebucht");
 
   // ===================================================================
   console.log("\nSZENARIO R — Bitte um Google-Bewertung");

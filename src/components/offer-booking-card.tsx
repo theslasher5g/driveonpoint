@@ -21,34 +21,21 @@ import { fullCourseSessions, type FullSession } from "@/lib/waitlist";
  * geht — und kommt mit einem Klick in die Buchung, wie bei der Terminkarte
  * auf der Startseite.
  */
-export async function OfferBookingCard({
-  slug,
-  trialSlug,
-}: {
-  slug: string;
-  /** Günstiger Einstieg, der unter dem Hauptangebot erwähnt wird (Schnupperstunde). */
-  trialSlug?: string;
-}) {
+export async function OfferBookingCard({ slug }: { slug: string }) {
   let lessonType: LessonType | null = null;
-  let trial: LessonType | null = null;
   let slot: Slot | undefined;
   let fullSession: FullSession | undefined;
   let priced: ReturnType<typeof applyPromotions> | null = null;
-  let trialPrice: number | null = null;
 
   try {
     const promotions = await activePromotions();
-    [lessonType, trial] = await Promise.all([
-      lessonTypeBySlug(slug),
-      trialSlug ? lessonTypeBySlug(trialSlug) : Promise.resolve(null),
-    ]);
+    lessonType = await lessonTypeBySlug(slug);
     if (lessonType?.active) {
       priced = applyPromotions(lessonType, promotions);
       slot = (await findSlots({ lessonType, days: BOOKING_HORIZON_DAYS }))[0];
       // Alles ausgebucht: dann wenigstens der Weg auf die Warteliste.
       if (!slot) fullSession = (await fullCourseSessions(lessonType))[0];
     }
-    if (trial?.active) trialPrice = applyPromotions(trial, promotions).finalRappen;
   } catch (error) {
     // Ist die Datenbank kurz weg, bleibt wenigstens der Weg zur Buchung.
     console.error("Buchungskarte konnte nicht geladen werden:", error);
@@ -147,17 +134,6 @@ export async function OfferBookingCard({
         )}
       </div>
 
-      {trial?.active && trialPrice !== null && (
-        <p className="text-fine text-slate mt-5">
-          Zum ersten Mal?{" "}
-          <Link
-            href={`/buchen?angebot=${trial.slug}`}
-            className="font-semibold text-signal-ink underline underline-offset-4"
-          >
-            {trial.name} für CHF {formatPrice(trialPrice)} buchen
-          </Link>
-        </p>
-      )}
     </div>
   );
 }

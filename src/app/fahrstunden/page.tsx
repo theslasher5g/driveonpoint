@@ -21,7 +21,7 @@ export default function FahrstundenPage() {
       <PageHeader
         title={`Fahrstunden in ${site.contact.city}`}
         lead={`${offer.lead} Du fährst immer bei derselben Fahrlehrerin, und zur Prüfung melden wir dich an, wenn du so weit bist.`}
-        aside={<OfferBookingCard slug="fahrstunde" trialSlug="schnupperstunde" />}
+        aside={<OfferBookingCard slug="fahrstunde" />}
       />
 
       <Section title="Wie eine Lektion abläuft">

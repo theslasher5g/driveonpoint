@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, gt } from "drizzle-orm";
-import { BOOKING_HORIZON_DAYS, findSlots } from "./booking";
+import { findSlots, horizonDays } from "./booking";
 import { db } from "./db";
 import { bookings, lessonTypes, staff } from "./db/schema";
 import { todayInZurich } from "./time";
@@ -60,7 +60,7 @@ export async function movableSlots(booking: TokenBooking) {
   const slots = await findSlots({
     lessonType: booking.lessonType,
     fromDay: todayInZurich(),
-    days: BOOKING_HORIZON_DAYS,
+    days: horizonDays(booking.lessonType),
     staffId: single ? booking.staffId! : undefined,
     excludeBookingId: booking.id,
   });

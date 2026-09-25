@@ -29,9 +29,10 @@ import { accountingReport } from "@/lib/accounting";
 import { createBooking, findSlots, lessonTypeBySlug, moveBooking, newConfirmToken } from "@/lib/booking";
 import { markError, markOk } from "@/lib/checks";
 import { cancelCourseSession } from "@/lib/course-cancel";
+import { keepBookedSessions } from "@/lib/course-dates";
 import { moveCourseSession } from "@/lib/course-move";
 import { customerHistories, describeHistory } from "@/lib/customer-history";
-import { occurrences, ruleAppliesOn } from "@/lib/availability-rules";
+import { describeRule, occurrences, ruleAppliesOn } from "@/lib/availability-rules";
 import { currentProblems } from "@/lib/monitoring";
 import { offeringGap, shouldAlert } from "@/lib/offering-gaps";
 import { requestReviews } from "@/lib/reviews";
@@ -497,16 +498,6 @@ async function main() {
   );
 
   // ===================================================================
-  console.log("\nSZENARIO K — Wochenregel für einen Kurs bietet nichts an");
-  // ===================================================================
-  // Kurse laufen nur über Kurstermine. Eine alte Wochenregel für den VKU
-  // war im Team-Bereich unsichtbar, bot den Kurs aber jede Woche an.
-  const tagK = addDays(todayInZurich(), 16);
-  await addRule(personA.id, vku.id, zurichWeekday(tagK), "18:00", "21:00");
-  const vkuK = await findSlots({ lessonType: vku, fromDay: tagK, days: 1, staffId: personA.id });
-  check("Wochenregel für VKU erzeugt keinen Kurstermin", vkuK.length, 0);
-
-  // ===================================================================
   console.log("\nSZENARIO L — Warteliste für einen vollen Kurs");
   // ===================================================================
   const tagL = addDays(todayInZurich(), 18);
@@ -788,11 +779,14 @@ async function main() {
     [ruleAppliesOn(woche, "2026-09-29", 2), ruleAppliesOn(woche, "2026-10-06", 2), ruleAppliesOn(woche, "2026-10-07", 3)],
     [false, true, false],
   );
+  // 31.1.2026 ist der 5. und damit letzte Samstag im Januar.
   const monat = { frequency: "monatlich" as const, weekday: 6, validFrom: "2026-01-31", validUntil: "2026-12-31" };
   check(
-    "monatlich am 31.: März ja, Februar und April fallen aus, nach dem Enddatum nichts",
-    ["2026-03-31", "2026-02-28", "2026-04-30", "2027-01-31"].map((d) => ruleAppliesOn(monat, d, zurichWeekday(d))),
-    [true, false, false, false],
+    "monatlich ab dem 5. Samstag: jeweils der letzte Samstag, nicht der 31.",
+    ["2026-02-28", "2026-03-28", "2026-03-31", "2026-04-25", "2027-01-30"].map((d) =>
+      ruleAppliesOn(monat, d, zurichWeekday(d)),
+    ),
+    [true, true, false, true, false],
   );
 
   check(
@@ -801,9 +795,14 @@ async function main() {
     ["2026-10-07", "2026-10-14", "2026-10-21", "2026-10-28", "2026-11-04"],
   );
   check(
-    "Kursserie monatlich am 31.: nur Monate mit 31 Tagen",
-    occurrences("monatlich", "2026-10-31", "2027-03-31"),
-    ["2026-10-31", "2026-12-31", "2027-01-31", "2027-03-31"],
+    "Kursserie monatlich ab Montag, 28.9.: jeden 4. Montag, egal welches Datum",
+    occurrences("monatlich", "2026-09-28", "2027-01-31"),
+    ["2026-09-28", "2026-10-26", "2026-11-23", "2026-12-28", "2027-01-25"],
+  );
+  check(
+    "Beschreibung der monatlichen Regel",
+    describeRule({ frequency: "monatlich", weekday: 1, validFrom: "2026-09-28", validUntil: null }),
+    "Jeden 4. Montag im Monat",
   );
   check("Kursserie täglich über drei Tage", occurrences("taeglich", "2026-10-30", "2026-11-01").length, 3);
 
@@ -933,6 +932,62 @@ async function main() {
   check("Fahrstunde im Kursfenster direkt angelegt", "reference" in direkt, true);
   const vkuU2 = await findSlots({ lessonType: vku, fromDay: tagU2, days: 1, staffId: personC.id });
   check("Kursbeginn wandert nicht auf 18:00", vkuU2.map((s) => s.time), []);
+
+  // ===================================================================
+  console.log("\nSZENARIO V — Kursserie: anbieten, absagen, verschieben, löschen");
+  // ===================================================================
+  const tagV = addDays(day, 20);
+  const [serie] = await db
+    .insert(availabilityRules)
+    .values({
+      staffId: personC.id,
+      lessonTypeId: vku.id,
+      frequency: "woechentlich",
+      weekday: zurichWeekday(tagV),
+      startTime: "18:00",
+      endTime: "21:00",
+      validFrom: tagV,
+    })
+    .returning();
+  createdRules.push(serie.id);
+  const vkuV = async () =>
+    (await findSlots({ lessonType: vku, fromDay: tagV, days: 16, staffId: personC.id })).map(
+      (s) => `${s.day} ${s.time}`,
+    );
+  const wocheV = (n: number) => `${addDays(tagV, n * 7)} 18:00`;
+  check("Serie bietet jede Woche einen Kurstermin an", await vkuV(), [wocheV(0), wocheV(1), wocheV(2)]);
+  // Am zweiten Serientermin hätte die Person auch Fahrstunden-Zeit.
+  await addCourseDate(personC.id, fahrstunde.id, addDays(tagV, 7), "18:00", "21:00");
+  const fahrV = async () =>
+    (await findSlots({ lessonType: fahrstunde, fromDay: addDays(tagV, 7), days: 1, staffId: personC.id })).length;
+  check("Serientermin sperrt die Fahrstunden-Zeit", await fahrV(), 0);
+
+  await cancelCourseSession({ lessonTypeId: vku.id, startsAt: zurichToInstant(addDays(tagV, 7), "18:00"), message: null });
+  check("abgesagter Serientermin fällt aus, die Serie läuft weiter", await vkuV(), [wocheV(0), wocheV(2)]);
+
+  const serieVerschoben = await moveCourseSession({
+    lessonTypeId: vku.id,
+    startsAt: zurichToInstant(addDays(tagV, 14), "18:00"),
+    newDay: addDays(tagV, 15),
+    newTime: "18:00",
+    message: null,
+  });
+  check("Serientermin lässt sich verschieben", "ok" in serieVerschoben, true);
+  check("verschoben: alter Tag weg, neuer da", await vkuV(), [wocheV(0), `${addDays(tagV, 15)} 18:00`]);
+
+  check("nach der Absage ist die Zeit für Fahrstunden wieder frei", (await fahrV()) > 0, true);
+
+  const anmeldungV = await book("vku", personC.id, zurichToInstant(tagV, "18:00"), "V1");
+  check("Anmeldung für den ersten Serientermin", anmeldungV.ok, true);
+  await db.transaction(async (tx) => {
+    await keepBookedSessions(tx, serie);
+    await tx.delete(availabilityRules).where(eq(availabilityRules.id, serie.id));
+  });
+  check(
+    "Serie gelöscht: belegter Termin bleibt als einzelnes Datum, der verschobene auch",
+    await vkuV(),
+    [wocheV(0), `${addDays(tagV, 15)} 18:00`],
+  );
 
   // ===================================================================
   console.log("\nSZENARIO R — Bitte um Google-Bewertung");

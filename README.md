@@ -375,20 +375,24 @@ Kurstext auf der jeweiligen Seite.
 sich die Zeiten stark unterscheiden: der VKU findet praktisch immer abends
 statt, Fahrstunden eher tagsüber. Eingetragen wird bei jedem Angebot ein
 Datum mit Uhrzeit, auf Wunsch wiederholt: jeden Tag, jede Woche am selben
-Wochentag oder jeden Monat am selben Kalendertag (bei „am 31.“ fallen kürzere
-Monate aus). Die Zusammenfassung unter dem Formular zeigt vor dem Eintragen,
-was entsteht.
+Wochentag oder jeden Monat am selben Wochentag an derselben Stelle (etwa
+„jeden 4. Montag im Monat“; ab dem 5. Wochentag „jeden letzten“). Das
+Enddatum ist freiwillig. Die Zusammenfassung unter dem Formular zeigt vor
+dem Eintragen, was entsteht; die Liste zeigt je Serie die nächsten vier
+Termine, einzelne Daten ab dem fünften aufklappbar.
 
-- Fahr- und Schnupperstunden: eine Wiederholung ist eine Regel, das Enddatum
-  freiwillig.
-- Kurse (VKU, Nothilfekurs): jeder Kurstermin wird einzeln angelegt, bis zum
-  letzten Kurstermin, der hier Pflicht ist (höchstens 60 auf einmal). So
-  lässt sich jeder einzeln absagen oder verschieben, mit eigener Warteliste.
-  Schon eingetragene Termine zur selben Zeit werden nicht verdoppelt.
-  Ein eingetragener Kurstermin sperrt die Person für andere Angebote,
-  auch solange sich noch niemand angemeldet hat. Hat er Anmeldungen, lässt
-  er sich unter Verfügbarkeit nicht entfernen, sondern nur im Kalender
-  über „Kurs absagen“ (mit Mail an alle).
+Kurse (VKU, Nothilfekurs):
+- Online buchbar bis ein Jahr voraus; die Buchungsseite zeigt die nächsten
+  vier Kurstermine (`src/lib/course-horizon.ts`). Fahrstunden: 4 Wochen.
+- Einzelne Termine einer Serie lassen sich im Kalender absagen oder
+  verschieben wie ein einzelnes Datum. Der Termin wird dann in der Serie als
+  ausgefallen vermerkt, die Serie läuft weiter.
+- Ein eingetragener Kurstermin sperrt die Person für andere Angebote, auch
+  solange sich noch niemand angemeldet hat.
+- Ein Kurstermin mit Anmeldungen lässt sich unter Verfügbarkeit nicht
+  entfernen, nur im Kalender über „Kurs absagen“ (mit Mail an alle). Wird
+  eine Serie gelöscht, bleiben ihre Termine mit Anmeldungen als einzelne
+  Daten stehen.
 
 Abwesenheiten (Ferien, Arzttermin) gelten standardmässig für alle Angebote
 einer Person und lassen sich auf ein einzelnes Angebot eingrenzen.

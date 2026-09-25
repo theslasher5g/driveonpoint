@@ -16,6 +16,8 @@ import {
   type Promotion,
 } from "./db/schema";
 import { ruleAppliesOn } from "./availability-rules";
+import { courseWindows } from "./course-dates";
+import { COURSE_HORIZON_DAYS } from "./course-horizon";
 import { subtract, type Interval } from "./intervals";
 import {
   addDays,
@@ -78,10 +80,15 @@ export function cancellationIsChargeable(
   return at.getTime() > booking.startsAt.getTime() - 24 * 60 * 60 * 1000;
 }
 
-/** Liegt der Tag im online buchbaren Zeitraum ab heute? */
-export function withinBookingHorizon(day: string): boolean {
+/** Wie viele Tage voraus online buchbar: Kurse ein Jahr, sonst 4 Wochen. */
+export function horizonDays(lessonType: { capacity: number }): number {
+  return lessonType.capacity > 1 ? COURSE_HORIZON_DAYS : BOOKING_HORIZON_DAYS;
+}
+
+/** Liegt der Tag im online buchbaren Zeitraum dieses Angebots ab heute? */
+export function withinBookingHorizon(day: string, lessonType: { capacity: number }): boolean {
   const today = todayInZurich();
-  return day >= today && day < addDays(today, BOOKING_HORIZON_DAYS);
+  return day >= today && day < addDays(today, horizonDays(lessonType));
 }
 
 export type Slot = {
@@ -189,7 +196,8 @@ export async function findSlots(options: {
 }): Promise<Slot[]> {
   const { lessonType } = options;
   const fromDay = options.fromDay ?? todayInZurich();
-  const days = Math.min(options.days ?? 21, 120);
+  // Kurse sind bis ein Jahr voraus buchbar (course-horizon.ts).
+  const days = Math.min(options.days ?? 21, COURSE_HORIZON_DAYS);
   const untilDay = addDays(fromDay, days);
 
   const eligible = await db
@@ -255,31 +263,11 @@ export async function findSlots(options: {
           options.excludeBookingId ? ne(bookings.id, options.excludeBookingId) : undefined,
         ),
       ),
-    // Geplante Kurstermine anderer Kurse: die Person steht dann im Kursraum,
-    // auch wenn sich noch niemand angemeldet hat. Vorher liess sich in diese
-    // Zeit eine Fahrstunde buchen, und der Kurstermin verschwand danach
-    // stillschweigend aus der Buchung.
-    db
-      .select({
-        staffId: availabilityExceptions.staffId,
-        day: availabilityExceptions.day,
-        startTime: availabilityExceptions.startTime,
-        endTime: availabilityExceptions.endTime,
-        bufferMinutes: lessonTypes.bufferMinutes,
-      })
-      .from(availabilityExceptions)
-      .innerJoin(lessonTypes, eq(lessonTypes.id, availabilityExceptions.lessonTypeId))
-      .where(
-        and(
-          inArray(availabilityExceptions.staffId, staffIds),
-          eq(availabilityExceptions.available, true),
-          ne(availabilityExceptions.lessonTypeId, lessonType.id),
-          gt(lessonTypes.capacity, 1),
-          eq(lessonTypes.active, true),
-          gte(availabilityExceptions.day, fromDay),
-          lte(availabilityExceptions.day, untilDay),
-        ),
-      ),
+    // Geplante Kurstermine anderer Kurse (einzelne Daten und Serien): die
+    // Person steht dann im Kursraum, auch wenn sich noch niemand angemeldet
+    // hat. Vorher liess sich in diese Zeit eine Fahrstunde buchen, und der
+    // Kurstermin verschwand danach stillschweigend aus der Buchung.
+    courseWindows({ fromDay, untilDay, excludeLessonTypeId: lessonType.id, staffIds }),
   ]);
 
   const isGroupCourse = lessonType.capacity > 1;
@@ -295,10 +283,9 @@ export async function findSlots(options: {
 
     for (const id of staffIds) plan.set(id, []);
 
-    // Kurse (VKU, Nothilfekurs) laufen nur über einzelne Kurstermine. Eine
-    // wöchentliche Regel dafür lässt sich im Team-Bereich weder sehen noch
-    // löschen (siehe Verfügbarkeit) — sie darf also auch nichts anbieten.
-    for (const rule of isGroupCourse ? [] : rules) {
+    // Serien gelten auch für Kurse: jede Woche oder jeden 4. Montag ein
+    // Kurstermin. Fällt einer aus, sperrt ihn eine Ausnahme dieses Kurses.
+    for (const rule of rules) {
       if (!ruleAppliesOn(rule, day, weekday)) continue;
       plan.get(rule.staffId)?.push({
         start: minutesSinceMidnight(rule.startTime),

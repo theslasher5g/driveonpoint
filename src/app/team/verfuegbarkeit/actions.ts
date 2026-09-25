@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -9,17 +9,13 @@ import { assertPermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { availabilityExceptions, availabilityRules, lessonTypes, staffLessonTypes } from "@/lib/db/schema";
-import { occurrences } from "@/lib/availability-rules";
 import { cancelCourseSession, courseSession } from "@/lib/course-cancel";
-import { addDays, daysBetween, minutesSinceMidnight, todayInZurich, zurichToInstant, zurichWeekday } from "@/lib/time";
+import { keepBookedSessions } from "@/lib/course-dates";
+import { addDays, minutesSinceMidnight, todayInZurich, zurichToInstant, zurichWeekday } from "@/lib/time";
 
 /** Höchstens rund zwei Monate am Stück, damit ein Tippfehler beim Enddatum
  * keine tausend Zeilen erzeugt. */
 const MAX_RANGE_DAYS = 62;
-
-/** Kursserien: höchstens ein Jahr und so viele Termine auf einmal. */
-const MAX_SERIES_DAYS = 366;
-const MAX_SERIES_DATES = 60;
 
 function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);
@@ -118,9 +114,9 @@ export type AvailabilityState = { error?: string; ok?: string };
  * Zeit für ein Angebot an einem Datum, auf Wunsch wiederholt: täglich,
  * wöchentlich am selben Wochentag oder monatlich am selben Kalendertag.
  *
- * Fahr- und Schnupperstunden werden wiederkehrend zu einer Regel, auf Wunsch
- * mit Enddatum. Bei Kursen entsteht jeder Kurstermin einzeln, bis zu einem
- * Enddatum, das dort Pflicht ist.
+ * Wiederkehrend wird es eine Regel, auf Wunsch mit Enddatum — bei Kursen
+ * genauso: einzelne Termine einer Serie lassen sich trotzdem absagen oder
+ * verschieben (siehe course-dates.ts).
  */
 export async function addOfferingDateAction(
   _previous: AvailabilityState,
@@ -184,44 +180,6 @@ export async function addOfferingDateAction(
       available: true,
     });
     message = isCourse ? "Kurstermin eingetragen." : "Datum eingetragen.";
-  } else if (isCourse) {
-    // Kurse bekommen jeden Termin einzeln: Absagen, Verschieben und
-    // Warteliste hängen am einzelnen Kurstermin, nicht an einer Regel.
-    if (!input.tagBis) return { error: "Bitte angeben, bis wann sich der Kurs wiederholt." };
-    if (daysBetween(input.tag, input.tagBis) > MAX_SERIES_DAYS) {
-      return { error: "Bitte höchstens ein Jahr im Voraus eintragen." };
-    }
-    const days = occurrences(input.wiederholung, input.tag, input.tagBis);
-    if (days.length > MAX_SERIES_DATES) {
-      return { error: `Das wären ${days.length} Kurstermine. Bitte höchstens ${MAX_SERIES_DATES} auf einmal eintragen.` };
-    }
-    // Schon eingetragene Kurstermine zur selben Zeit nicht verdoppeln.
-    const existing = await db
-      .select({ day: availabilityExceptions.day })
-      .from(availabilityExceptions)
-      .where(
-        and(
-          eq(availabilityExceptions.staffId, staffId),
-          eq(availabilityExceptions.lessonTypeId, input.lessonTypeId),
-          eq(availabilityExceptions.available, true),
-          eq(availabilityExceptions.startTime, input.von),
-          inArray(availabilityExceptions.day, days),
-        ),
-      );
-    const taken = new Set(existing.map((row) => row.day));
-    const fresh = days.filter((day) => !taken.has(day));
-    if (fresh.length === 0) return { error: "Diese Kurstermine sind schon alle eingetragen." };
-    await db.insert(availabilityExceptions).values(
-      fresh.map((day) => ({
-        staffId,
-        lessonTypeId: input.lessonTypeId,
-        day,
-        startTime: input.von,
-        endTime: input.bis,
-        available: true,
-      })),
-    );
-    message = `${fresh.length} ${fresh.length === 1 ? "Kurstermin" : "Kurstermine"} eingetragen.`;
   } else {
     await db.insert(availabilityRules).values({
       staffId,
@@ -233,7 +191,7 @@ export async function addOfferingDateAction(
       validFrom: input.tag,
       validUntil: input.tagBis ?? null,
     });
-    message = "Wiederkehrende Zeit eingetragen.";
+    message = isCourse ? "Kursserie eingetragen." : "Wiederkehrende Zeit eingetragen.";
   }
 
   await record("verfuegbarkeit.datum-erstellt", { id: user.id, label: user.name }, {
@@ -256,9 +214,18 @@ export async function deleteRuleAction(formData: FormData): Promise<void> {
 
   // Die Kennung der Person steht in der Bedingung: ein fremder Eintrag wird
   // so auch dann nicht gelöscht, wenn jemand die Kennung errät.
-  await db
-    .delete(availabilityRules)
-    .where(and(eq(availabilityRules.id, id), eq(availabilityRules.staffId, staffId)));
+  const [rule] = await db
+    .select()
+    .from(availabilityRules)
+    .where(and(eq(availabilityRules.id, id), eq(availabilityRules.staffId, staffId)))
+    .limit(1);
+  if (!rule) return;
+
+  await db.transaction(async (tx) => {
+    // Kursserie: Termine mit Anmeldungen bleiben als einzelne Daten stehen.
+    await keepBookedSessions(tx, rule);
+    await tx.delete(availabilityRules).where(eq(availabilityRules.id, rule.id));
+  });
 
   await record("verfuegbarkeit.regel-geloescht", { id: user.id, label: user.name }, { id });
   revalidatePath("/team/verfuegbarkeit");

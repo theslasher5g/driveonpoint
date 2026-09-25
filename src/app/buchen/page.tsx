@@ -7,12 +7,13 @@ import { PageHeader } from "@/components/page-header";
 import {
   activePromotions,
   applyPromotions,
-  BOOKING_HORIZON_DAYS,
   findSlots,
+  horizonDays,
   lessonTypeBySlug,
   listLessonTypes,
   type Slot,
 } from "@/lib/booking";
+import { COURSE_SESSIONS_SHOWN } from "@/lib/course-horizon";
 import type { LessonType } from "@/lib/db/schema";
 import { withSoftHyphens } from "@/lib/hyphenate";
 import { site } from "@/lib/site";
@@ -46,10 +47,12 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
 
   const promotions = await activePromotions();
   const priced = applyPromotions(lessonType, promotions);
+  // Fahrstunden 4 Wochen voraus, Kurse ein Jahr — von denen zeigt die Liste
+  // die nächsten paar (SlotList).
   const slots = await findSlots({
     lessonType,
     fromDay: todayInZurich(),
-    days: BOOKING_HORIZON_DAYS,
+    days: horizonDays(lessonType),
   });
   // Volle Kurstermine bleiben sichtbar, mit dem Weg auf die Warteliste.
   const full = lessonType.capacity > 1 ? await fullCourseSessions(lessonType) : [];
@@ -187,7 +190,9 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
               : full.length > 0
                 ? "Wähle einen Kurstermin. Ist einer ausgebucht, kannst du dich auf die Warteliste setzen und bekommst eine Mail, sobald ein Platz frei wird."
                 : `Wähle einen Termin. Alle Zeiten hier sind wirklich frei, sie kommen direkt aus unserem Kalender.`
-            : "Für die nächsten vier Wochen ist online nichts frei."
+            : lessonType.capacity > 1
+              ? "Online ist gerade kein Kurstermin frei."
+              : "Für die nächsten vier Wochen ist online nichts frei."
         }
       />
       <section className="shell band">
@@ -257,10 +262,14 @@ function SlotList({
 
   // Ausgebuchte Kurstermine (seatsLeft null) stehen zwischen den freien,
   // in zeitlicher Reihenfolge.
-  const listed: ListEntry[] = [
+  const all: ListEntry[] = [
     ...slots.map((slot) => ({ day: slot.day, time: slot.time, seatsLeft: slot.seatsLeft })),
     ...full.map((session) => ({ day: session.day, time: session.time, seatsLeft: null })),
   ].sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
+  // Kurse: nur die nächsten paar, sonst stünde eine wöchentliche Serie mit
+  // einem ganzen Jahr Terminen da. Spätere rücken nach.
+  const listed = isCourse ? all.slice(0, COURSE_SESSIONS_SHOWN) : all;
+  const later = all.length - listed.length;
 
   const byDay = new Map<string, ListEntry[]>();
   for (const entry of listed) {
@@ -308,6 +317,12 @@ function SlotList({
           </ul>
         </div>
       ))}
+      {later > 0 && (
+        <p className="text-fine text-slate pt-2">
+          Das sind die nächsten {listed.length} Kurstermine. Spätere erscheinen hier, sobald
+          diese vorbei sind.
+        </p>
+      )}
     </div>
   );
 }
@@ -338,7 +353,7 @@ async function ChooseOffer({ unknown }: { unknown?: string } = {}) {
       let next: Slot | undefined;
       let waitlist = false;
       try {
-        next = (await findSlots({ lessonType, days: BOOKING_HORIZON_DAYS }))[0];
+        next = (await findSlots({ lessonType, days: horizonDays(lessonType) }))[0];
         if (!next && lessonType.capacity > 1) {
           waitlist = (await fullCourseSessions(lessonType)).length > 0;
         }

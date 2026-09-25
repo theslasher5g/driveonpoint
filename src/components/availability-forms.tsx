@@ -2,7 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { occurrences } from "@/lib/availability-rules";
+import { occurrences, ordinalLabel } from "@/lib/availability-rules";
+import { COURSE_SESSIONS_SHOWN } from "@/lib/course-horizon";
 import {
   addExceptionAction,
   addOfferingDateAction,
@@ -121,16 +122,11 @@ export function OfferingDateForm({
           <DayField
             id={id("ende")}
             name="tagBis"
-            label={course ? "Letzter Kurstermin" : "Endet am"}
-            hint={
-              course
-                ? "Bis dahin wird jeder Kurstermin einzeln angelegt."
-                : "Leer lassen, wenn es kein Ende gibt."
-            }
+            label="Endet am"
+            hint="Leer lassen, wenn es kein Ende gibt."
             min={day || today}
             value={endDay}
             onChange={setEndDay}
-            required={course}
           />
         </div>
       )}
@@ -159,9 +155,13 @@ function summarize({
   if (!day) return null;
   const sentence = plainSummary(repeat, day, endDay, from, to);
   if (!course || repeat === "einmalig") return sentence;
-  // Kursserie: sagen, wie viele einzelne Kurstermine daraus werden.
+  // Kursserie: mit Ende sagen, wie viele Kurstermine es werden; ohne Ende,
+  // dass beim Buchen jeweils nur die nächsten erscheinen.
   if (!endDay || endDay < day) {
-    return { ...sentence, rest: `${sentence.rest} Noch den letzten Kurstermin wählen.` };
+    return {
+      ...sentence,
+      rest: `${sentence.rest} Beim Buchen erscheinen jeweils die nächsten ${COURSE_SESSIONS_SHOWN} Kurstermine.`,
+    };
   }
   const count = occurrences(repeat, day, endDay).length;
   return {
@@ -180,7 +180,6 @@ function plainSummary(
   // Wortverbinder um den Strich: "08:00–13:00 Uhr" bricht nicht mittendrin um.
   const time = `${from}\u2060–\u2060${to}\u00a0Uhr`;
   const until = endDay && endDay >= day ? ` bis ${formatDate(endDay)}` : "";
-  const date = Number(day.slice(8));
   switch (repeat) {
     case "taeglich":
       return { pattern: "Jeden Tag", rest: `, ${time}, ab ${formatDate(day)}${until}. Auch am Wochenende.` };
@@ -191,8 +190,8 @@ function plainSummary(
       };
     case "monatlich":
       return {
-        pattern: `Jeden Monat am ${date}.`,
-        rest: `, ${time}, ab ${formatDate(day)}${until}.${date > 28 ? " Monate ohne diesen Tag fallen aus." : ""}`,
+        pattern: `Jeden ${ordinalLabel(day)} ${weekdayName(zurichWeekday(day))} im Monat`,
+        rest: `, ${time}, ab ${formatDate(day)}${until}.`,
       };
     default:
       return { pattern: formatDayLong(day), rest: `, ${time}.` };

@@ -132,6 +132,7 @@ export async function WeekView({
     db
       .select({
         staffId: availabilityRules.staffId,
+        lessonTypeId: availabilityRules.lessonTypeId,
         frequency: availabilityRules.frequency,
         weekday: availabilityRules.weekday,
         startTime: availabilityRules.startTime,
@@ -143,8 +144,7 @@ export async function WeekView({
       .from(availabilityRules)
       .innerJoin(lessonTypes, eq(lessonTypes.id, availabilityRules.lessonTypeId))
       // Nur was auch buchbar ist, dieselben Bedingungen wie in findSlots:
-      // Angebot aktiv und der Person zugeteilt, und keine Wochenregel für
-      // Kurse (die laufen über einzelne Kurstermine). Vorher erschienen hier
+      // Angebot aktiv und der Person zugeteilt. Vorher erschienen hier
       // Zeiten, die auf der Seite Verfügbarkeit gar nicht mehr zu sehen waren.
       .innerJoin(
         staffLessonTypes,
@@ -157,7 +157,6 @@ export async function WeekView({
         and(
           inArray(availabilityRules.staffId, visibleIds),
           eq(lessonTypes.active, true),
-          lte(lessonTypes.capacity, 1),
         ),
       ),
     db
@@ -168,6 +167,7 @@ export async function WeekView({
         startTime: availabilityExceptions.startTime,
         endTime: availabilityExceptions.endTime,
         available: availabilityExceptions.available,
+        cancelledSession: availabilityExceptions.cancelledSession,
         note: availabilityExceptions.note,
         lessonTypeId: availabilityExceptions.lessonTypeId,
         lessonName: lessonTypes.name,
@@ -227,6 +227,16 @@ export async function WeekView({
           };
           for (const rule of rules) {
             if (!ruleAppliesOn(rule, day, weekday)) continue;
+            // Ein ausgefallener Termin einer Kursserie ist nicht frei.
+            const skipped = exceptions.some(
+              (entry) =>
+                entry.cancelledSession &&
+                entry.day === day &&
+                entry.staffId === rule.staffId &&
+                entry.lessonTypeId === rule.lessonTypeId &&
+                entry.startTime.slice(0, 5) === rule.startTime.slice(0, 5),
+            );
+            if (skipped) continue;
             addFree(rule.staffId, rule.startTime.slice(0, 5), rule.endTime.slice(0, 5), rule.lessonName);
           }
           for (const entry of exceptions) {
@@ -257,7 +267,8 @@ export async function WeekView({
               (block): Item => ({ kind: "frei", start: minutesSinceMidnight(block.from), block }),
             ),
             ...exceptions
-              .filter((entry) => entry.day === day && !entry.available)
+              // Ein ausgefallener Kurstermin ist keine Abwesenheit der Person.
+              .filter((entry) => entry.day === day && !entry.available && !entry.cancelledSession)
               .map(
                 (absence): Item => ({
                   kind: "abwesend",

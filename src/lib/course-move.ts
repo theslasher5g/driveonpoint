@@ -3,6 +3,7 @@ import { and, eq, gt, inArray, lt, notInArray } from "drizzle-orm";
 import { occupiesTime } from "./booking";
 import { sendRescheduleConfirmation, sendWaitlistMoved } from "./booking-mail";
 import { courseSession } from "./course-cancel";
+import { sessionSources } from "./course-dates";
 import { db } from "./db";
 import { availabilityExceptions, bookings, lessonTypes, staff, waitlistEntries } from "./db/schema";
 import { env } from "./env";
@@ -44,20 +45,12 @@ export async function moveCourseSession({
   const oldTime = zurichTime(startsAt);
 
   // Der Kurstermin unter Verfügbarkeit gibt das Zeitfenster vor (etwa
-  // 18–21 Uhr); verschoben wird es als Ganzes.
-  const dates = await db
-    .select()
-    .from(availabilityExceptions)
-    .where(
-      and(
-        eq(availabilityExceptions.lessonTypeId, lessonTypeId),
-        eq(availabilityExceptions.day, oldDay),
-        eq(availabilityExceptions.startTime, oldTime),
-        eq(availabilityExceptions.available, true),
-      ),
-    );
-  const windowMinutes = dates[0]
-    ? minutesSinceMidnight(dates[0].endTime.slice(0, 5)) - minutesSinceMidnight(dates[0].startTime.slice(0, 5))
+  // 18–21 Uhr); verschoben wird es als Ganzes. Er ist ein einzelnes Datum
+  // oder ein Termin einer Serie.
+  const { dates, rules } = await sessionSources(lessonTypeId, oldDay, oldTime);
+  const source = dates[0] ?? rules[0];
+  const windowMinutes = source
+    ? minutesSinceMidnight(source.endTime.slice(0, 5)) - minutesSinceMidnight(source.startTime.slice(0, 5))
     : lessonType.durationMinutes;
   const newEndMinutes = minutesSinceMidnight(newTime) + windowMinutes;
   if (newEndMinutes > 24 * 60) return { error: "Der Kurs würde über Mitternacht dauern." };
@@ -67,24 +60,16 @@ export async function moveCourseSession({
   const staffIds = [
     ...new Set([
       ...dates.map((date) => date.staffId),
+      ...rules.map((rule) => rule.staffId),
       ...participants.map((entry) => entry.staffId).filter((id): id is string => !!id),
     ]),
   ];
 
   // Gibt es zur neuen Zeit schon einen Kurstermin dieses Angebots?
-  const [existing] = await db
-    .select({ id: availabilityExceptions.id })
-    .from(availabilityExceptions)
-    .where(
-      and(
-        eq(availabilityExceptions.lessonTypeId, lessonTypeId),
-        eq(availabilityExceptions.day, newDay),
-        eq(availabilityExceptions.startTime, newTime),
-        eq(availabilityExceptions.available, true),
-      ),
-    )
-    .limit(1);
-  if (existing) return { error: "Zu dieser Zeit gibt es schon einen Kurstermin. Wähle eine andere Zeit." };
+  const atNewTime = await sessionSources(lessonTypeId, newDay, newTime);
+  if (atNewTime.dates.length > 0 || atNewTime.rules.length > 0) {
+    return { error: "Zu dieser Zeit gibt es schon einen Kurstermin. Wähle eine andere Zeit." };
+  }
 
   if (staffIds.length > 0) {
     // Andere Termine der Kursleitung, die sich mit der neuen Zeit überschneiden.
@@ -121,6 +106,8 @@ export async function moveCourseSession({
           inArray(availabilityExceptions.staffId, staffIds),
           eq(availabilityExceptions.day, newDay),
           eq(availabilityExceptions.available, false),
+          // Ausgefallene Kurstermine sind keine Abwesenheit.
+          eq(availabilityExceptions.cancelledSession, false),
         ),
       );
     const newStart = minutesSinceMidnight(newTime);
@@ -137,11 +124,53 @@ export async function moveCourseSession({
   );
 
   await db.transaction(async (tx) => {
+    // Ein alter Ausfall-Vermerk zur neuen Zeit (etwa ein früher abgesagter
+    // Serientermin) würde den verschobenen Kurs sonst gleich wieder sperren.
+    const movingStaff = [...new Set([...dates, ...rules].map((row) => row.staffId))];
+    if (movingStaff.length > 0) {
+      await tx
+        .delete(availabilityExceptions)
+        .where(
+          and(
+            inArray(availabilityExceptions.staffId, movingStaff),
+            eq(availabilityExceptions.lessonTypeId, lessonTypeId),
+            eq(availabilityExceptions.day, newDay),
+            eq(availabilityExceptions.startTime, newTime),
+            eq(availabilityExceptions.cancelledSession, true),
+          ),
+        );
+    }
     if (dates.length > 0) {
       await tx
         .update(availabilityExceptions)
         .set({ day: newDay, startTime: newTime, endTime: newEndTime })
         .where(inArray(availabilityExceptions.id, dates.map((date) => date.id)));
+    }
+    // Termin einer Serie: am alten Tag fällt er aus, am neuen steht er als
+    // einzelnes Datum. Die Serie selbst bleibt, wie sie ist.
+    if (rules.length > 0) {
+      await tx.insert(availabilityExceptions).values(
+        rules.flatMap((rule) => [
+          {
+            staffId: rule.staffId,
+            lessonTypeId,
+            day: oldDay,
+            startTime: oldTime,
+            endTime: rule.endTime,
+            available: false,
+            cancelledSession: true,
+            note: "Kurstermin verschoben",
+          },
+          {
+            staffId: rule.staffId,
+            lessonTypeId,
+            day: newDay,
+            startTime: newTime,
+            endTime: newEndTime,
+            available: true,
+          },
+        ]),
+      );
     }
     if (participants.length > 0) {
       await tx

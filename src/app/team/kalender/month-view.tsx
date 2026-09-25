@@ -84,6 +84,8 @@ export async function MonthView({
         and(
           inArray(availabilityExceptions.staffId, visibleIds),
           eq(availabilityExceptions.available, false),
+          // Ein ausgefallener Kurstermin ist keine Abwesenheit der Person.
+          eq(availabilityExceptions.cancelledSession, false),
           gte(availabilityExceptions.day, gridStart),
           lte(availabilityExceptions.day, gridEnd),
         ),

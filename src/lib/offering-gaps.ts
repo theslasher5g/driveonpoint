@@ -1,7 +1,8 @@
 import "server-only";
 import { and, eq, gt, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { ruleAppliesOn } from "./availability-rules";
-import { BOOKING_HORIZON_DAYS, findSlots, listLessonTypes } from "./booking";
+import { BOOKING_HORIZON_DAYS, findSlots, horizonDays, listLessonTypes } from "./booking";
+import { courseWindows } from "./course-dates";
 import { db } from "./db";
 import {
   availabilityExceptions,
@@ -41,7 +42,8 @@ const REMIND_AFTER = 7 * DAY;
 
 /** Warum ist dieses Angebot nicht buchbar? Null, wenn es buchbar ist. */
 export async function offeringGap(lessonType: LessonType, now: Date = new Date()): Promise<OfferingGap | null> {
-  const slots = await findSlots({ lessonType, days: BOOKING_HORIZON_DAYS });
+  const horizon = horizonDays(lessonType);
+  const slots = await findSlots({ lessonType, days: horizon });
   if (slots.length > 0) return null;
 
   const isCourse = lessonType.capacity > 1;
@@ -58,8 +60,19 @@ export async function offeringGap(lessonType: LessonType, now: Date = new Date()
   // Zeiten innerhalb der Vorlaufzeit lassen sich ohnehin nicht buchen und
   // zählen darum nicht als eingetragen.
   const fromDay = zurichDay(new Date(now.getTime() + lessonType.leadTimeHours * 60 * 60 * 1000));
-  const untilDay = addDays(todayInZurich(), BOOKING_HORIZON_DAYS);
+  const untilDay = addDays(todayInZurich(), horizon);
   if (fromDay > untilDay) return { lessonType, reason: "keine-zeiten", waiting };
+
+  // Kurse: einzelne Daten und Serien, ohne ausgefallene Termine.
+  if (isCourse) {
+    const windows = await courseWindows({
+      fromDay,
+      untilDay,
+      lessonTypeId: lessonType.id,
+      staffIds,
+    });
+    return { lessonType, reason: windows.length > 0 ? "ausgebucht" : "keine-zeiten", waiting };
+  }
 
   const [dates, rules] = await Promise.all([
     db
@@ -69,26 +82,21 @@ export async function offeringGap(lessonType: LessonType, now: Date = new Date()
         and(
           inArray(availabilityExceptions.staffId, staffIds),
           eq(availabilityExceptions.available, true),
-          isCourse
-            ? eq(availabilityExceptions.lessonTypeId, lessonType.id)
-            : or(isNull(availabilityExceptions.lessonTypeId), eq(availabilityExceptions.lessonTypeId, lessonType.id)),
+          or(isNull(availabilityExceptions.lessonTypeId), eq(availabilityExceptions.lessonTypeId, lessonType.id)),
           gte(availabilityExceptions.day, fromDay),
           lte(availabilityExceptions.day, untilDay),
         ),
       )
       .limit(1),
-    // Kurse laufen nur über einzelne Kurstermine, siehe findSlots.
-    isCourse
-      ? Promise.resolve([])
-      : db
-          .select()
-          .from(availabilityRules)
-          .where(
-            and(
-              inArray(availabilityRules.staffId, staffIds),
-              eq(availabilityRules.lessonTypeId, lessonType.id),
-            ),
-          ),
+    db
+      .select()
+      .from(availabilityRules)
+      .where(
+        and(
+          inArray(availabilityRules.staffId, staffIds),
+          eq(availabilityRules.lessonTypeId, lessonType.id),
+        ),
+      ),
   ]);
 
   let hasTimes = dates.length > 0;
@@ -128,7 +136,10 @@ const stateKey = (lessonType: LessonType) => `angebot:${lessonType.slug}`;
 function describe(gap: OfferingGap): { title: string; detail: string } {
   const name = gap.lessonType.name;
   const isCourse = gap.lessonType.capacity > 1;
+  // Kurse sind ein Jahr voraus buchbar, Fahrstunden 4 Wochen.
   const weeks = Math.round(BOOKING_HORIZON_DAYS / 7);
+  const within = isCourse ? "In den nächsten 12 Monaten" : `In den nächsten ${weeks} Wochen`;
+  const of = isCourse ? "der nächsten 12 Monate" : `der nächsten ${weeks} Wochen`;
   const waiting =
     gap.waiting > 0
       ? ` ${gap.waiting} ${gap.waiting === 1 ? "Person steht" : "Personen stehen"} auf einer Warteliste.`
@@ -142,12 +153,12 @@ function describe(gap: OfferingGap): { title: string; detail: string } {
     case "keine-zeiten":
       return {
         title: isCourse ? `${name}: kein Kurstermin eingetragen` : `${name}: keine Zeiten eingetragen`,
-        detail: `In den nächsten ${weeks} Wochen ist ${isCourse ? "kein Kurstermin" : "keine Zeit"} eingetragen, online lässt sich nichts buchen. Unter Verfügbarkeit ${isCourse ? "neue Kurstermine" : "neue Zeiten"} eintragen.${waiting}`,
+        detail: `${within} ist ${isCourse ? "kein Kurstermin" : "keine Zeit"} eingetragen, online lässt sich nichts buchen. Unter Verfügbarkeit ${isCourse ? "neue Kurstermine" : "neue Zeiten"} eintragen.${waiting}`,
       };
     default:
       return {
         title: `${name}: ausgebucht`,
-        detail: `${isCourse ? "Alle Kurstermine" : "Alle eingetragenen Zeiten"} der nächsten ${weeks} Wochen sind gebucht oder durch Abwesenheiten blockiert. Unter Verfügbarkeit ${isCourse ? "einen weiteren Kurstermin" : "mehr Zeiten"} eintragen.${waiting}`,
+        detail: `${isCourse ? "Alle Kurstermine" : "Alle eingetragenen Zeiten"} ${of} sind gebucht oder durch Abwesenheiten blockiert. Unter Verfügbarkeit ${isCourse ? "einen weiteren Kurstermin" : "mehr Zeiten"} eintragen.${waiting}`,
       };
   }
 }

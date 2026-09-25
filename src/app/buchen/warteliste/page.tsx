@@ -40,7 +40,7 @@ export default async function WartelistePage({
   if (!lessonType || !lessonType.active || lessonType.capacity <= 1)
     redirect("/buchen");
   const back = `/buchen?angebot=${lessonType.slug}`;
-  if (!withinBookingHorizon(tag)) redirect(back);
+  if (!withinBookingHorizon(tag, lessonType)) redirect(back);
 
   // Ist doch ein Platz frei, gleich zur Buchung.
   if (!(await isSessionFull(lessonType, tag, zeit))) {

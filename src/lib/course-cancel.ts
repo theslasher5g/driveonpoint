@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { occupiesTime } from "./booking";
 import { sendCourseCancellation } from "./booking-mail";
+import { sessionSources } from "./course-dates";
 import { db } from "./db";
 import { availabilityExceptions, bookings, lessonTypes, waitlistEntries } from "./db/schema";
 import { zurichDay, zurichTime } from "./time";
@@ -12,7 +13,7 @@ import { zurichDay, zurichTime } from "./time";
  * Ein Kurstermin ist ein Angebot zu einer Startzeit (siehe findSlots). Alle
  * Angemeldeten werden abgesagt und bekommen eine Mail, die Warteliste
  * ebenso, und der Termin verschwindet aus der Verfügbarkeit, damit ihn
- * niemand neu bucht.
+ * niemand neu bucht (bei einer Serie nur dieser eine Termin).
  */
 
 export async function courseSession(lessonTypeId: string, startsAt: Date) {
@@ -87,6 +88,9 @@ export async function cancelCourseSession({
   }
 
   // Der Kurstermin selbst: sonst stünde er sofort wieder frei zur Buchung.
+  // Ein einzelnes Datum verschwindet, ein Termin einer Serie wird als
+  // ausgefallen vermerkt — die Serie läuft danach weiter.
+  const { rules } = await sessionSources(lessonTypeId, day, time);
   await db
     .delete(availabilityExceptions)
     .where(
@@ -97,6 +101,20 @@ export async function cancelCourseSession({
         eq(availabilityExceptions.available, true),
       ),
     );
+  if (rules.length > 0) {
+    await db.insert(availabilityExceptions).values(
+      rules.map((rule) => ({
+        staffId: rule.staffId,
+        lessonTypeId,
+        day,
+        startTime: time,
+        endTime: rule.endTime,
+        available: false,
+        cancelledSession: true,
+        note: "Kurstermin abgesagt",
+      })),
+    );
+  }
 
   // Erst nach den Änderungen: ein Mailproblem soll die Absage nicht aufhalten.
   let mailsFailed = 0;

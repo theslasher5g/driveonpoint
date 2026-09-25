@@ -10,6 +10,7 @@ import { assertPermission } from "@/lib/auth/guard";
 import { destroyAllSessions, hashPassword, newCalendarToken } from "@/lib/auth/session";
 import { findSlots, occupiesTime } from "@/lib/booking";
 import { sendRebookRequest } from "@/lib/booking-mail";
+import { keepBookedSessions } from "@/lib/course-dates";
 import { db } from "@/lib/db";
 import {
   availabilityExceptions,
@@ -211,14 +212,23 @@ export async function setLessonTypesAction(formData: FormData): Promise<void> {
     // Seite Verfügbarkeit zeigt nur zugeteilte Angebote, der Kalender zeigte
     // sie aber weiter an — und bei einer späteren Zuteilung wären sie
     // unbemerkt wieder aktiv geworden.
-    await tx
-      .delete(availabilityRules)
+    const staleRules = await tx
+      .select()
+      .from(availabilityRules)
       .where(
         and(
           eq(availabilityRules.staffId, id),
           chosen.length > 0 ? notInArray(availabilityRules.lessonTypeId, chosen) : undefined,
         ),
       );
+    // Kursserien: Termine mit Anmeldungen bleiben als einzelne Daten stehen
+    // (und überstehen gleich darauf das Aufräumen, siehe unten).
+    for (const rule of staleRules) await keepBookedSessions(tx, rule);
+    if (staleRules.length > 0) {
+      await tx
+        .delete(availabilityRules)
+        .where(inArray(availabilityRules.id, staleRules.map((rule) => rule.id)));
+    }
     const stale = await tx
       .select({
         id: availabilityExceptions.id,

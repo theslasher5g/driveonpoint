@@ -243,6 +243,10 @@ export const availabilityExceptions = pgTable(
     endTime: time("end_time").notNull(),
     // true = zusätzlich verfügbar, false = an diesem Tag blockiert
     available: boolean("available").notNull(),
+    // Ein einzelner Termin einer Kursserie fällt aus (abgesagt oder auf ein
+    // anderes Datum verschoben). Sperrt nur diesen Kurstermin, ist keine
+    // Abwesenheit der Person und erscheint auch nicht als solche.
+    cancelledSession: boolean("cancelled_session").notNull().default(false),
     note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

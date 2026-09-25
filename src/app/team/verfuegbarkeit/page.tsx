@@ -12,14 +12,59 @@ import {
   staff,
   staffLessonTypes,
 } from "@/lib/db/schema";
-import { formatDayLong, todayInZurich, zurichToInstant } from "@/lib/time";
+import { formatDayLong, formatDayShort, todayInZurich, zurichToInstant } from "@/lib/time";
 import { AvailabilityExceptionForm, OfferingDateForm } from "@/components/availability-forms";
-import { describeRule, describeRuleRange } from "@/lib/availability-rules";
+import { describeRule, describeRuleRange, nextOccurrences } from "@/lib/availability-rules";
 import { DeleteRuleButton, DeleteExceptionButton } from "@/components/availability-delete";
 
 export const dynamic = "force-dynamic";
 
 const FREQUENCY_ORDER = { taeglich: 0, woechentlich: 1, monatlich: 2 } as const;
+
+/** So viele nächste Termine je Serie bzw. einzelne Daten sind sofort sichtbar. */
+const DATES_SHOWN = 4;
+
+/**
+ * Ein einzelnes Datum. Ein Kurstermin mit Anmeldungen lässt sich hier nicht
+ * entfernen, nur im Kalender absagen — mit Mail an alle Angemeldeten.
+ */
+function DateRow({
+  id,
+  person,
+  day,
+  startTime,
+  endTime,
+  signups,
+}: {
+  id: string;
+  person: string;
+  day: string;
+  startTime: string;
+  endTime: string;
+  signups: number;
+}) {
+  return (
+    <li className="border-b border-deep/10 last:border-0 px-4 py-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+      <span className="font-semibold hyphens-none">{formatDayLong(day)}</span>
+      <span className="nums text-slate whitespace-nowrap">
+        {startTime.slice(0, 5)} – {endTime.slice(0, 5)}
+      </span>
+      {signups > 0 ? (
+        <>
+          <span className="text-fine text-slate">{signups} angemeldet</span>
+          <Link
+            href={`/team/kalender?ansicht=woche&woche=${day}`}
+            className="text-fine font-semibold text-slate underline underline-offset-2 hover:text-deep"
+          >
+            Im Kalender absagen
+          </Link>
+        </>
+      ) : (
+        <DeleteExceptionButton id={id} person={person} />
+      )}
+    </li>
+  );
+}
 
 export default async function VerfuegbarkeitPage({
   searchParams,
@@ -86,6 +131,7 @@ export default async function VerfuegbarkeitPage({
         startTime: availabilityExceptions.startTime,
         endTime: availabilityExceptions.endTime,
         available: availabilityExceptions.available,
+        cancelledSession: availabilityExceptions.cancelledSession,
         note: availabilityExceptions.note,
         lessonName: lessonTypes.name,
       })
@@ -131,8 +177,11 @@ export default async function VerfuegbarkeitPage({
   // Zeiten für ein Angebot stehen oben beim jeweiligen Angebot — hier unten
   // bleiben Abwesenheiten, sonst stünde derselbe Eintrag zweimal auf der Seite.
   const offeringIds = new Set(offerings.map((offering) => offering.id));
+  // Ausgefallene Termine einer Kursserie sind keine Abwesenheit.
   const generalExceptions = exceptions.filter(
-    (entry) => !(entry.available && entry.lessonTypeId && offeringIds.has(entry.lessonTypeId)),
+    (entry) =>
+      !entry.cancelledSession &&
+      !(entry.available && entry.lessonTypeId && offeringIds.has(entry.lessonTypeId)),
   );
 
   return (
@@ -189,72 +238,9 @@ export default async function VerfuegbarkeitPage({
         ) : (
           <div className="mt-10 space-y-14">
             {offerings.map((offering) => {
-              // Kurse wie VKU und Nothilfekurs finden nicht jede Woche statt
-              // — eine wöchentliche Regel würde sie fälschlich jede Woche
-              // anbieten. Sie bekommen stattdessen einzelne Kurstermine.
-              if (offering.capacity > 1) {
-                const courseDates = exceptions.filter(
-                  (entry) => entry.lessonTypeId === offering.id && entry.available,
-                );
-
-                return (
-                  <div key={offering.id} className="surface bg-paper p-5 md:p-6">
-                    <h2 className="font-display text-xl font-bold">{offering.name}</h2>
-                    <p className="text-fine text-slate mt-1 mb-4 max-w-[52ch]">
-                      Ein Datum wählen und bei Bedarf wiederholen. Jeder Kurstermin wird
-                      einzeln angelegt und lässt sich einzeln absagen oder verschieben.
-                    </p>
-
-                    <div className="grid gap-6 lg:grid-cols-2 lg:gap-10 items-start">
-                      {courseDates.length === 0 ? (
-                        <p className="text-slate text-fine">Noch kein Kurstermin eingetragen.</p>
-                      ) : (
-                        <ul className="rounded-[var(--radius-control)] bg-concrete overflow-hidden">
-                          {courseDates.map((entry) => (
-                            <li
-                              key={entry.id}
-                              className="border-b border-deep/10 last:border-0 px-4 py-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1"
-                            >
-                              <span className="font-semibold hyphens-none">{formatDayLong(entry.day)}</span>
-                              <span className="nums text-slate whitespace-nowrap">
-                                {entry.startTime.slice(0, 5)} – {entry.endTime.slice(0, 5)}
-                              </span>
-                              {(() => {
-                                const count = signupsFor(offering.id, entry.day, entry.startTime);
-                                return count > 0 ? (
-                                  <>
-                                    <span className="text-fine text-slate">{count} angemeldet</span>
-                                    <Link
-                                      href={`/team/kalender?ansicht=woche&woche=${entry.day}`}
-                                      className="text-fine font-semibold text-slate underline underline-offset-2 hover:text-deep"
-                                    >
-                                      Im Kalender absagen
-                                    </Link>
-                                  </>
-                                ) : (
-                                  <DeleteExceptionButton id={entry.id} person={targetId} />
-                                );
-                              })()}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-
-                      <OfferingDateForm
-                        course
-                        today={today}
-                        person={targetId}
-                        lessonTypeId={offering.id}
-                        lessonTypeName={offering.name}
-                        durationMinutes={offering.durationMinutes}
-                      />
-                    </div>
-                  </div>
-                );
-              }
-
-              // Wiederkehrendes zuerst (wöchentlich nach Wochentag ab Montag),
-              // danach einzelne Daten der Reihe nach.
+              const isCourse = offering.capacity > 1;
+              // Serien zuerst (täglich, wöchentlich nach Wochentag ab Montag,
+              // monatlich), danach einzelne Daten der Reihe nach.
               const ownRules = rules
                 .filter((rule) => rule.lessonTypeId === offering.id)
                 .sort(
@@ -266,61 +252,103 @@ export default async function VerfuegbarkeitPage({
               const ownDates = exceptions.filter(
                 (entry) => entry.lessonTypeId === offering.id && entry.available,
               );
+              const skipped = new Set(
+                exceptions
+                  .filter((entry) => entry.lessonTypeId === offering.id && entry.cancelledSession)
+                  .map((entry) => `${entry.day}|${entry.startTime.slice(0, 5)}`),
+              );
+              // Nicht die ganze Zukunft auflisten: die nächsten paar Daten,
+              // der Rest aufklappbar.
+              const firstDates = ownDates.slice(0, DATES_SHOWN);
+              const laterDates = ownDates.slice(DATES_SHOWN);
+              const dateRow = (entry: (typeof ownDates)[number]) => (
+                <DateRow
+                  key={entry.id}
+                  id={entry.id}
+                  person={targetId}
+                  day={entry.day}
+                  startTime={entry.startTime}
+                  endTime={entry.endTime}
+                  signups={isCourse ? signupsFor(offering.id, entry.day, entry.startTime) : 0}
+                />
+              );
 
               return (
                 <div key={offering.id} className="surface bg-paper p-5 md:p-6">
                   <h2 className="font-display text-xl font-bold">{offering.name}</h2>
                   <p className="text-fine text-slate mt-1 mb-4 max-w-[52ch]">
-                    Ein Datum wählen und bei Bedarf wiederholen: jeden Tag, jede Woche oder
-                    jeden Monat.
+                    {isCourse
+                      ? "Ein Datum wählen und bei Bedarf wiederholen. Einzelne Kurstermine lassen sich im Kalender absagen oder verschieben, auch aus einer Serie."
+                      : "Ein Datum wählen und bei Bedarf wiederholen: jeden Tag, jede Woche oder jeden Monat."}
                   </p>
 
                   {/* Bestand links, Eingabe rechts. */}
                   <div className="grid gap-6 lg:grid-cols-2 lg:gap-10 items-start">
                     {ownRules.length === 0 && ownDates.length === 0 ? (
-                      <p className="text-slate text-fine">Noch nichts eingetragen.</p>
+                      <p className="text-slate text-fine">
+                        {isCourse ? "Noch kein Kurstermin eingetragen." : "Noch nichts eingetragen."}
+                      </p>
                     ) : (
-                      <ul className="rounded-[var(--radius-control)] bg-concrete overflow-hidden">
-                        {ownRules.map((rule) => {
-                          const range = describeRuleRange(rule, today);
-                          return (
-                            <li
-                              key={rule.id}
-                              className="border-b border-deep/10 last:border-0 px-4 py-2.5"
-                            >
-                              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                                <span className="font-semibold hyphens-none">{describeRule(rule)}</span>
-                                <span className="nums text-slate whitespace-nowrap">
-                                  {rule.startTime.slice(0, 5)} – {rule.endTime.slice(0, 5)}
-                                </span>
-                                <DeleteRuleButton id={rule.id} person={targetId} />
-                              </div>
-                              {range && <p className="text-fine text-slate mt-0.5">{range}</p>}
-                            </li>
-                          );
-                        })}
-                        {ownDates.map((entry) => (
-                          <li
-                            key={entry.id}
-                            className="border-b border-deep/10 last:border-0 px-4 py-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1"
-                          >
-                            <span className="font-semibold hyphens-none">{formatDayLong(entry.day)}</span>
-                            <span className="nums text-slate whitespace-nowrap">
-                              {entry.startTime.slice(0, 5)} – {entry.endTime.slice(0, 5)}
-                            </span>
-                            <DeleteExceptionButton id={entry.id} person={targetId} />
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="rounded-[var(--radius-control)] bg-concrete overflow-hidden">
+                        <ul>
+                          {ownRules.map((rule) => {
+                            const range = describeRuleRange(rule, today);
+                            const next = nextOccurrences(rule, today, DATES_SHOWN + skipped.size)
+                              .filter((day) => !skipped.has(`${day}|${rule.startTime.slice(0, 5)}`))
+                              .slice(0, DATES_SHOWN);
+                            return (
+                              <li key={rule.id} className="border-b border-deep/10 last:border-0 px-4 py-3">
+                                <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                                  <span className="font-semibold hyphens-none">{describeRule(rule)}</span>
+                                  <span className="nums text-slate whitespace-nowrap">
+                                    {rule.startTime.slice(0, 5)} – {rule.endTime.slice(0, 5)}
+                                  </span>
+                                  <DeleteRuleButton id={rule.id} person={targetId} />
+                                </div>
+                                {range && <p className="text-fine text-slate mt-0.5">{range}</p>}
+                                {next.length > 0 && (
+                                  <ul className="flex flex-wrap gap-1.5 mt-2" aria-label="Nächste Termine">
+                                    {next.map((day) => {
+                                      const count = isCourse
+                                        ? signupsFor(offering.id, day, rule.startTime)
+                                        : 0;
+                                      return (
+                                        <li
+                                          key={day}
+                                          className="nums text-fine rounded-full bg-paper px-2.5 py-0.5 whitespace-nowrap"
+                                        >
+                                          {formatDayShort(day)}
+                                          {count > 0 && (
+                                            <span className="text-slate"> · {count} angemeldet</span>
+                                          )}
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                )}
+                              </li>
+                            );
+                          })}
+                          {firstDates.map(dateRow)}
+                        </ul>
+                        {laterDates.length > 0 && (
+                          <details className="border-t border-deep/10">
+                            <summary className="cursor-pointer px-4 py-2.5 text-fine font-semibold text-slate hover:text-deep">
+                              {laterDates.length} weitere {laterDates.length === 1 ? "Datum" : "Daten"}
+                            </summary>
+                            <ul className="border-t border-deep/10">{laterDates.map(dateRow)}</ul>
+                          </details>
+                        )}
+                      </div>
                     )}
 
                     <OfferingDateForm
+                      course={isCourse}
+                      today={today}
                       person={targetId}
                       lessonTypeId={offering.id}
                       lessonTypeName={offering.name}
                       durationMinutes={offering.durationMinutes}
-                      course={false}
-                      today={today}
                     />
                   </div>
                 </div>

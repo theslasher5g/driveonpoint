@@ -190,7 +190,7 @@ async function bookSingle(
     return { error: "Dieses Angebot gibt es nicht mehr." };
   }
 
-  if (!withinBookingHorizon(input.tag)) {
+  if (!withinBookingHorizon(input.tag, lessonType)) {
     return { error: "Dieser Termin ist nicht mehr frei. Bitte wähle einen anderen." };
   }
 
@@ -360,7 +360,7 @@ async function bookSeveral(
     const [day, time] = value.split("T");
     return { day, time };
   });
-  const requested = unique.filter((entry) => withinBookingHorizon(entry.day));
+  const requested = unique.filter((entry) => withinBookingHorizon(entry.day, lessonType));
   if (requested.length === 0) {
     return { error: "Keiner der gewählten Termine ist mehr frei. Bitte wähle andere." };
   }

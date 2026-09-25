@@ -1,26 +1,21 @@
 import "server-only";
-import { and, asc, eq, gt, gte, inArray, lt, lte, sql } from "drizzle-orm";
-import { BOOKING_HORIZON_DAYS, occupiesTime } from "./booking";
+import { and, asc, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
+import { occupiesTime } from "./booking";
+import { courseWindows } from "./course-dates";
+import { COURSE_HORIZON_DAYS } from "./course-horizon";
 import { sendWaitlistNotification } from "./booking-mail";
 import { db } from "./db";
-import {
-  availabilityExceptions,
-  bookings,
-  lessonTypes,
-  staff,
-  staffLessonTypes,
-  waitlistEntries,
-  type LessonType,
-} from "./db/schema";
+import { bookings, lessonTypes, waitlistEntries, type LessonType } from "./db/schema";
 import { addDays, todayInZurich, zurichDay, zurichTime, zurichToInstant } from "./time";
 
 /**
  * Warteliste für ausgebuchte Kurse.
  *
- * Ein Kurstermin ist ein einzelner Eintrag unter Verfügbarkeit (siehe
- * findSlots). Ist er voll, verschwindet er aus der Buchung — hier wird er
- * wieder gefunden, damit man sich eintragen kann. Wird ein Platz frei,
- * bekommen alle Eingetragenen eine Mail, wer zuerst bucht, hat ihn.
+ * Ein Kurstermin ist ein einzelnes Datum oder ein Termin einer Serie unter
+ * Verfügbarkeit (siehe course-dates.ts). Ist er voll, verschwindet er aus
+ * der Buchung — hier wird er wieder gefunden, damit man sich eintragen kann.
+ * Wird ein Platz frei, bekommen alle Eingetragenen eine Mail, wer zuerst
+ * bucht, hat ihn.
  */
 
 export type FullSession = { day: string; time: string; startsAt: Date };
@@ -43,31 +38,34 @@ async function takenSeats(lessonTypeId: string, startsAt: Date): Promise<number>
 export async function fullCourseSessions(
   lessonType: LessonType,
   fromDay: string = todayInZurich(),
-  days: number = BOOKING_HORIZON_DAYS,
+  days: number = COURSE_HORIZON_DAYS,
 ): Promise<FullSession[]> {
   if (lessonType.capacity <= 1) return [];
 
-  const dates = await db
-    .select({ day: availabilityExceptions.day, startTime: availabilityExceptions.startTime })
-    .from(availabilityExceptions)
-    .innerJoin(staff, eq(staff.id, availabilityExceptions.staffId))
-    .innerJoin(
-      staffLessonTypes,
-      and(
-        eq(staffLessonTypes.staffId, availabilityExceptions.staffId),
-        eq(staffLessonTypes.lessonTypeId, availabilityExceptions.lessonTypeId),
-      ),
-    )
+  // Einzelne Kurstermine und Serien, ohne ausgefallene.
+  const dates = await courseWindows({
+    fromDay,
+    untilDay: addDays(fromDay, days - 1),
+    lessonTypeId: lessonType.id,
+    bookableOnly: true,
+  });
+
+  if (dates.length === 0) return [];
+
+  // Belegte Plätze aller Kurstermine in einer Abfrage statt einzeln.
+  const counts = await db
+    .select({ startsAt: bookings.startsAt, count: sql<number>`count(*)::int` })
+    .from(bookings)
     .where(
       and(
-        eq(availabilityExceptions.lessonTypeId, lessonType.id),
-        eq(availabilityExceptions.available, true),
-        eq(staff.active, true),
-        gte(availabilityExceptions.day, fromDay),
-        lt(availabilityExceptions.day, addDays(fromDay, days)),
+        eq(bookings.lessonTypeId, lessonType.id),
+        occupiesTime(),
+        gte(bookings.startsAt, zurichToInstant(dates[0].day, "00:00")),
+        lte(bookings.startsAt, zurichToInstant(dates[dates.length - 1].day, "23:59")),
       ),
     )
-    .orderBy(asc(availabilityExceptions.day), asc(availabilityExceptions.startTime));
+    .groupBy(bookings.startsAt);
+  const taken = new Map(counts.map((row) => [row.startsAt.toISOString(), row.count]));
 
   const now = Date.now();
   const seen = new Set<string>();
@@ -79,7 +77,7 @@ export async function fullCourseSessions(
     const key = startsAt.toISOString();
     if (seen.has(key) || startsAt.getTime() <= now) continue;
     seen.add(key);
-    if ((await takenSeats(lessonType.id, startsAt)) >= lessonType.capacity) {
+    if ((taken.get(key) ?? 0) >= lessonType.capacity) {
       full.push({ day: date.day, time, startsAt });
     }
   }

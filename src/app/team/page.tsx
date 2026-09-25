@@ -154,10 +154,10 @@ export default async function TeamDashboard({
       .then((rows) => rows.map((row) => row.id)),
   ]);
 
-  const uncovered = ownOfferings.filter((offering) =>
-    offering.capacity > 1
-      ? !courseDateIds.includes(offering.id)
-      : !coveredOfferingIds.includes(offering.id) && !courseDateIds.includes(offering.id),
+  // Gedeckt ist ein Angebot durch eine Serie oder ein künftiges Datum —
+  // bei Kursen wie bei Fahrstunden.
+  const uncovered = ownOfferings.filter(
+    (offering) => !coveredOfferingIds.includes(offering.id) && !courseDateIds.includes(offering.id),
   );
 
   // Stillstand beim Mailversand oder bei den Cron-Läufen — nur für die, die

@@ -2,8 +2,8 @@ import Link from "next/link";
 import {
   activePromotions,
   applyPromotions,
-  BOOKING_HORIZON_DAYS,
   findSlots,
+  horizonDays,
   lessonTypeBySlug,
   type Slot,
 } from "@/lib/booking";
@@ -32,7 +32,7 @@ export async function OfferBookingCard({ slug }: { slug: string }) {
     lessonType = await lessonTypeBySlug(slug);
     if (lessonType?.active) {
       priced = applyPromotions(lessonType, promotions);
-      slot = (await findSlots({ lessonType, days: BOOKING_HORIZON_DAYS }))[0];
+      slot = (await findSlots({ lessonType, days: horizonDays(lessonType) }))[0];
       // Alles ausgebucht: dann wenigstens der Weg auf die Warteliste.
       if (!slot) fullSession = (await fullCourseSessions(lessonType))[0];
     }

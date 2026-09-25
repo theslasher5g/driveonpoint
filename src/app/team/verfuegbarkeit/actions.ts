@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { record } from "@/lib/audit";
@@ -8,11 +8,16 @@ import { assertPermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { availabilityExceptions, availabilityRules, lessonTypes, staffLessonTypes } from "@/lib/db/schema";
-import { addDays, minutesSinceMidnight, todayInZurich, zurichWeekday } from "@/lib/time";
+import { occurrences } from "@/lib/availability-rules";
+import { addDays, daysBetween, minutesSinceMidnight, todayInZurich, zurichWeekday } from "@/lib/time";
 
 /** Höchstens rund zwei Monate am Stück, damit ein Tippfehler beim Enddatum
  * keine tausend Zeilen erzeugt. */
 const MAX_RANGE_DAYS = 62;
+
+/** Kursserien: höchstens ein Jahr und so viele Termine auf einmal. */
+const MAX_SERIES_DAYS = 366;
+const MAX_SERIES_DATES = 60;
 
 function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);
@@ -108,10 +113,12 @@ async function assertOffering(staffId: string, lessonTypeId: string): Promise<bo
 export type AvailabilityState = { error?: string; ok?: string };
 
 /**
- * Zeit für ein Einzelangebot (Fahrstunde, Schnupperstunde) an einem Datum.
- * Einmalig wird es ein einzelner Tag wie ein Kurstermin; wiederkehrend eine
- * Regel ab diesem Datum — täglich, wöchentlich am selben Wochentag oder
- * monatlich am selben Kalendertag, auf Wunsch bis zu einem Enddatum.
+ * Zeit für ein Angebot an einem Datum, auf Wunsch wiederholt: täglich,
+ * wöchentlich am selben Wochentag oder monatlich am selben Kalendertag.
+ *
+ * Fahr- und Schnupperstunden werden wiederkehrend zu einer Regel, auf Wunsch
+ * mit Enddatum. Bei Kursen entsteht jeder Kurstermin einzeln, bis zu einem
+ * Enddatum, das dort Pflicht ist.
  */
 export async function addOfferingDateAction(
   _previous: AvailabilityState,
@@ -150,22 +157,21 @@ export async function addOfferingDateAction(
   }
 
   const [offering] = await db
-    .select({ slug: lessonTypes.slug, capacity: lessonTypes.capacity })
+    .select({ capacity: lessonTypes.capacity })
     .from(lessonTypes)
     .where(eq(lessonTypes.id, input.lessonTypeId))
     .limit(1);
-  if (!offering || offering.capacity > 1) {
-    return { error: "Kurstermine werden beim jeweiligen Kurs eingetragen." };
-  }
-  // Wiederholen lässt sich nur die Fahrstunde; Schnupperstunden werden
-  // bewusst einzeln angeboten.
-  if (input.wiederholung !== "einmalig" && offering.slug !== "fahrstunde") {
-    return { error: "Dieses Angebot lässt sich nur an einzelnen Daten eintragen." };
-  }
+  if (!offering) return { error: "Dieses Angebot gibt es nicht mehr." };
+  const isCourse = offering.capacity > 1;
 
   const fitError = await assertWindowFitsOffering(input.lessonTypeId, input.von, input.bis);
   if (fitError) return { error: fitError };
 
+  if (input.tagBis && input.tagBis < input.tag) {
+    return { error: "Das Enddatum darf nicht vor dem Startdatum liegen." };
+  }
+
+  let message: string;
   if (input.wiederholung === "einmalig") {
     await db.insert(availabilityExceptions).values({
       staffId,
@@ -175,10 +181,46 @@ export async function addOfferingDateAction(
       endTime: input.bis,
       available: true,
     });
-  } else {
-    if (input.tagBis && input.tagBis < input.tag) {
-      return { error: "Das Enddatum darf nicht vor dem Startdatum liegen." };
+    message = isCourse ? "Kurstermin eingetragen." : "Datum eingetragen.";
+  } else if (isCourse) {
+    // Kurse bekommen jeden Termin einzeln: Absagen, Verschieben und
+    // Warteliste hängen am einzelnen Kurstermin, nicht an einer Regel.
+    if (!input.tagBis) return { error: "Bitte angeben, bis wann sich der Kurs wiederholt." };
+    if (daysBetween(input.tag, input.tagBis) > MAX_SERIES_DAYS) {
+      return { error: "Bitte höchstens ein Jahr im Voraus eintragen." };
     }
+    const days = occurrences(input.wiederholung, input.tag, input.tagBis);
+    if (days.length > MAX_SERIES_DATES) {
+      return { error: `Das wären ${days.length} Kurstermine. Bitte höchstens ${MAX_SERIES_DATES} auf einmal eintragen.` };
+    }
+    // Schon eingetragene Kurstermine zur selben Zeit nicht verdoppeln.
+    const existing = await db
+      .select({ day: availabilityExceptions.day })
+      .from(availabilityExceptions)
+      .where(
+        and(
+          eq(availabilityExceptions.staffId, staffId),
+          eq(availabilityExceptions.lessonTypeId, input.lessonTypeId),
+          eq(availabilityExceptions.available, true),
+          eq(availabilityExceptions.startTime, input.von),
+          inArray(availabilityExceptions.day, days),
+        ),
+      );
+    const taken = new Set(existing.map((row) => row.day));
+    const fresh = days.filter((day) => !taken.has(day));
+    if (fresh.length === 0) return { error: "Diese Kurstermine sind schon alle eingetragen." };
+    await db.insert(availabilityExceptions).values(
+      fresh.map((day) => ({
+        staffId,
+        lessonTypeId: input.lessonTypeId,
+        day,
+        startTime: input.von,
+        endTime: input.bis,
+        available: true,
+      })),
+    );
+    message = `${fresh.length} ${fresh.length === 1 ? "Kurstermin" : "Kurstermine"} eingetragen.`;
+  } else {
     await db.insert(availabilityRules).values({
       staffId,
       lessonTypeId: input.lessonTypeId,
@@ -189,6 +231,7 @@ export async function addOfferingDateAction(
       validFrom: input.tag,
       validUntil: input.tagBis ?? null,
     });
+    message = "Wiederkehrende Zeit eingetragen.";
   }
 
   await record("verfuegbarkeit.datum-erstellt", { id: user.id, label: user.name }, {
@@ -201,7 +244,7 @@ export async function addOfferingDateAction(
 
   revalidatePath("/team/verfuegbarkeit");
   revalidatePath("/team/kalender");
-  return { ok: input.wiederholung === "einmalig" ? "Datum eingetragen." : "Wiederkehrende Zeit eingetragen." };
+  return { ok: message };
 }
 
 export async function deleteRuleAction(formData: FormData): Promise<void> {

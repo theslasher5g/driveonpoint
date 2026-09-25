@@ -373,12 +373,18 @@ Kurstext auf der jeweiligen Seite.
 
 **Verfügbarkeit** wird je Angebot eingetragen, nicht nur je Person, weil
 sich die Zeiten stark unterscheiden: der VKU findet praktisch immer abends
-statt, Fahrstunden eher tagsüber. Eingetragen wird immer ab einem Datum:
+statt, Fahrstunden eher tagsüber. Eingetragen wird bei jedem Angebot ein
+Datum mit Uhrzeit, auf Wunsch wiederholt: jeden Tag, jede Woche am selben
+Wochentag oder jeden Monat am selben Kalendertag (bei „am 31.“ fallen kürzere
+Monate aus). Die Zusammenfassung unter dem Formular zeigt vor dem Eintragen,
+was entsteht.
 
-- Kurse (VKU, Nothilfekurs) und Schnupperstunden: einzelne Daten.
-- Fahrstunden: ein Datum, auf Wunsch wiederholt, also jeden Tag, jede Woche
-  am selben Wochentag oder jeden Monat am selben Kalendertag. Ein Enddatum
-  ist freiwillig. Bei „jeden Monat am 31.“ fallen kürzere Monate aus.
+- Fahr- und Schnupperstunden: eine Wiederholung ist eine Regel, das Enddatum
+  freiwillig.
+- Kurse (VKU, Nothilfekurs): jeder Kurstermin wird einzeln angelegt, bis zum
+  letzten Kurstermin, der hier Pflicht ist (höchstens 60 auf einmal). So
+  lässt sich jeder einzeln absagen oder verschieben, mit eigener Warteliste.
+  Schon eingetragene Termine zur selben Zeit werden nicht verdoppelt.
 
 Abwesenheiten (Ferien, Arzttermin) gelten standardmässig für alle Angebote
 einer Person und lassen sich auf ein einzelnes Angebot eingrenzen.

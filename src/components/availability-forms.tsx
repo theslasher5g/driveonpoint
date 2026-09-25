@@ -2,186 +2,263 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { occurrences } from "@/lib/availability-rules";
 import {
   addExceptionAction,
   addOfferingDateAction,
   type AvailabilityState,
 } from "@/app/team/verfuegbarkeit/actions";
-import { formatDate, fromMinutes, minutesSinceMidnight, weekdayName, zurichWeekday } from "@/lib/time";
+import { formatDate, formatDayLong, fromMinutes, minutesSinceMidnight, weekdayName, zurichWeekday } from "@/lib/time";
 
 const EMPTY: AvailabilityState = {};
 const DEFAULT_START = "08:00";
 
 type Repeat = "einmalig" | "taeglich" | "woechentlich" | "monatlich";
 
+const REPEAT_OPTIONS: { value: Repeat; label: string }[] = [
+  { value: "einmalig", label: "Nur einmal" },
+  { value: "taeglich", label: "Jeden Tag" },
+  { value: "woechentlich", label: "Jede Woche" },
+  { value: "monatlich", label: "Jeden Monat" },
+];
+
 /**
  * Zeit für Fahrstunde oder Schnupperstunde an einem Datum, wie bei den
  * Kursterminen. Die Fahrstunde lässt sich zusätzlich wiederholen: täglich,
  * jede Woche am selben Wochentag oder jeden Monat am selben Kalendertag.
+ *
+ * Aufgebaut wie ein Satz, der sich von oben nach unten liest: wann, wie oft,
+ * bis wann. Unten steht derselbe Satz ausgeschrieben neben dem Knopf, damit
+ * vor dem Eintragen klar ist, was entsteht.
  */
 export function OfferingDateForm({
   person,
   lessonTypeId,
   lessonTypeName,
   durationMinutes,
-  repeatable,
+  course,
   today,
 }: {
   person: string;
   lessonTypeId: string;
   lessonTypeName: string;
   durationMinutes: number;
-  repeatable: boolean;
+  /** Kurse: jeder Termin wird einzeln angelegt, dafür braucht es ein Enddatum. */
+  course: boolean;
   today: string;
 }) {
   const [state, action] = useActionState(addOfferingDateAction, EMPTY);
-  const [day, setDay] = useState("");
-  const [repeat, setRepeat] = useState<Repeat>("einmalig");
   // Ein Zeitfenster kürzer als die Termindauer zeigt nie einen buchbaren
   // Slot — der Vorschlag passt sich darum je Angebot an.
   const defaultEnd = fromMinutes(minutesSinceMidnight(DEFAULT_START) + durationMinutes);
-  const repeating = repeatable && repeat !== "einmalig";
+  const [day, setDay] = useState("");
+  const [endDay, setEndDay] = useState("");
+  const [from, setFrom] = useState(DEFAULT_START);
+  const [to, setTo] = useState(defaultEnd);
+  const [repeat, setRepeat] = useState<Repeat>("einmalig");
+  const repeating = repeat !== "einmalig";
 
   // Nach jeder Rückmeldung setzt React die Felder zurück, auch bei einem
-  // Fehler. Datum und Wiederholung müssen mit, sonst zeigt die Auswahl
-  // "Nicht wiederholen" und das Formular verhält sich wie beim letzten Mal.
+  // Fehler. Der eigene Zustand muss mit, sonst zeigen Felder und
+  // Zusammenfassung Verschiedenes.
   const [handled, setHandled] = useState(state);
   if (state !== handled) {
     setHandled(state);
     setDay("");
+    setEndDay("");
+    setFrom(DEFAULT_START);
+    setTo(defaultEnd);
     setRepeat("einmalig");
   }
 
+  const id = (name: string) => `${name}-${lessonTypeId}`;
+
   return (
-    <form action={action} className="rounded-[var(--radius-control)] bg-concrete p-4">
+    <form action={action} className="rounded-[var(--radius-control)] bg-concrete p-4 sm:p-5">
       <input type="hidden" name="person" value={person} />
       <input type="hidden" name="lessonTypeId" value={lessonTypeId} />
-      <h3 className="text-fine font-bold mb-3">Zeit für {lessonTypeName} hinzufügen</h3>
+      <h3 className="text-fine font-bold mb-3">
+        {course ? "Kurstermin" : "Zeit"} für {lessonTypeName} hinzufügen
+      </h3>
       <Feedback state={state} />
 
-      <div className="flex flex-wrap items-end gap-3 mt-3">
-        <div className="min-w-[9rem]">
-          <label className="field-label text-fine" htmlFor={`datum-${lessonTypeId}`}>
-            {repeating ? "Ab" : "Datum"}
-          </label>
-          <input
-            id={`datum-${lessonTypeId}`}
-            name="tag"
-            type="date"
-            min={today}
-            value={day}
-            onChange={(event) => setDay(event.target.value)}
-            className="field nums py-2"
-            required
-          />
-        </div>
-
-        {repeatable && (
-          <div className="min-w-[9rem]">
-            <label className="field-label text-fine" htmlFor={`wiederholung-${lessonTypeId}`}>
-              Wiederholen
-            </label>
-            <select
-              id={`wiederholung-${lessonTypeId}`}
-              name="wiederholung"
-              value={repeat}
-              onChange={(event) => setRepeat(event.target.value as Repeat)}
-              className="field py-2"
-            >
-              <option value="einmalig">Nicht wiederholen</option>
-              <option value="taeglich">Jeden Tag</option>
-              <option value="woechentlich">Jede Woche</option>
-              <option value="monatlich">Jeden Monat</option>
-            </select>
-          </div>
-        )}
-
-        {repeating && (
-          <div className="min-w-[9rem]">
-            <label className="field-label text-fine" htmlFor={`bis-datum-${lessonTypeId}`}>
-              Endet am <span className="font-normal text-slate">(freiwillig)</span>
-            </label>
-            <input
-              id={`bis-datum-${lessonTypeId}`}
-              name="tagBis"
-              type="date"
-              min={day || today}
-              className="field nums py-2"
-            />
-          </div>
-        )}
-
-        <TimePair idPrefix={`datum-${lessonTypeId}`} defaultFrom={DEFAULT_START} defaultTo={defaultEnd} />
-        <Submit label="Eintragen" busy="…" />
+      <div className="flex flex-wrap gap-x-5 gap-y-4 mt-3">
+        <DayField
+          id={id("datum")}
+          name="tag"
+          label={repeating ? "Erster Tag" : "Datum"}
+          min={today}
+          value={day}
+          onChange={setDay}
+          required
+        />
+        <TimeRange idPrefix={id("zeit")} from={from} to={to} onFrom={setFrom} onTo={setTo} />
       </div>
 
-      {repeating && day && (
-        <p className="text-fine text-slate mt-3">{repeatHint(repeat, day)}</p>
+      <fieldset className="mt-5">
+        <legend className="field-label text-fine">Wiederholen</legend>
+        <div className="flex flex-wrap gap-2">
+          {REPEAT_OPTIONS.map((option) => (
+            <label key={option.value} className="cursor-pointer">
+              <input
+                type="radio"
+                name="wiederholung"
+                value={option.value}
+                checked={repeat === option.value}
+                onChange={() => setRepeat(option.value)}
+                className="peer sr-only"
+              />
+              <span className="block rounded-full border border-deep/30 bg-paper px-4 py-2 text-fine font-semibold text-deep/80 transition-colors hover:border-deep/60 peer-checked:border-deep peer-checked:bg-deep peer-checked:text-paper peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-signal">
+                {option.label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {repeating && (
+        <div className="mt-5">
+          <DayField
+            id={id("ende")}
+            name="tagBis"
+            label={course ? "Letzter Kurstermin" : "Endet am"}
+            hint={
+              course
+                ? "Bis dahin wird jeder Kurstermin einzeln angelegt."
+                : "Leer lassen, wenn es kein Ende gibt."
+            }
+            min={day || today}
+            value={endDay}
+            onChange={setEndDay}
+            required={course}
+          />
+        </div>
       )}
+
+      <FormFooter summary={summarize({ repeat, day, endDay, from, to, course })} />
     </form>
   );
 }
 
-function repeatHint(repeat: Repeat, day: string): string {
+/** Der Eintrag als Satz, etwa "Jeden Mittwoch, 08:00–08:45 Uhr, ab 14. Oktober 2026." */
+function summarize({
+  repeat,
+  day,
+  endDay,
+  from,
+  to,
+  course = false,
+}: {
+  repeat: Repeat;
+  day: string;
+  endDay?: string;
+  from: string;
+  to: string;
+  course?: boolean;
+}): { pattern: string; rest: string } | null {
+  if (!day) return null;
+  const sentence = plainSummary(repeat, day, endDay, from, to);
+  if (!course || repeat === "einmalig") return sentence;
+  // Kursserie: sagen, wie viele einzelne Kurstermine daraus werden.
+  if (!endDay || endDay < day) {
+    return { ...sentence, rest: `${sentence.rest} Noch den letzten Kurstermin wählen.` };
+  }
+  const count = occurrences(repeat, day, endDay).length;
+  return {
+    ...sentence,
+    rest: `${sentence.rest} Das gibt ${count} ${count === 1 ? "Kurstermin" : "Kurstermine"}.`,
+  };
+}
+
+function plainSummary(
+  repeat: Repeat,
+  day: string,
+  endDay: string | undefined,
+  from: string,
+  to: string,
+): { pattern: string; rest: string } {
+  // Wortverbinder um den Strich: "08:00–13:00 Uhr" bricht nicht mittendrin um.
+  const time = `${from}\u2060–\u2060${to}\u00a0Uhr`;
+  const until = endDay && endDay >= day ? ` bis ${formatDate(endDay)}` : "";
   const date = Number(day.slice(8));
   switch (repeat) {
     case "taeglich":
-      return `Jeden Tag ab ${formatDate(day)}, auch am Wochenende.`;
+      return { pattern: "Jeden Tag", rest: `, ${time}, ab ${formatDate(day)}${until}. Auch am Wochenende.` };
     case "woechentlich":
-      return `Jeden ${weekdayName(zurichWeekday(day))} ab ${formatDate(day)}.`;
+      return {
+        pattern: `Jeden ${weekdayName(zurichWeekday(day))}`,
+        rest: `, ${time}, ab ${formatDate(day)}${until}.`,
+      };
+    case "monatlich":
+      return {
+        pattern: `Jeden Monat am ${date}.`,
+        rest: `, ${time}, ab ${formatDate(day)}${until}.${date > 28 ? " Monate ohne diesen Tag fallen aus." : ""}`,
+      };
     default:
-      return date > 28
-        ? `Jeden Monat am ${date}., ab ${formatDate(day)}. Monate ohne diesen Tag fallen aus.`
-        : `Jeden Monat am ${date}., ab ${formatDate(day)}.`;
+      return { pattern: formatDayLong(day), rest: `, ${time}.` };
   }
 }
 
-/**
- * Ein Kurstermin, kein wöchentlicher Rhythmus: VKU und Nothilfekurs finden
- * nicht jede Woche statt, sondern nur an den Tagen, die tatsächlich
- * angeboten werden. Deshalb trägt man hier direkt einzelne Daten ein statt
- * über die wöchentliche Regel — die würde sonst jede Woche denselben
- * Wochentag anbieten, egal ob an dem Tag wirklich ein Kurs stattfindet.
- */
-export function CourseDateForm({
-  person,
-  lessonTypeId,
-  lessonTypeName,
-  durationMinutes,
+function DayField({
+  id,
+  name,
+  label,
+  hint,
+  min,
+  value,
+  onChange,
+  required,
 }: {
-  person: string;
-  lessonTypeId: string;
-  lessonTypeName: string;
-  durationMinutes: number;
+  id: string;
+  name: string;
+  label: string;
+  hint?: string;
+  min?: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
 }) {
-  const [state, action] = useActionState(addExceptionAction, EMPTY);
-  const defaultEnd = fromMinutes(minutesSinceMidnight(DEFAULT_START) + durationMinutes);
-
   return (
-    <form action={action} className="rounded-[var(--radius-control)] bg-concrete p-4">
-      <input type="hidden" name="person" value={person} />
-      <input type="hidden" name="lessonTypeId" value={lessonTypeId} />
-      <input type="hidden" name="art" value="frei" />
-      <h3 className="text-fine font-bold mb-3">Kurstermin für {lessonTypeName} hinzufügen</h3>
-      <Feedback state={state} />
+    <div className="w-[11.5rem] max-w-full">
+      <label className="field-label text-fine" htmlFor={id}>
+        {label}
+      </label>
+      <input
+        id={id}
+        name={name}
+        type="date"
+        min={min}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="field nums py-2"
+        aria-describedby={hint ? `${id}-hinweis` : undefined}
+        required={required}
+      />
+      {hint && (
+        <p id={`${id}-hinweis`} className="field-hint">
+          {hint}
+        </p>
+      )}
+    </div>
+  );
+}
 
-      <div className="flex flex-wrap items-end gap-3 mt-3">
-        <div className="min-w-[9rem]">
-          <label className="field-label text-fine" htmlFor={`kurstag-${lessonTypeId}`}>
-            Datum
-          </label>
-          <input
-            id={`kurstag-${lessonTypeId}`}
-            name="tag"
-            type="date"
-            className="field nums py-2"
-            required
-          />
-        </div>
-        <TimePair idPrefix={`kurs-${lessonTypeId}`} defaultFrom={DEFAULT_START} defaultTo={defaultEnd} />
-        <Submit label="Eintragen" busy="…" />
-      </div>
-    </form>
+/** Zusammenfassung links, Knopf rechts — der letzte Blick vor dem Eintragen. */
+function FormFooter({ summary }: { summary: { pattern: string; rest: string } | null }) {
+  return (
+    <div className="mt-5 pt-4 border-t border-deep/12 flex flex-wrap items-center gap-x-4 gap-y-3">
+      <p className="text-fine flex-1 min-w-[12rem]" aria-live="polite">
+        {summary ? (
+          <>
+            <strong className="font-semibold">{summary.pattern}</strong>
+            {summary.rest}
+          </>
+        ) : (
+          <span className="text-slate">Wähle ein Datum.</span>
+        )}
+      </p>
+      <Submit label="Eintragen" busy="…" />
+    </div>
   );
 }
 
@@ -220,7 +297,7 @@ export function AvailabilityExceptionForm({
           <input id="tagBis" name="tagBis" type="date" className="field nums py-2" />
         </div>
 
-        <TimePair idPrefix="ausnahme" defaultFrom="08:00" defaultTo="17:00" />
+        <TimeRange idPrefix="ausnahme" defaultFrom="08:00" defaultTo="17:00" />
 
         {offerings.length > 1 && (
           <div className="min-w-[11rem] flex-1">
@@ -257,19 +334,37 @@ export function AvailabilityExceptionForm({
   );
 }
 
-function TimePair({
+/**
+ * Von und Bis als ein Feld "Uhrzeit": zwei Zeiten, die zusammengehören,
+ * stehen auch zusammen, statt als zwei lose Felder irgendwo im Formular.
+ */
+function TimeRange({
   idPrefix,
+  from,
+  to,
+  onFrom,
+  onTo,
   defaultFrom,
   defaultTo,
 }: {
   idPrefix: string;
-  defaultFrom: string;
-  defaultTo: string;
+  from?: string;
+  to?: string;
+  onFrom?: (value: string) => void;
+  onTo?: (value: string) => void;
+  defaultFrom?: string;
+  defaultTo?: string;
 }) {
+  const controlled = (value: string | undefined, onChange?: (value: string) => void, fallback?: string) =>
+    onChange
+      ? { value, onChange: (event: React.ChangeEvent<HTMLInputElement>) => onChange(event.target.value) }
+      : { defaultValue: fallback };
+
   return (
-    <>
-      <div className="min-w-[7rem]">
-        <label className="field-label text-fine" htmlFor={`${idPrefix}-von`}>
+    <fieldset className="min-w-0">
+      <legend className="field-label text-fine">Uhrzeit</legend>
+      <div className="flex items-center gap-2 max-w-[19rem]">
+        <label className="sr-only" htmlFor={`${idPrefix}-von`}>
           Von
         </label>
         <input
@@ -277,13 +372,14 @@ function TimePair({
           name="von"
           type="time"
           step={900}
-          defaultValue={defaultFrom}
-          className="field nums py-2"
+          {...controlled(from, onFrom, defaultFrom)}
+          className="field nums py-2 px-3 flex-1 min-w-0"
           required
         />
-      </div>
-      <div className="min-w-[7rem]">
-        <label className="field-label text-fine" htmlFor={`${idPrefix}-bis`}>
+        <span aria-hidden="true" className="text-slate">
+          bis
+        </span>
+        <label className="sr-only" htmlFor={`${idPrefix}-bis`}>
           Bis
         </label>
         <input
@@ -291,12 +387,12 @@ function TimePair({
           name="bis"
           type="time"
           step={900}
-          defaultValue={defaultTo}
-          className="field nums py-2"
+          {...controlled(to, onTo, defaultTo)}
+          className="field nums py-2 px-3 flex-1 min-w-0"
           required
         />
       </div>
-    </>
+    </fieldset>
   );
 }
 

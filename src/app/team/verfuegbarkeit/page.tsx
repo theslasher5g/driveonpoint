@@ -11,7 +11,7 @@ import {
   staffLessonTypes,
 } from "@/lib/db/schema";
 import { formatDayLong, todayInZurich } from "@/lib/time";
-import { AvailabilityExceptionForm, CourseDateForm, OfferingDateForm } from "@/components/availability-forms";
+import { AvailabilityExceptionForm, OfferingDateForm } from "@/components/availability-forms";
 import { describeRule, describeRuleRange } from "@/lib/availability-rules";
 import { DeleteRuleButton, DeleteExceptionButton } from "@/components/availability-delete";
 
@@ -157,8 +157,8 @@ export default async function VerfuegbarkeitPage({
                   <div key={offering.id} className="surface bg-paper p-5 md:p-6">
                     <h2 className="font-display text-xl font-bold">{offering.name}</h2>
                     <p className="text-fine text-slate mt-1 mb-4 max-w-[52ch]">
-                      Ein Kurs, kein wöchentlicher Termin — jeder Kurstermin wird einzeln
-                      eingetragen.
+                      Ein Datum wählen und bei Bedarf wiederholen. Jeder Kurstermin wird
+                      einzeln angelegt und lässt sich einzeln absagen oder verschieben.
                     </p>
 
                     <div className="grid gap-6 lg:grid-cols-2 lg:gap-10 items-start">
@@ -171,7 +171,7 @@ export default async function VerfuegbarkeitPage({
                               key={entry.id}
                               className="border-b border-deep/10 last:border-0 px-4 py-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1"
                             >
-                              <span className="font-semibold">{formatDayLong(entry.day)}</span>
+                              <span className="font-semibold hyphens-none">{formatDayLong(entry.day)}</span>
                               <span className="nums text-slate whitespace-nowrap">
                                 {entry.startTime.slice(0, 5)} – {entry.endTime.slice(0, 5)}
                               </span>
@@ -181,7 +181,9 @@ export default async function VerfuegbarkeitPage({
                         </ul>
                       )}
 
-                      <CourseDateForm
+                      <OfferingDateForm
+                        course
+                        today={today}
                         person={targetId}
                         lessonTypeId={offering.id}
                         lessonTypeName={offering.name}
@@ -205,15 +207,13 @@ export default async function VerfuegbarkeitPage({
               const ownDates = exceptions.filter(
                 (entry) => entry.lessonTypeId === offering.id && entry.available,
               );
-              const repeatable = offering.slug === "fahrstunde";
 
               return (
                 <div key={offering.id} className="surface bg-paper p-5 md:p-6">
                   <h2 className="font-display text-xl font-bold">{offering.name}</h2>
                   <p className="text-fine text-slate mt-1 mb-4 max-w-[52ch]">
-                    {repeatable
-                      ? "Ein Datum wählen und bei Bedarf wiederholen: jeden Tag, jede Woche oder jeden Monat."
-                      : "Jedes Datum wird einzeln eingetragen."}
+                    Ein Datum wählen und bei Bedarf wiederholen: jeden Tag, jede Woche oder
+                    jeden Monat.
                   </p>
 
                   {/* Bestand links, Eingabe rechts. */}
@@ -260,7 +260,7 @@ export default async function VerfuegbarkeitPage({
                       lessonTypeId={offering.id}
                       lessonTypeName={offering.name}
                       durationMinutes={offering.durationMinutes}
-                      repeatable={repeatable}
+                      course={false}
                       today={today}
                     />
                   </div>

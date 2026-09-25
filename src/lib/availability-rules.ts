@@ -1,4 +1,4 @@
-import { formatDate, weekdayName } from "./time";
+import { addDays, formatDate, weekdayName, zurichWeekday } from "./time";
 
 export type RuleFrequency = "taeglich" | "woechentlich" | "monatlich";
 
@@ -46,4 +46,18 @@ export function describeRuleRange(rule: RuleDates, today: string): string {
   if (rule.validFrom && rule.validFrom > today) parts.push(`ab ${formatDate(rule.validFrom)}`);
   if (rule.validUntil) parts.push(`bis ${formatDate(rule.validUntil)}`);
   return parts.join(" ");
+}
+
+/**
+ * Alle Tage einer Wiederholung zwischen zwei Daten, beide eingeschlossen.
+ * Für Kurse: dort wird jeder Kurstermin einzeln angelegt, damit Absagen,
+ * Verschieben und Warteliste pro Termin weiter funktionieren.
+ */
+export function occurrences(frequency: RuleFrequency, from: string, until: string): string[] {
+  const rule = { frequency, weekday: zurichWeekday(from), validFrom: from, validUntil: until };
+  const days: string[] = [];
+  for (let day = from; day <= until; day = addDays(day, 1)) {
+    if (ruleAppliesOn(rule, day, zurichWeekday(day))) days.push(day);
+  }
+  return days;
 }

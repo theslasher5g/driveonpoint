@@ -31,7 +31,7 @@ import { markError, markOk } from "@/lib/checks";
 import { cancelCourseSession } from "@/lib/course-cancel";
 import { moveCourseSession } from "@/lib/course-move";
 import { customerHistories, describeHistory } from "@/lib/customer-history";
-import { ruleAppliesOn } from "@/lib/availability-rules";
+import { occurrences, ruleAppliesOn } from "@/lib/availability-rules";
 import { currentProblems } from "@/lib/monitoring";
 import { offeringGap, shouldAlert } from "@/lib/offering-gaps";
 import { requestReviews } from "@/lib/reviews";
@@ -783,6 +783,18 @@ async function main() {
     ["2026-03-31", "2026-02-28", "2026-04-30", "2027-01-31"].map((d) => ruleAppliesOn(monat, d, zurichWeekday(d))),
     [true, false, false, false],
   );
+
+  check(
+    "Kursserie wöchentlich: jeder Mittwoch bis zum letzten Termin",
+    occurrences("woechentlich", "2026-10-07", "2026-11-04"),
+    ["2026-10-07", "2026-10-14", "2026-10-21", "2026-10-28", "2026-11-04"],
+  );
+  check(
+    "Kursserie monatlich am 31.: nur Monate mit 31 Tagen",
+    occurrences("monatlich", "2026-10-31", "2027-03-31"),
+    ["2026-10-31", "2026-12-31", "2027-01-31", "2027-03-31"],
+  );
+  check("Kursserie täglich über drei Tage", occurrences("taeglich", "2026-10-30", "2026-11-01").length, 3);
 
   // Eine eigene Person ohne andere Zeiten, damit nur die neue Regel zählt.
   const [personC] = await db

@@ -10,16 +10,22 @@ import "./globals.css";
 // Beide Schriften werden beim Bauen als eigene Dateien mit ausgeliefert,
 // nicht zur Laufzeit von Google nachgeladen — es entsteht keine Verbindung
 // zu einem fremden Dienst, siehe Datenschutzerklärung.
+//
+// "optional" statt "swap": die Schrift wird vorab geladen und genommen, wenn
+// sie gleich zu Beginn da ist; sonst bleibt es für diesen Aufruf bei der
+// angepassten Ersatzschrift. Mit "swap" wechselte die Schrift mitten im
+// Aufbau, die grosse Schlagzeile brach anders um, und alles darunter
+// rutschte nach (Lighthouse: Layoutverschiebung 0,15).
 const bodyFont = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-sans-loaded",
-  display: "swap",
+  display: "optional",
 });
 
 const displayFont = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-display-loaded",
-  display: "swap",
+  display: "optional",
 });
 
 export const metadata: Metadata = {

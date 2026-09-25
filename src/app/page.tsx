@@ -73,10 +73,13 @@ export default async function HomePage() {
       >
         {/* Weicher zweiter Lichtpunkt unten links, rein dekorativ — damit
             die Glasfläche der Terminkarte etwas zum Brechen hat, auch wenn
-            das Fenster schmal ist und der erste Verlauf dort ausläuft. */}
+            das Fenster schmal ist und der erste Verlauf dort ausläuft.
+            Von oben verankert statt von unten: sonst wanderte er mit, wenn
+            die Terminkarte nachlädt, und Lighthouse zählte das als
+            Layoutverschiebung. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full opacity-40 blur-3xl"
+          className="pointer-events-none absolute top-[30rem] lg:top-[18rem] -left-24 w-96 h-96 rounded-full opacity-40 blur-3xl"
           style={{ background: "#ff847a" }}
         />
         <div className="shell pt-24 pb-14 md:pt-32 md:pb-20 lg:pt-36 lg:pb-24">
@@ -211,6 +214,9 @@ export default async function HomePage() {
               width={site.images.hero.width}
               height={site.images.hero.height}
               className="w-full h-auto surface"
+              // Platz schon vor dem Laden reservieren, auch wenn das Bild
+              // verzögert (lazy) nachkommt.
+              style={{ aspectRatio: `${site.images.hero.width} / ${site.images.hero.height}` }}
               sizes="(min-width: 1024px) 44vw, 100vw"
             />
           </div>

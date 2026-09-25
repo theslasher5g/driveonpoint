@@ -709,6 +709,54 @@ export async function sendWaitlistNotification(details: {
  * Ein ganzer Kurstermin fällt aus. Geht an alle Angemeldeten und an alle auf
  * der Warteliste, mit dem Weg zu den nächsten Kursdaten.
  */
+/**
+ * Die Fahrschule sagt einen einzelnen Termin ab. Mit Knopf direkt zur
+ * Buchung desselben Angebots, damit die Kundschaft gleich einen neuen
+ * Termin findet, statt erst anrufen zu müssen.
+ */
+export async function sendStaffCancellation(details: {
+  to: string;
+  name: string;
+  reference: string;
+  lessonName: string;
+  /** Angebot für den Link; fehlt es (gelöscht), führt er zur Auswahl. */
+  slug: string | null;
+  startsAt: Date;
+}): Promise<void> {
+  const when = `${formatDayLong(zurichDay(details.startsAt))}, ${zurichTime(details.startsAt)} Uhr`;
+  const bookUrl = details.slug
+    ? `${env.appUrl}/buchen?angebot=${encodeURIComponent(details.slug)}`
+    : `${env.appUrl}/buchen`;
+
+  const text = [
+    `Hallo ${details.name}`.trim(),
+    "",
+    "Wir mussten deinen Termin leider absagen. Es entstehen dir keine Kosten.",
+    "",
+    `${details.lessonName}, ${when}`,
+    `Referenz: ${details.reference}`,
+    "",
+    "Einen neuen Termin buchst du hier:",
+    bookUrl,
+    "",
+    `Fragen? ${site.contact.phone}`,
+  ].join("\n");
+
+  const html = mailLayout(
+    "Wir mussten deinen Termin absagen",
+    `<p style="margin:0 0 16px;">Hallo ${escapeHtml(details.name)}</p>
+<p style="margin:0 0 16px;">Leider fällt dieser Termin aus. Es entstehen dir keine Kosten.</p>
+<p style="margin:0 0 6px;font-weight:700;">${escapeHtml(details.lessonName)}</p>
+<p style="margin:0 0 20px;">${escapeHtml(when)}<br><span style="color:#515052;font-size:14px;">Referenz ${escapeHtml(details.reference)}</span></p>
+<p style="margin:0 0 20px;">
+  <a href="${escapeHtml(bookUrl)}" style="display:inline-block;background:#FF312E;color:#000103;text-decoration:none;font-weight:700;padding:13px 22px;">Neuen Termin buchen</a>
+</p>
+<p style="margin:0;color:#515052;font-size:14px;">Fragen beantworten wir unter ${escapeHtml(site.contact.phone)}.</p>`,
+  );
+
+  await sendMail({ to: details.to, subject: `Termin abgesagt — ${details.reference}`, text, html });
+}
+
 export async function sendCourseCancellation(details: {
   to: string;
   name: string;

@@ -7,7 +7,7 @@ import { record } from "@/lib/audit";
 import { assertPermission } from "@/lib/auth/guard";
 import { can } from "@/lib/auth/permissions";
 import { findSlots, moveBooking } from "@/lib/booking";
-import { sendRescheduleConfirmation } from "@/lib/booking-mail";
+import { sendRescheduleConfirmation, sendStaffCancellation } from "@/lib/booking-mail";
 import { cancelCourseSession } from "@/lib/course-cancel";
 import { moveCourseSession } from "@/lib/course-move";
 import { requestCourseReviews, requestReviews } from "@/lib/reviews";
@@ -15,9 +15,7 @@ import { notifyWaitlist, removeFromWaitlist } from "@/lib/waitlist";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes } from "@/lib/db/schema";
 import { env } from "@/lib/env";
-import { escapeHtml, mailLayout, sendMail } from "@/lib/mail";
-import { site } from "@/lib/site";
-import { formatDayLong, zurichDay, zurichTime } from "@/lib/time";
+import { zurichDay, zurichTime } from "@/lib/time";
 
 /** Absage durch die Fahrschule, inklusive Benachrichtigung der Kundschaft. */
 export async function cancelByStaffAction(formData: FormData): Promise<void> {
@@ -33,6 +31,7 @@ export async function cancelByStaffAction(formData: FormData): Promise<void> {
       customerName: bookings.customerName,
       customerEmail: bookings.customerEmail,
       lessonName: lessonTypes.name,
+      lessonSlug: lessonTypes.slug,
       lessonTypeId: bookings.lessonTypeId,
       status: bookings.status,
     })
@@ -57,29 +56,14 @@ export async function cancelByStaffAction(formData: FormData): Promise<void> {
   });
 
   if (entry.customerEmail) {
-    const when = `${formatDayLong(zurichDay(entry.startsAt))}, ${zurichTime(entry.startsAt)} Uhr`;
     try {
-      await sendMail({
+      await sendStaffCancellation({
         to: entry.customerEmail,
-        subject: `Termin abgesagt — ${entry.reference}`,
-        text: [
-          `Hallo ${entry.customerName ?? ""}`.trim(),
-          "",
-          `Wir mussten deinen Termin absagen:`,
-          `${entry.lessonName ?? "Termin"}, ${when}`,
-          "",
-          "Es entstehen dir keine Kosten. Einen neuen Termin findest du hier:",
-          `${site.domain}/buchen`,
-          "",
-          `Fragen? ${site.contact.phone}`,
-        ].join("\n"),
-        html: mailLayout(
-          "Wir mussten deinen Termin absagen",
-          `<p style="margin:0 0 16px;">Hallo ${escapeHtml(entry.customerName ?? "")}</p>
-<p style="margin:0 0 16px;"><strong>${escapeHtml(entry.lessonName ?? "Termin")}</strong><br>${escapeHtml(when)}</p>
-<p style="margin:0 0 16px;">Es entstehen dir keine Kosten. Melde dich bei uns, dann finden wir rasch einen Ersatztermin.</p>
-<p style="margin:0;color:#515052;font-size:14px;">${escapeHtml(site.contact.phone)}</p>`,
-        ),
+        name: entry.customerName ?? "",
+        reference: entry.reference,
+        lessonName: entry.lessonName ?? "Termin",
+        slug: entry.lessonSlug,
+        startsAt: entry.startsAt,
       });
     } catch (error) {
       console.error("Absagemail konnte nicht versendet werden:", error);

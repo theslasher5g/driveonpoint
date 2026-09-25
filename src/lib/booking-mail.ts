@@ -561,6 +561,8 @@ export async function sendBookingReminder(details: {
   name: string;
   reference: string;
   cancelToken: string;
+  /** Von der Fahrschule verschoben: absagen ist dann jederzeit kostenlos. */
+  movedBySchool?: boolean;
   lessonName: string;
   startsAt: Date;
   durationMinutes: number | null;
@@ -573,12 +575,15 @@ export async function sendBookingReminder(details: {
   const cancelUrl = `${env.appUrl}/absagen/${details.cancelToken}`;
   const moveUrl = `${env.appUrl}/verschieben/${details.cancelToken}`;
   const deadline = new Date(details.startsAt.getTime() - 24 * 60 * 60 * 1000);
-  const freeCancellation = deadline.getTime() > Date.now();
+  const canMove = deadline.getTime() > Date.now();
+  const freeCancellation = canMove || !!details.movedBySchool;
   const deadlineText = `${formatDayLong(zurichDay(deadline))}, ${zurichTime(deadline)} Uhr`;
 
-  const cancelHint = freeCancellation
+  const cancelHint = canMove
     ? `Passt es doch nicht? Kostenlos verschieben oder absagen kannst du noch bis ${deadlineText}:`
-    : `Für eine kostenlose Absage ist es zu kurzfristig. Kommt etwas dazwischen, ruf uns an: ${site.contact.phone}`;
+    : freeCancellation
+      ? "Passt dir die neue Zeit doch nicht? Weil wir den Termin verschoben haben, ist absagen kostenlos:"
+      : `Für eine kostenlose Absage ist es zu kurzfristig. Kommt etwas dazwischen, ruf uns an: ${site.contact.phone}`;
 
   const text = [
     `Hallo ${details.name}`,
@@ -592,7 +597,8 @@ export async function sendBookingReminder(details: {
     ...meetingPointLines(details.capacity),
     "",
     cancelHint,
-    ...(freeCancellation ? [`Verschieben: ${moveUrl}`, `Absagen: ${cancelUrl}`] : []),
+    ...(canMove ? [`Verschieben: ${moveUrl}`] : []),
+    ...(freeCancellation ? [`Absagen: ${cancelUrl}`] : []),
     "",
     `Fragen? ${site.contact.phone}`,
   ].join("\n");
@@ -606,7 +612,7 @@ ${meetingPointHtml(details.capacity)}
 <p style="margin:0 0 ${freeCancellation ? "12" : "0"}px;color:#515052;">${escapeHtml(cancelHint)}</p>
 ${
   freeCancellation
-    ? `<p style="margin:0;"><a href="${escapeHtml(moveUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Termin verschieben</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${escapeHtml(cancelUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Termin absagen</a></p>`
+    ? `<p style="margin:0;">${canMove ? `<a href="${escapeHtml(moveUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Termin verschieben</a>&nbsp;&nbsp;·&nbsp;&nbsp;` : ""}<a href="${escapeHtml(cancelUrl)}" style="color:#FF312E;font-weight:700;text-decoration:none;">Termin absagen</a></p>`
     : ""
 }`,
   );

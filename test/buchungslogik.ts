@@ -662,6 +662,7 @@ async function main() {
     staffId: personB.id,
     startsAt: elf.startsAt,
     retentionDays: 30,
+    movedBy: "fahrschule",
   });
   check("P1 von 10 auf 11 Uhr verschoben", "ok" in verschoben, true);
   const zeitenP = (await findSlots({ lessonType: fahrstunde, fromDay: tagP, days: 1, staffId: personB.id })).map(
@@ -678,8 +679,31 @@ async function main() {
     staffId: personB.id,
     startsAt: elf.startsAt,
     retentionDays: 30,
+    movedBy: "fahrschule",
   });
   check("P2 auf das belegte 11 Uhr wird abgewiesen", "error" in kollision, true);
+
+  // Kurzfristige Absage nach einer Verschiebung durch die Fahrschule: nicht
+  // verrechenbar. Nach einer eigenen Verschiebung schon.
+  const vonUns = await insert("P3", -2 * 24 * HOUR, {
+    status: "abgesagt",
+    cancelledBy: "kundschaft",
+    cancelledAt: new Date(now - 2 * 24 * HOUR - HOUR),
+    movedBy: "fahrschule",
+    confirmedAt: new Date(now - 10 * 24 * HOUR),
+  });
+  const selbst = await insert("P4", -2 * 24 * HOUR + 2 * HOUR, {
+    status: "abgesagt",
+    cancelledBy: "kundschaft",
+    cancelledAt: new Date(now - 2 * 24 * HOUR),
+    movedBy: "kundschaft",
+    confirmedAt: new Date(now - 10 * 24 * HOUR),
+  });
+  const tagP3 = zurichDay(vonUns.startsAt);
+  const berichtP = await accountingReport(Number(tagP3.slice(0, 4)), Number(tagP3.slice(5, 7)));
+  const grundP = (ref: string) => berichtP.chargeable.find((row) => row.reference === ref)?.reason ?? null;
+  check("von uns verschoben, dann kurzfristig abgesagt: kostenlos", grundP(vonUns.reference), null);
+  check("selbst verschoben, dann kurzfristig abgesagt: verrechnet", grundP(selbst.reference), "Absage unter 24 h");
 
   // ===================================================================
   console.log("\nSZENARIO Q — Ganzen Kurs verschieben");

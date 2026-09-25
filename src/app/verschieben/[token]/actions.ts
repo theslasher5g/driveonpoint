@@ -49,6 +49,7 @@ export async function selfRescheduleAction(
     staffId,
     startsAt: slot.startsAt,
     retentionDays: env.retentionDays,
+    movedBy: "kundschaft",
   });
   if ("error" in moved) return { error: moved.error };
 

@@ -3,6 +3,7 @@
 import { and, eq, gt } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { record } from "@/lib/audit";
+import { cancellationIsChargeable } from "@/lib/booking";
 import { sendCancellationNotification } from "@/lib/booking-mail";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes } from "@/lib/db/schema";
@@ -42,6 +43,7 @@ export async function cancelBookingAction(formData: FormData): Promise<void> {
       lessonTypeId: bookings.lessonTypeId,
       customerName: bookings.customerName,
       customerPhone: bookings.customerPhone,
+      movedBy: bookings.movedBy,
     });
 
   if (cancelled) {
@@ -63,7 +65,7 @@ export async function cancelBookingAction(formData: FormData): Promise<void> {
         startsAt: cancelled.startsAt,
         customerName: cancelled.customerName,
         customerPhone: cancelled.customerPhone,
-        lateCancellation: cancelled.startsAt.getTime() - now.getTime() < 24 * 60 * 60 * 1000,
+        lateCancellation: cancellationIsChargeable(cancelled, now),
       });
     } catch (error) {
       // Die Absage steht bereits; ein Mailproblem darf sie nicht zurücknehmen.

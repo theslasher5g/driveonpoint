@@ -447,7 +447,7 @@ export async function renderAccountingPdf(
           <Text style={styles.pageIntro}>
             Innert 24 Stunden vor Beginn von der Kundschaft abgesagt oder nicht erschienen und laut
             AGB verrechenbar, im Umsatz auf Seite 1 aber nicht mitgezählt. Absagen durch die
-            Fahrschule stehen hier nicht.
+            Fahrschule und Absagen nach einer Verschiebung durch die Fahrschule stehen hier nicht.
           </Text>
           {journalHeadRow()}
           {report.chargeable.map((row, index) => journalDataRow(row, index))}

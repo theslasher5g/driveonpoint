@@ -209,6 +209,7 @@ export async function rescheduleBookingAction(
     staffId: entry.staffId,
     startsAt: slot.startsAt,
     retentionDays: env.retentionDays,
+    movedBy: "fahrschule",
   });
   if ("error" in moved) return { error: moved.error };
 

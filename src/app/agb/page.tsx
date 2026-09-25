@@ -37,7 +37,7 @@ const CLAUSES = [
   },
   {
     title: "Absage durch die Fahrschule",
-    body: "Müssen wir einen Termin absagen — etwa wegen Krankheit, Unfall oder untauglicher Witterung —, informieren wir dich so früh wie möglich und bieten einen Ersatztermin an. Weitergehende Ansprüche bestehen nicht.",
+    body: "Müssen wir einen Termin absagen — etwa wegen Krankheit, Unfall oder untauglicher Witterung —, informieren wir dich so früh wie möglich und bieten einen Ersatztermin an. Verschieben wir einen Termin, kannst du ihn danach jederzeit kostenlos absagen, auch kurz vor Beginn. Weitergehende Ansprüche bestehen nicht.",
   },
   {
     title: "Verspätung",

@@ -407,7 +407,8 @@ Aufbewahrungspflicht und gehören nicht in diese Anwendung.
 | Angriff | Gegenmassnahme |
 |---|---|
 | SQL-Injection | Ausschliesslich gebundene Parameter über Drizzle; nirgends zusammengesetztes SQL |
-| XSS | React maskiert jede Ausgabe, kein `dangerouslySetInnerHTML`; dazu CSP mit Einmalkennung pro Anfrage |
+| XSS | React maskiert jede Ausgabe, kein `dangerouslySetInnerHTML`; dazu CSP mit Einmalkennung pro Anfrage und `'strict-dynamic'` (mit Rückfall für alte Browser) |
+| DOM-basiertes XSS | Trusted Types (`require-trusted-types-for 'script'`): Zeichenketten gelangen nicht mehr direkt in `innerHTML` & Co. Nur im Produktionsbetrieb aktiv, die Entwicklungsansicht von Next hält sich nicht daran |
 | Brute Force | 8 Fehlversuche je Adresse, danach Sperre mit wachsender Dauer; zusätzlich Zähler je Konto gegen verteilte Angriffe |
 | Formularspam | Rechenaufgabe im Browser statt Bilderrätsel, dazu eine unsichtbare Formularfalle |
 | Sitzungsdiebstahl | Cookie `HttpOnly`, `Secure`, `SameSite=Lax`; in der Datenbank liegt nur der Hash |

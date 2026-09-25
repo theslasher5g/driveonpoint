@@ -204,7 +204,8 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
             <h2 className="text-section mb-2">Kurzfristige Absagen und nicht erschienen</h2>
             <p className="text-slate text-fine mb-4 max-w-[62ch]">
               Innert 24 Stunden von der Kundschaft abgesagt oder nicht erschienen, laut AGB
-              verrechenbar. Oben nicht mitgezählt. Absagen durch die Fahrschule stehen hier nicht.
+              verrechenbar. Oben nicht mitgezählt. Absagen durch die Fahrschule und Absagen nach
+              einer Verschiebung durch die Fahrschule stehen hier nicht.
             </p>
             <div className="surface bg-paper">
               {report.chargeable.map((row) => (

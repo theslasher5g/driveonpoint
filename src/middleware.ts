@@ -22,7 +22,16 @@ export function middleware(request: NextRequest) {
     "default-src 'self'",
     // 'strict-dynamic' lässt von uns geladene Skripte weitere nachladen und
     // entwertet gleichzeitig jede Pfad-Erlaubnis, die jemand später einträgt.
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${dev ? "'unsafe-eval'" : ""}`,
+    // 'unsafe-inline' und https: sind nur Rückfall für sehr alte Browser:
+    // wer Kennungen versteht, ignoriert 'unsafe-inline', und wer
+    // 'strict-dynamic' versteht, ignoriert 'self' und https:.
+    ["script-src 'self'", `'nonce-${nonce}'`, "'strict-dynamic' 'unsafe-inline' https:", dev ? "'unsafe-eval'" : ""]
+      .filter(Boolean)
+      .join(" "),
+    // Trusted Types: Zeichenketten dürfen nicht mehr direkt in gefährliche
+    // DOM-Stellen (innerHTML, script.src …) — nur noch über eine Richtlinie.
+    // Schliesst DOM-basiertes XSS aus, auch in Code von Drittpaketen.
+    ...(dev ? [] : ["require-trusted-types-for 'script'"]),
     // Next fügt Stile zur Laufzeit ein; eine Kennung ist dafür nicht
     // vorgesehen. Stile allein führen keinen Code aus.
     "style-src 'self' 'unsafe-inline'",

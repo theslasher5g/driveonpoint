@@ -63,6 +63,20 @@ export function isConfirmed() {
   return and(ne(bookings.status, "abgesagt"), ne(bookings.status, "angefragt"));
 }
 
+/**
+ * Kostet eine Absage der Kundschaft zu diesem Zeitpunkt etwas? Laut AGB ab
+ * 24 Stunden vor Beginn — ausser die Fahrschule hat den Termin verschoben:
+ * der neuen Zeit hat die Kundschaft nie zugestimmt, absagen ist dann immer
+ * kostenlos.
+ */
+export function cancellationIsChargeable(
+  booking: { startsAt: Date; movedBy: string | null },
+  at: Date = new Date(),
+): boolean {
+  if (booking.movedBy === "fahrschule") return false;
+  return at.getTime() > booking.startsAt.getTime() - 24 * 60 * 60 * 1000;
+}
+
 /** Liegt der Tag im online buchbaren Zeitraum ab heute? */
 export function withinBookingHorizon(day: string): boolean {
   const today = todayInZurich();
@@ -560,6 +574,8 @@ export async function moveBooking(input: {
   staffId: string;
   startsAt: Date;
   retentionDays: number;
+  /** Verschiebt die Fahrschule, darf die Kundschaft danach kostenlos absagen. */
+  movedBy: "kundschaft" | "fahrschule";
 }): Promise<{ ok: true } | { error: string }> {
   const endsAt = new Date(input.startsAt.getTime() + input.lessonType.durationMinutes * 60_000);
   const purgeAfter = new Date(
@@ -590,6 +606,7 @@ export async function moveBooking(input: {
           purgeAfter,
           reminderSentAt: null,
           noShowAt: null,
+          movedBy: input.movedBy,
           updatedAt: new Date(),
         })
         .where(eq(bookings.id, input.bookingId));

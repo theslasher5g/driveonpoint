@@ -49,6 +49,7 @@ export async function sendDueReminders(): Promise<number> {
       lessonTypeId: bookings.lessonTypeId,
       customerName: bookings.customerName,
       customerEmail: bookings.customerEmail,
+      movedBy: bookings.movedBy,
     });
 
   if (due.length === 0) return 0;
@@ -72,6 +73,7 @@ export async function sendDueReminders(): Promise<number> {
         name: entry.customerName ?? "",
         reference: entry.reference,
         cancelToken: entry.cancelToken,
+        movedBySchool: entry.movedBy === "fahrschule",
         lessonName: offering?.name ?? "Termin",
         startsAt: entry.startsAt,
         durationMinutes: offering?.durationMinutes ?? null,

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes } from "@/lib/db/schema";
+import { cancellationIsChargeable } from "@/lib/booking";
+import { stillMovable } from "@/lib/self-reschedule";
 import { site } from "@/lib/site";
 import { formatDayLong, zurichDay, zurichTime } from "@/lib/time";
 import { cancelBookingAction } from "./actions";
@@ -24,6 +26,7 @@ export default async function AbsagenPage({ params }: { params: Params }) {
       id: bookings.id,
       reference: bookings.reference,
       startsAt: bookings.startsAt,
+      movedBy: bookings.movedBy,
       status: bookings.status,
       lessonName: lessonTypes.name,
       durationMinutes: lessonTypes.durationMinutes,
@@ -60,8 +63,8 @@ export default async function AbsagenPage({ params }: { params: Params }) {
     );
   }
 
-  const hoursLeft = (booking.startsAt.getTime() - Date.now()) / 3_600_000;
-  const chargeable = hoursLeft < 24;
+  const chargeable = cancellationIsChargeable(booking);
+  const movable = stillMovable(booking.startsAt);
 
   return (
     <Shell title="Termin absagen?">
@@ -79,7 +82,14 @@ export default async function AbsagenPage({ params }: { params: Params }) {
         </p>
       )}
 
-      {!chargeable && booking.status === "bestaetigt" && (
+      {!chargeable && !movable && booking.movedBy === "fahrschule" && (
+        <p className="notice notice-quiet max-w-xl mt-6">
+          Wir haben diesen Termin verschoben. Passt dir die neue Zeit nicht, ist die Absage
+          kostenlos, auch so kurz vorher.
+        </p>
+      )}
+
+      {movable && booking.status === "bestaetigt" && (
         <p className="text-slate max-w-xl mt-6">
           Passt nur die Zeit nicht? Du kannst den Termin auch{" "}
           <Link href={`/verschieben/${token}`} className="font-semibold text-signal-ink underline underline-offset-4">

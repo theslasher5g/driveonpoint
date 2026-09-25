@@ -72,6 +72,7 @@ export async function accountingReport(year: number, month?: number): Promise<Ac
       status: bookings.status,
       cancelledAt: bookings.cancelledAt,
       cancelledBy: bookings.cancelledBy,
+      movedBy: bookings.movedBy,
       noShowAt: bookings.noShowAt,
       lessonName: lessonTypes.name,
       staffName: staff.name,
@@ -117,8 +118,10 @@ export async function accountingReport(year: number, month?: number): Promise<Ac
         row.cancelledAt !== null &&
         row.cancelledAt.getTime() > row.startsAt.getTime() - DAY_BEFORE_MS;
       // Sagt die Fahrschule selbst ab (Krankheit, Wetter), ist das kein
-      // Ausfall der Kundschaft und laut AGB nicht verrechenbar.
-      if (late && row.cancelledBy !== "fahrschule") {
+      // Ausfall der Kundschaft und laut AGB nicht verrechenbar. Ebenso, wenn
+      // die Fahrschule den Termin vorher verschoben hat — der neuen Zeit hat
+      // die Kundschaft nie zugestimmt.
+      if (late && row.cancelledBy !== "fahrschule" && row.movedBy !== "fahrschule") {
         chargeable.push({
           ...entry,
           reason:

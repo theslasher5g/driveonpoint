@@ -54,6 +54,7 @@ export async function customerHistories(entries: Entry[]): Promise<Map<string, C
       noShowAt: bookings.noShowAt,
       cancelledAt: bookings.cancelledAt,
       cancelledBy: bookings.cancelledBy,
+      movedBy: bookings.movedBy,
       customerEmail: bookings.customerEmail,
       customerPhone: bookings.customerPhone,
     })
@@ -92,6 +93,7 @@ export async function customerHistories(entries: Entry[]): Promise<Map<string, C
         (row) =>
           row.status === "abgesagt" &&
           row.cancelledBy === "kundschaft" &&
+          row.movedBy !== "fahrschule" &&
           row.cancelledAt !== null &&
           row.cancelledAt.getTime() > row.startsAt.getTime() - DAY_MS,
       ).length,

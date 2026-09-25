@@ -276,6 +276,10 @@ export const bookings = pgTable(
      * Zeit, bevor das erfasst wurde und die sich nicht zuordnen liessen.
      */
     cancelledBy: text("cancelled_by").$type<"kundschaft" | "fahrschule">(),
+    // Wer den Termin zuletzt verschoben hat. Hat die Fahrschule verschoben,
+    // darf die Kundschaft danach jederzeit kostenlos absagen — sie hat der
+    // neuen Zeit ja nie zugestimmt.
+    movedBy: text("moved_by").$type<"kundschaft" | "fahrschule">(),
 
     /**
      * Bestätigung per Mail (Double-Opt-In) bei Online-Buchungen. Bis zum

@@ -151,6 +151,7 @@ export async function moveCourseSession({
           endsAt: newEndsAt,
           purgeAfter,
           reminderSentAt: null,
+          movedBy: "fahrschule",
           updatedAt: new Date(),
         })
         .where(inArray(bookings.id, participants.map((entry) => entry.id)));

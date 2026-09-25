@@ -76,7 +76,8 @@ export async function GET(request: Request) {
       "",
       "# Absagen der Kundschaft innert 24 Stunden vor Beginn und nicht erschienen —",
       "# laut AGB verrechenbar, oben nicht mitgezählt. Absagen durch die",
-      "# Fahrschule stehen hier nicht.",
+      "# Fahrschule und Absagen nach einer Verschiebung durch die Fahrschule",
+      "# stehen hier nicht.",
       ...toCsv(report.chargeable, "Datum;Zeit;Referenz;Angebot;Fahrlehrerin;Betrag CHF;Aktion;Grund"),
       `Summe verrechenbare Ausfälle;;;;;${formatPrice(report.chargeableRappen)};;`,
     );

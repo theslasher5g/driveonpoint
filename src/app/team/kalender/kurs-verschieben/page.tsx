@@ -3,9 +3,10 @@ import { eq } from "drizzle-orm";
 import { CourseMoveForm } from "@/components/course-move-form";
 import { requirePermission } from "@/lib/auth/guard";
 import { courseSession } from "@/lib/course-cancel";
+import { courseShape } from "@/lib/course-move";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/db/schema";
-import { daysBetween, formatDayLong, todayInZurich, zurichDay, zurichTime } from "@/lib/time";
+import { formatDayLong, todayInZurich, zurichDay, zurichTime } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,8 @@ export default async function KursVerschiebenPage({ searchParams }: { searchPara
   const { lessonType, participants, waiting } = session;
   const day = zurichDay(entry.startsAt);
   const time = zurichTime(entry.startsAt);
+  // Dieselbe Rechnung wie beim Verschieben selbst.
+  const shape = await courseShape(lessonType.id, entry.startsAt, lessonType.durationMinutes);
   const withoutMail = participants.filter((participant) => !participant.customerEmail);
   const recipients = participants.length - withoutMail.length + waiting.length;
 
@@ -54,11 +57,10 @@ export default async function KursVerschiebenPage({ searchParams }: { searchPara
             {entry.secondStartsAt &&
               ` und ${formatDayLong(zurichDay(entry.secondStartsAt))}, ${zurichTime(entry.secondStartsAt)} Uhr`}
           </p>
-          {entry.secondStartsAt && (
+          {shape.second?.secondDayOffset && (
             <p className="text-fine text-slate mt-1">
-              Der 2. Kurstag wandert im selben Abstand mit (
-              {daysBetween(day, zurichDay(entry.secondStartsAt))}{" "}
-              {daysBetween(day, zurichDay(entry.secondStartsAt)) === 1 ? "Tag" : "Tage"} später).
+              Der 2. Kurstag wandert im selben Abstand mit ({shape.second.secondDayOffset}{" "}
+              {shape.second.secondDayOffset === 1 ? "Tag" : "Tage"} später).
             </p>
           )}
           <p className="mt-3">

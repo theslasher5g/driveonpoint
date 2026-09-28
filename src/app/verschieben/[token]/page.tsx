@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SecondDayLine } from "@/components/second-day";
 import { SelfRescheduleForm } from "@/components/self-reschedule-form";
 import type { Slot } from "@/lib/booking";
 import { bookingForToken, movableSlots, stillMovable } from "@/lib/self-reschedule";
 import { site } from "@/lib/site";
-import { formatDayLong, formatDayShort, zurichDay, zurichTime } from "@/lib/time";
+import { formatDayLong, zurichDay, zurichTime } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +108,7 @@ export default async function VerschiebenPage({
           Neu:{" "}
           <strong className="text-deep">
             {formatDayLong(chosen.day)}, {chosen.time} Uhr
-            {chosen.second && ` und ${formatDayLong(chosen.second.day)}, ${chosen.second.time} Uhr`}
+            {chosen.second && ` und ${formatDayLong(chosen.second.day)}, ${chosen.second.time}–${chosen.second.endTime} Uhr`}
           </strong>
           . Die bisherige Zeit wird dabei frei. Verschieben kostet nichts.
         </p>
@@ -179,11 +180,7 @@ function SlotList({ slots, token, isCourse }: { slots: Slot[]; token: string; is
                   className="nums block rounded-[var(--radius-control)] bg-concrete px-4 py-2.5 font-bold hover:bg-signal hover:text-deep transition-colors"
                 >
                   {slot.time}
-                  {slot.second && (
-                    <span className="block text-fine font-semibold">
-                      und {formatDayShort(slot.second.day)}, {slot.second.time}
-                    </span>
-                  )}
+                  <SecondDayLine second={slot.second} />
                   {isCourse && (
                     <span className="block text-fine font-normal opacity-75">
                       {slot.seatsLeft} {slot.seatsLeft === 1 ? "Platz" : "Plätze"}

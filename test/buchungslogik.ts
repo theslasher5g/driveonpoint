@@ -30,7 +30,8 @@ import { createBooking, findSlots, lessonTypeBySlug, moveBooking, newConfirmToke
 import { markError, markOk } from "@/lib/checks";
 import { cancelCourseSession } from "@/lib/course-cancel";
 import { keepBookedSessions } from "@/lib/course-dates";
-import { moveCourseSession } from "@/lib/course-move";
+import { courseShape, moveCourseSession } from "@/lib/course-move";
+import { ipFromHeaders, networkKey } from "@/lib/ip";
 import { customerHistories, describeHistory } from "@/lib/customer-history";
 import { describeRule, occurrences, ruleAppliesOn } from "@/lib/availability-rules";
 import { currentProblems } from "@/lib/monitoring";
@@ -1067,6 +1068,37 @@ async function main() {
   });
   check("Fahrstunde am 2. Kurstag wird auch in der letzten Prüfung abgewiesen", "error" in fahrImZweiten, true);
 
+  // Was die Seite "Kurs verschieben" ankündigt und das Verschieben macht:
+  // aus dem Kurstermin, und fehlt der, aus den Anmeldungen.
+  const formAusTermin = await courseShape(vku.id, vkuW.startsAt, vku.durationMinutes);
+  check(
+    "Kursform aus dem Kurstermin",
+    [formAusTermin.windowMinutes, formAusTermin.second?.secondDayOffset],
+    [210, 2],
+  );
+  await db.delete(availabilityExceptions).where(eq(availabilityExceptions.id, zweiTage.id));
+  const formAusBuchung = await courseShape(vku.id, vkuW.startsAt, vku.durationMinutes);
+  check(
+    "Kursform ohne Kurstermin: aus der Anmeldung, 2. Kurstag bleibt",
+    [formAusBuchung.windowMinutes, formAusBuchung.second?.secondDayOffset, formAusBuchung.second?.secondStartTime],
+    [210, 2, "18:00"],
+  );
+  const [zweiTageWieder] = await db
+    .insert(availabilityExceptions)
+    .values({
+      staffId: personC.id,
+      lessonTypeId: vku.id,
+      day: tagW,
+      startTime: "18:00",
+      endTime: "21:30",
+      secondDayOffset: 2,
+      secondStartTime: "18:00",
+      secondEndTime: "21:30",
+      available: true,
+    })
+    .returning({ id: availabilityExceptions.id });
+  createdCourseDates.push(zweiTageWieder.id);
+
   // Ist der 2. Kurstag schon belegt, wird der Kurs gar nicht angeboten.
   const tagW2 = addDays(tagW, 7);
   const [zweiTage2] = await db
@@ -1187,6 +1219,19 @@ async function main() {
     await db.delete(systemChecks);
     if (vorher.length > 0) await db.insert(systemChecks).values(vorher);
   }
+
+  // ===================================================================
+  console.log("\nSZENARIO X — Adresse für das Seitenlimit");
+  // ===================================================================
+  check("eigener Proxy-Eintrag zählt, vorgeschobener nicht", ipFromHeaders("6.6.6.6, 203.0.113.9", null, 1), "203.0.113.9");
+  check("zu hoch eingestellte Proxyzahl: X-Real-IP zählt nicht", ipFromHeaders("203.0.113.9", "6.6.6.6", 2), "203.0.113.9");
+  check("X-Real-IP nur ohne X-Forwarded-For", ipFromHeaders(null, "::ffff:203.0.113.9", 1), "203.0.113.9");
+  check("IPv4 bleibt einzeln", networkKey("203.0.113.9"), "203.0.113.9");
+  check(
+    "IPv6 zählt pro /64-Netz",
+    [networkKey("2001:db8:1:2:aaaa::1"), networkKey("2001:0db8:0001:0002:ffff:1:2:3"), networkKey("2001:db8::1")],
+    ["2001:db8:1:2::/64", "2001:db8:1:2::/64", "2001:db8:0:0::/64"],
+  );
 
   console.log(`\n${failures === 0 ? "Alle Prüfungen bestanden." : `${failures} Prüfung(en) fehlgeschlagen.`}`);
 

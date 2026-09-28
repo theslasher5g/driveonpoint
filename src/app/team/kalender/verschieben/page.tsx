@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { SecondDayLine } from "@/components/second-day";
 import { eq } from "drizzle-orm";
 import { requirePermission } from "@/lib/auth/guard";
 import { findSlots } from "@/lib/booking";
 import { db } from "@/lib/db";
 import { bookings, lessonTypes, staff } from "@/lib/db/schema";
-import { formatDayLong, formatDayShort, todayInZurich, zurichDay, zurichTime } from "@/lib/time";
+import { formatDayLong, todayInZurich, zurichDay, zurichTime } from "@/lib/time";
 import { RescheduleConfirmForm } from "@/components/reschedule-confirm-form";
 
 export const dynamic = "force-dynamic";
@@ -122,7 +123,7 @@ export default async function VerschiebenPage({ searchParams }: { searchParams: 
               <strong className="text-deep">
                 {formatDayLong(chosenSlot.day)}, {chosenSlot.time} Uhr
                 {chosenSlot.second &&
-                  ` und ${formatDayLong(chosenSlot.second.day)}, ${chosenSlot.second.time} Uhr`}
+                  ` und ${formatDayLong(chosenSlot.second.day)}, ${chosenSlot.second.time}–${chosenSlot.second.endTime} Uhr`}
               </strong>
               .
               Die Kundschaft wird per Mail informiert, falls eine Adresse hinterlegt ist.
@@ -162,11 +163,7 @@ function SlotPicker({ slots, id }: { slots: Awaited<ReturnType<typeof findSlots>
                   className="nums block bg-paper border border-deep/20 px-3.5 py-2 font-bold hover:bg-signal hover:text-deep hover:border-signal transition-colors"
                 >
                   {slot.time}
-                  {slot.second && (
-                    <span className="block text-fine font-semibold">
-                      und {formatDayShort(slot.second.day)}, {slot.second.time}
-                    </span>
-                  )}
+                  <SecondDayLine second={slot.second} />
                 </Link>
               </li>
             ))}

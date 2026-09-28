@@ -340,10 +340,16 @@ export async function findSlots(options: {
   const isFree = (cuts: Interval[], start: number, end: number) =>
     !cuts.some((cut) => cut.start < end && cut.end > start);
 
+  // Verschiedene Startzeiten bisher, für den frühen Abbruch (enough).
+  const starts = new Set<number>();
+  let counted = 0;
   for (let offset = 0; offset < days; offset += 1) {
     // Tage laufen aufsteigend: sind genug Termine beisammen, kommt kein
-    // früherer mehr dazu.
-    if (options.enough && new Set(result.map((slot) => slot.startsAt.getTime())).size >= options.enough) break;
+    // früherer mehr dazu. Nur die seit gestern neuen Einträge ansehen.
+    if (options.enough) {
+      for (; counted < result.length; counted += 1) starts.add(result[counted].startsAt.getTime());
+      if (starts.size >= options.enough) break;
+    }
     const day = addDays(fromDay, offset);
     const weekday = zurichWeekday(day);
 
@@ -575,17 +581,16 @@ function mergeByStart(slots: Slot[]): Slot[] {
 /** Für den Aufmacher der Startseite: der nächste freie Termin überhaupt. */
 export async function nextFreeSlot(): Promise<{ slot: Slot; lessonType: LessonType } | null> {
   const types = await listLessonTypes();
+  const firsts = await Promise.all(
+    types.map(async (lessonType) => ({
+      lessonType,
+      slot: (await findSlots({ lessonType, days: 21, enough: 1 }))[0],
+    })),
+  );
   let best: { slot: Slot; lessonType: LessonType } | null = null;
-
-  for (const lessonType of types) {
-    const slots = await findSlots({ lessonType, days: 21 });
-    const first = slots[0];
-    if (!first) continue;
-    if (!best || first.startsAt < best.slot.startsAt) {
-      best = { slot: first, lessonType };
-    }
+  for (const { lessonType, slot } of firsts) {
+    if (slot && (!best || slot.startsAt < best.slot.startsAt)) best = { slot, lessonType };
   }
-
   return best;
 }
 

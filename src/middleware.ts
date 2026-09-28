@@ -1,11 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { ipFromHeaders, networkKey } from "./lib/ip";
 
 /**
- * Grobe Bremse gegen Dauerabrufe: höchstens so viele Seitenaufrufe pro
- * Minute und Verbindung. Jede Seite wird pro Anfrage gerendert und rechnet
- * freie Termine aus; eine einzelne Verbindung könnte die Anwendung sonst mit
- * Dauerabrufen auslasten. Ein Mensch kommt nie in die Nähe — Vorabladen
- * zählt nicht (siehe matcher), statische Dateien auch nicht.
+ * Grobe Bremse gegen Dauerabrufe: höchstens so viele Anfragen pro Minute und
+ * Anschluss. Jede Seite wird pro Anfrage gerendert und rechnet freie Termine
+ * aus; eine einzelne Verbindung könnte die Anwendung sonst mit Dauerabrufen
+ * auslasten. Ein Mensch kommt nie in die Nähe, auch nicht mit Vorabladen.
+ * Statische Dateien zählen nicht (siehe matcher).
+ *
+ * Ausnahmen gibt es keine: Docker-Lebenszeichen und Cron rufen die Anwendung
+ * direkt ohne Proxy auf und teilen sich den Zähler "direkt", ein paar
+ * Aufrufe pro Minute. Alles von aussen kommt über Caddy und trägt eine
+ * Adresse.
  *
  * Im Speicher des Prozesses statt in der Datenbank: es geht um Tempo, nicht
  * um Genauigkeit, und die Anwendung läuft als ein einzelner Prozess. Die
@@ -13,41 +19,32 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 const LIMIT_PER_MINUTE = 300;
 const WINDOW_MS = 60_000;
+/** Obergrenze der Liste; darüber fliegt der älteste Eintrag. */
+const MAX_TRACKED = 20_000;
+/** In Reihenfolge des Fensterbeginns: vorne steht immer der älteste. */
 const windows = new Map<string, { start: number; count: number }>();
-/** Maschinen-Endpunkte, die intern oder zeitgesteuert aufgerufen werden. */
-const UNLIMITED = ["/api/health", "/api/cron/", "/api/betrieb"];
 
 function overLimit(request: NextRequest): boolean {
-  const path = request.nextUrl.pathname;
-  if (UNLIMITED.some((prefix) => path.startsWith(prefix))) return false;
-
   const now = Date.now();
-  const ip = requestIp(request);
-  const current = windows.get(ip);
-  if (!current || now - current.start > WINDOW_MS) {
-    // Alte Einträge gelegentlich wegräumen, damit die Liste nicht wächst.
-    if (windows.size > 10_000) {
-      for (const [key, value] of windows) if (now - value.start > WINDOW_MS) windows.delete(key);
-    }
-    windows.set(ip, { start: now, count: 1 });
-    return false;
-  }
-  current.count += 1;
-  return current.count > LIMIT_PER_MINUTE;
-}
+  const hops = Number(process.env.TRUST_PROXY_HOPS) || 1;
+  const ip = ipFromHeaders(request.headers.get("x-forwarded-for"), null, hops);
+  const key = ip ? networkKey(ip) : "direkt";
 
-/**
- * Dieselbe Regel wie clientIp() in lib/request.ts: nur die Einträge, die
- * unsere eigenen Proxys angehängt haben, zählen — eine selbst gesetzte
- * Kopfzeile landet weiter vorne und wird ignoriert.
- */
-function requestIp(request: NextRequest): string {
-  const hops = Math.max(1, Number(process.env.TRUST_PROXY_HOPS) || 1);
-  const chain = (request.headers.get("x-forwarded-for") ?? "")
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return chain[chain.length - hops] ?? request.headers.get("x-real-ip") ?? "direkt";
+  const current = windows.get(key);
+  if (current && now - current.start <= WINDOW_MS) {
+    current.count += 1;
+    return current.count > LIMIT_PER_MINUTE;
+  }
+  // Neues Fenster ans Ende, damit die Reihenfolge stimmt. Abgelaufene
+  // Einträge vorne wegräumen; ist die Liste trotzdem voll, den ältesten —
+  // beides ohne die ganze Liste zu durchlaufen.
+  windows.delete(key);
+  for (const [oldest, value] of windows) {
+    if (now - value.start <= WINDOW_MS && windows.size < MAX_TRACKED) break;
+    windows.delete(oldest);
+  }
+  windows.set(key, { start: now, count: 1 });
+  return false;
 }
 
 /**
@@ -140,12 +137,9 @@ export const config = {
   matcher: [
     // Statische Dateien brauchen die Kopfzeilen nicht und würden sonst bei
     // jedem Bild durch die Middleware laufen.
-    {
-      source: "/((?!_next/static|_next/image|fonts/|images/|favicon.ico|robots.txt|sitemap.xml).*)",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
-    },
+    // Vorabladen läuft bewusst auch hindurch: die Kopfzeilen dafür kann
+    // jeder selbst setzen, und die Seite wird trotzdem gerendert — sonst
+    // liesse sich die Bremse oben damit umgehen.
+    "/((?!_next/static|_next/image|fonts/|images/|favicon.ico|robots.txt|sitemap.xml).*)",
   ],
 };

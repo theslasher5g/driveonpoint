@@ -4,6 +4,7 @@ import { BookingForm } from "@/components/booking-form";
 import { FahrstundeSlotSelector } from "@/components/fahrstunde-slot-selector";
 import { MultiBookingForm } from "@/components/multi-booking-form";
 import { PageHeader } from "@/components/page-header";
+import { SecondDayLine } from "@/components/second-day";
 import {
   activePromotions,
   applyPromotions,
@@ -11,13 +12,14 @@ import {
   horizonDays,
   lessonTypeBySlug,
   listLessonTypes,
+  withinBookingHorizon,
   type Slot,
 } from "@/lib/booking";
 import { COURSE_SESSIONS_SHOWN } from "@/lib/course-horizon";
 import type { LessonType } from "@/lib/db/schema";
 import { withSoftHyphens } from "@/lib/hyphenate";
 import { site } from "@/lib/site";
-import { formatDayLong, formatDayShort, formatPrice, todayInZurich, zurichTime } from "@/lib/time";
+import { daysBetween, formatDayLong, formatDayShort, formatPrice, todayInZurich, zurichTime } from "@/lib/time";
 import { fullCourseSessions, type FullSession } from "@/lib/waitlist";
 
 export const dynamic = "force-dynamic";
@@ -47,18 +49,41 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
 
   const promotions = await activePromotions();
   const priced = applyPromotions(lessonType, promotions);
-  // Fahrstunden 4 Wochen voraus, Kurse ein Jahr — von denen zeigt die Liste
-  // die nächsten paar (SlotList).
-  const slots = await findSlots({
-    lessonType,
-    fromDay: todayInZurich(),
-    days: horizonDays(lessonType),
-    // Kurse: die Liste zeigt ohnehin nur die nächsten paar. Ein gewählter
-    // späterer Termin (tag/zeit) wird beim Buchen selbst noch einmal geprüft.
-    enough: lessonType.capacity > 1 && !params.tag ? COURSE_SESSIONS_SHOWN : undefined,
-  });
-  // Volle Kurstermine bleiben sichtbar, mit dem Weg auf die Warteliste.
-  const full = lessonType.capacity > 1 ? await fullCourseSessions(lessonType) : [];
+  const isCourse = lessonType.capacity > 1;
+  const today = todayInZurich();
+
+  // Termin gewählt (tag/zeit): nur diesen einen Tag rechnen, nicht die
+  // ganze Liste. Ein Tag ausserhalb des Buchungszeitraums führt zur Liste.
+  const chosenDay =
+    params.tag && params.zeit && /^\d{4}-\d{2}-\d{2}$/.test(params.tag) && withinBookingHorizon(params.tag, lessonType)
+      ? params.tag
+      : null;
+  const chosen = chosenDay
+    ? (await findSlots({ lessonType, fromDay: chosenDay, days: 1 })).find((slot) => slot.time === params.zeit)
+    : undefined;
+
+  // Fahrstunden 4 Wochen voraus, Kurse ein Jahr. Von den Kursen zeigt die
+  // Liste nur die nächsten paar (SlotList); einer mehr zeigt, ob danach noch
+  // etwas kommt.
+  const slots = chosen
+    ? []
+    : await findSlots({
+        lessonType,
+        fromDay: today,
+        days: horizonDays(lessonType),
+        enough: isCourse ? COURSE_SESSIONS_SHOWN + 1 : undefined,
+      });
+  // Volle Kurstermine bleiben sichtbar, mit dem Weg auf die Warteliste —
+  // nur bis zum letzten Termin, der in der Liste noch Platz hat.
+  const lastListed = slots.length > COURSE_SESSIONS_SHOWN ? slots[COURSE_SESSIONS_SHOWN - 1].day : null;
+  const full =
+    isCourse && !chosen
+      ? await fullCourseSessions(
+          lessonType,
+          today,
+          lastListed ? daysBetween(today, lastListed) + 1 : undefined,
+        )
+      : [];
 
   // Mehrere Fahrstunden auf einmal: eine eigene Auswahl statt eines
   // einzelnen Termins, siehe FahrstundeSlotSelector. Nur für Fahrstunden —
@@ -132,73 +157,68 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
   }
 
   // Dritter Schritt (alle anderen Angebote): Termin steht, jetzt die Angaben.
-  if (params.tag && params.zeit) {
-    const chosen = slots.find((slot) => slot.day === params.tag && slot.time === params.zeit);
-
-    if (chosen) {
-      const isCourse = lessonType.capacity > 1;
-      // Kurse: mit Zeitspanne und, falls es einen gibt, dem 2. Kurstag.
-      const firstDay = isCourse
-        ? `${formatDayLong(chosen.day)}, ${chosen.time}–${zurichTime(chosen.endsAt)} Uhr`
-        : `${formatDayLong(chosen.day)}, ${chosen.time} Uhr`;
-      const secondDay = chosen.second
-        ? `${formatDayLong(chosen.second.day)}, ${chosen.second.time}–${chosen.second.endTime} Uhr`
-        : null;
-      return (
-        <>
-          <PageHeader
-            title="Deine Angaben"
-            lead={
-              secondDay
-                ? `${lessonType.name} an zwei Tagen: ${firstDay} und ${secondDay}. Jetzt noch deine Angaben.`
-                : `${lessonType.name} am ${formatDayLong(chosen.day)} um ${chosen.time} Uhr. Jetzt noch deine Angaben.`
-            }
-          />
-          <section className="shell band">
-            <div className="lane max-w-2xl">
-              <div className="surface bg-paper p-5 md:p-6 mb-6">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-                  <div>
-                    <p className="font-bold text-lg">{lessonType.name}</p>
-                    {secondDay ? (
-                      <ul className="nums text-slate">
-                        <li>{firstDay} (1. Kurstag)</li>
-                        <li>{secondDay} (2. Kurstag)</li>
-                      </ul>
-                    ) : isCourse ? (
-                      <p className="nums text-slate">{firstDay}</p>
-                    ) : (
-                      <p className="nums text-slate">
-                        {firstDay} · {lessonType.durationMinutes} Minuten
-                      </p>
-                    )}
-                  </div>
-                  <p className="nums font-display text-2xl font-bold text-signal-ink">
-                    CHF {formatPrice(priced.finalRappen)}
-                  </p>
+  if (chosen) {
+    // Kurse: mit Zeitspanne und, falls es einen gibt, dem 2. Kurstag.
+    const firstDay = isCourse
+      ? `${formatDayLong(chosen.day)}, ${chosen.time}–${zurichTime(chosen.endsAt)} Uhr`
+      : `${formatDayLong(chosen.day)}, ${chosen.time} Uhr`;
+    const secondDay = chosen.second
+      ? `${formatDayLong(chosen.second.day)}, ${chosen.second.time}–${chosen.second.endTime} Uhr`
+      : null;
+    return (
+      <>
+        <PageHeader
+          title="Deine Angaben"
+          lead={
+            secondDay
+              ? `${lessonType.name} an zwei Tagen: ${firstDay} und ${secondDay}. Jetzt noch deine Angaben.`
+              : `${lessonType.name} am ${formatDayLong(chosen.day)} um ${chosen.time} Uhr. Jetzt noch deine Angaben.`
+          }
+        />
+        <section className="shell band">
+          <div className="lane max-w-2xl">
+            <div className="surface bg-paper p-5 md:p-6 mb-6">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                <div>
+                  <p className="font-bold text-lg">{lessonType.name}</p>
+                  {secondDay ? (
+                    <ul className="nums text-slate">
+                      <li>{firstDay} (1. Kurstag)</li>
+                      <li>{secondDay} (2. Kurstag)</li>
+                    </ul>
+                  ) : isCourse ? (
+                    <p className="nums text-slate">{firstDay}</p>
+                  ) : (
+                    <p className="nums text-slate">
+                      {firstDay} · {lessonType.durationMinutes} Minuten
+                    </p>
+                  )}
                 </div>
-                {priced.promotion && <p className="promo-tag mt-3">{priced.promotion.label}</p>}
-                <Link
-                  href={`/buchen?angebot=${lessonType.slug}`}
-                  className="inline-block text-fine font-bold text-signal-ink underline underline-offset-4 mt-4"
-                >
-                  Anderen Termin wählen
-                </Link>
+                <p className="nums font-display text-2xl font-bold text-signal-ink">
+                  CHF {formatPrice(priced.finalRappen)}
+                </p>
               </div>
-
-              <div className="surface bg-paper p-5 md:p-6">
-                <BookingForm
-                  slug={lessonType.slug}
-                  day={chosen.day}
-                  time={chosen.time}
-                  pickup={lessonType.capacity <= 1}
-                />
-              </div>
+              {priced.promotion && <p className="promo-tag mt-3">{priced.promotion.label}</p>}
+              <Link
+                href={`/buchen?angebot=${lessonType.slug}`}
+                className="inline-block text-fine font-bold text-signal-ink underline underline-offset-4 mt-4"
+              >
+                Anderen Termin wählen
+              </Link>
             </div>
-          </section>
-        </>
-      );
-    }
+
+            <div className="surface bg-paper p-5 md:p-6">
+              <BookingForm
+                slug={lessonType.slug}
+                day={chosen.day}
+                time={chosen.time}
+                pickup={lessonType.capacity <= 1}
+              />
+            </div>
+          </div>
+        </section>
+      </>
+    );
   }
 
   // Zweiter Schritt: freie Termine zur Auswahl.
@@ -267,19 +287,9 @@ type ListEntry = {
   time: string;
   /** Kurse: Ende des (1.) Kurstags. */
   endTime: string | null;
-  second: { day: string; startTime: string; endTime: string } | null;
+  second: { day: string; time: string; endTime: string } | null;
   seatsLeft: number | null;
 };
-
-/** "und Mi, 30. Sep., 18:00–21:00" — der 2. Kurstag unter der Uhrzeit. */
-function SecondDay({ second }: { second: ListEntry["second"] }) {
-  if (!second) return null;
-  return (
-    <span className="block text-fine font-semibold">
-      und {formatDayShort(second.day)}, {second.startTime}–{second.endTime}
-    </span>
-  );
-}
 
 function SlotList({
   slots,
@@ -307,23 +317,25 @@ function SlotList({
       day: slot.day,
       time: slot.time,
       endTime: isCourse ? zurichTime(slot.endsAt) : null,
-      second: slot.second ? { day: slot.second.day, startTime: slot.second.time, endTime: slot.second.endTime } : null,
+      second: slot.second,
       seatsLeft: slot.seatsLeft,
     })),
     ...full.map((session) => ({
       day: session.day,
       time: session.time,
       endTime: session.endTime,
-      second: session.second,
+      second: session.second
+        ? { day: session.second.day, time: session.second.startTime, endTime: session.second.endTime }
+        : null,
       seatsLeft: null,
     })),
   ].sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time));
   // Kurse: nur die nächsten paar, sonst stünde eine wöchentliche Serie mit
   // einem ganzen Jahr Terminen da. Spätere rücken nach.
   const listed = isCourse ? all.slice(0, COURSE_SESSIONS_SHOWN) : all;
-  // Die Liste rechnet bei Kursen nur bis zu den nächsten paar Terminen
-  // (enough); ist sie voll, folgen wahrscheinlich weitere.
-  const later = isCourse && listed.length >= COURSE_SESSIONS_SHOWN;
+  // Gerechnet wird bei Kursen einer mehr als gezeigt: so steht der Hinweis
+  // nur da, wenn danach wirklich noch ein Termin kommt.
+  const later = all.length > listed.length;
 
   const byDay = new Map<string, ListEntry[]>();
   for (const entry of listed) {
@@ -350,7 +362,7 @@ function SlotList({
                   >
                     {slot.time}
                     {slot.endTime && `–${slot.endTime}`}
-                    <SecondDay second={slot.second} />
+                    <SecondDayLine second={slot.second} />
                     <span className="block text-fine font-normal">Ausgebucht, Warteliste</span>
                   </Link>
                 </li>
@@ -362,7 +374,7 @@ function SlotList({
                 >
                   {slot.time}
                   {slot.endTime && `–${slot.endTime}`}
-                  <SecondDay second={slot.second} />
+                  <SecondDayLine second={slot.second} />
                   {isCourse && (
                     <span className="block text-fine font-normal opacity-75">
                       {slot.seatsLeft} {slot.seatsLeft === 1 ? "Platz" : "Plätze"}

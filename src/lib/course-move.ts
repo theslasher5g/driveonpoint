@@ -3,12 +3,12 @@ import { and, eq, gt, inArray, lt, notInArray, or } from "drizzle-orm";
 import { occupiesTime } from "./booking";
 import { sendRescheduleConfirmation, sendWaitlistMoved } from "./booking-mail";
 import { courseSession } from "./course-cancel";
-import { secondPartOf } from "./availability-rules";
+import { secondPartOf, type SecondPartSource } from "./availability-rules";
 import { sessionSources } from "./course-dates";
 import { db } from "./db";
 import { availabilityExceptions, bookings, lessonTypes, staff, waitlistEntries } from "./db/schema";
 import { env } from "./env";
-import { minutesSinceMidnight, zurichDay, zurichTime, zurichToInstant } from "./time";
+import { daysBetween, minutesSinceMidnight, zurichDay, zurichTime, zurichToInstant } from "./time";
 
 /**
  * Einen ganzen Kurstermin auf ein anderes Datum legen — statt abzusagen und
@@ -18,6 +18,52 @@ import { minutesSinceMidnight, zurichDay, zurichTime, zurichToInstant } from "./
 
 function toTime(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Wie ein Kurstermin aussieht: Länge des (1.) Kurstags und der 2. Kurstag
+ * als Abstand mit Zeiten. Aus dem Eintrag unter Verfügbarkeit; fehlt der
+ * (etwa weil die Serie inzwischen gelöscht ist), aus den Anmeldungen — so
+ * verlieren die Angemeldeten ihren 2. Kurstag nicht. Die Seite zum
+ * Verschieben zeigt damit genau das an, was beim Verschieben passiert.
+ */
+export async function courseShape(
+  lessonTypeId: string,
+  startsAt: Date,
+  fallbackMinutes: number,
+): Promise<{
+  sources: Awaited<ReturnType<typeof sessionSources>>;
+  windowMinutes: number;
+  second: SecondPartSource | null;
+}> {
+  const day = zurichDay(startsAt);
+  const sources = await sessionSources(lessonTypeId, day, zurichTime(startsAt));
+  const source = sources.dates[0] ?? sources.rules[0];
+  if (source) {
+    return {
+      sources,
+      windowMinutes:
+        minutesSinceMidnight(source.endTime.slice(0, 5)) - minutesSinceMidnight(source.startTime.slice(0, 5)),
+      second: source.secondDayOffset ? source : null,
+    };
+  }
+  const [booked] = await db
+    .select({ endsAt: bookings.endsAt, secondStartsAt: bookings.secondStartsAt, secondEndsAt: bookings.secondEndsAt })
+    .from(bookings)
+    .where(and(eq(bookings.lessonTypeId, lessonTypeId), eq(bookings.startsAt, startsAt), occupiesTime()))
+    .limit(1);
+  return {
+    sources,
+    windowMinutes: booked ? Math.round((booked.endsAt.getTime() - startsAt.getTime()) / 60_000) : fallbackMinutes,
+    second:
+      booked?.secondStartsAt && booked.secondEndsAt
+        ? {
+            secondDayOffset: daysBetween(day, zurichDay(booked.secondStartsAt)),
+            secondStartTime: zurichTime(booked.secondStartsAt),
+            secondEndTime: zurichTime(booked.secondEndsAt),
+          }
+        : null,
+  };
 }
 
 export async function moveCourseSession({
@@ -48,19 +94,16 @@ export async function moveCourseSession({
   // Der Kurstermin unter Verfügbarkeit gibt das Zeitfenster vor (etwa
   // 18–21 Uhr); verschoben wird es als Ganzes. Er ist ein einzelnes Datum
   // oder ein Termin einer Serie.
-  const { dates, rules } = await sessionSources(lessonTypeId, oldDay, oldTime);
-  const source = dates[0] ?? rules[0];
-  const windowMinutes = source
-    ? minutesSinceMidnight(source.endTime.slice(0, 5)) - minutesSinceMidnight(source.startTime.slice(0, 5))
-    : lessonType.durationMinutes;
-  const newEndMinutes = minutesSinceMidnight(newTime) + windowMinutes;
+  const shape = await courseShape(lessonTypeId, startsAt, lessonType.durationMinutes);
+  const { dates, rules } = shape.sources;
+  const newEndMinutes = minutesSinceMidnight(newTime) + shape.windowMinutes;
   if (newEndMinutes > 24 * 60) return { error: "Der Kurs würde über Mitternacht dauern." };
   const newEndTime = toTime(newEndMinutes);
 
   // Der Kurs dauert, wie er eingetragen ist; ein 2. Kurstag wandert im
   // selben Abstand mit (VKU Montag und Mittwoch bleibt Montag und Mittwoch).
   const newEndsAt = zurichToInstant(newDay, newEndTime);
-  const newSecond = source ? secondPartOf(source, newDay) : null;
+  const newSecond = shape.second ? secondPartOf(shape.second, newDay) : null;
   const newSecondStartsAt = newSecond ? zurichToInstant(newSecond.day, newSecond.startTime) : null;
   const newSecondEndsAt = newSecond ? zurichToInstant(newSecond.day, newSecond.endTime) : null;
   const staffIds = [

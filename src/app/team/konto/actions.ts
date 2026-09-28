@@ -23,6 +23,7 @@ import {
   otpauthUrl,
   verifyTotp,
 } from "@/lib/auth/totp";
+import { forgetTrustedBrowsers } from "@/lib/auth/trusted-browser";
 import { db } from "@/lib/db";
 import { staff } from "@/lib/db/schema";
 import { consume } from "@/lib/rate-limit";
@@ -238,10 +239,22 @@ export async function disableMfaAction(
     })
     .where(eq(staff.id, user.id));
 
+  // Wird MFA später wieder eingerichtet, sollen alte Browser nicht
+  // einfach weiter gelten.
+  await forgetTrustedBrowsers(user.id);
+
   await record("konto.mfa-deaktiviert", { id: user.id, label: user.name });
   revalidatePath("/team/konto");
 
   return { ok: "MFA ist deaktiviert." };
+}
+
+/** Alle gemerkten Browser vergessen: überall wieder mit MFA-Code anmelden. */
+export async function forgetBrowsersAction(): Promise<void> {
+  const user = await requireUser();
+  await forgetTrustedBrowsers(user.id);
+  await record("konto.browser-vergessen", { id: user.id, label: user.name });
+  revalidatePath("/team/konto");
 }
 
 export type RecoveryCodesState = { error?: string; codes?: string[] };

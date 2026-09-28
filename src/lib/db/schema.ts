@@ -84,6 +84,25 @@ export const staffSessions = pgTable(
   (t) => [index("staff_sessions_staff_idx").on(t.staffId)],
 );
 
+/**
+ * Browser, die sich nach einem MFA-Code 30 Tage merken lassen: dort genügt
+ * bei der Anmeldung das Passwort. Wie bei den Sitzungen liegt nur der Hash
+ * des Cookie-Werts hier.
+ */
+export const trustedBrowsers = pgTable(
+  "trusted_browsers",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    staffId: uuid("staff_id")
+      .notNull()
+      .references(() => staff.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    userAgent: text("user_agent"),
+  },
+  (t) => [index("trusted_browsers_staff_idx").on(t.staffId)],
+);
+
 export const lessonTypes = pgTable(
   "lesson_types",
   {

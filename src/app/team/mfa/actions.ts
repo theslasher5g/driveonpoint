@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { record } from "@/lib/audit";
 import { clearMfaChallenge, readMfaChallenge } from "@/lib/auth/mfa-session";
 import { createSession } from "@/lib/auth/session";
+import { trustThisBrowser } from "@/lib/auth/trusted-browser";
 import { consumeRecoveryCode, decryptSecret, verifyTotp } from "@/lib/auth/totp";
 import { db } from "@/lib/db";
 import { staff } from "@/lib/db/schema";
@@ -100,11 +101,15 @@ export async function verifyMfaAction(
 
   const store = await headers();
   await createSession(account.id, { userAgent: store.get("user-agent"), ip });
+  // Nicht mit einem Wiederherstellungscode: wer den braucht, hat meist das
+  // Gerät verloren — dann soll nicht gleich ein Browser 30 Tage gelten.
+  const remember = formData.get("merken") === "ja" && !usedRecovery;
+  if (remember) await trustThisBrowser(account.id, store.get("user-agent"));
   await db.update(staff).set({ lastLoginAt: new Date() }).where(eq(staff.id, account.id));
   await record(
     "anmeldung.erfolgreich",
     { id: account.id, label: account.name },
-    { weg: usedRecovery ? "wiederherstellungscode" : "totp" },
+    { weg: usedRecovery ? "wiederherstellungscode" : "totp", browserGemerkt: remember },
   );
 
   if (usedRecovery) {

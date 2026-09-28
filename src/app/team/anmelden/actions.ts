@@ -7,6 +7,7 @@ import { z } from "zod";
 import { record } from "@/lib/audit";
 import { burnPasswordTime, createSession, verifyPassword } from "@/lib/auth/session";
 import { startMfaChallenge } from "@/lib/auth/mfa-session";
+import { isTrustedBrowser } from "@/lib/auth/trusted-browser";
 import { db } from "@/lib/db";
 import { staff } from "@/lib/db/schema";
 import { blockIp, blockedUntil, clearBucket, currentHits, hit } from "@/lib/rate-limit";
@@ -85,7 +86,10 @@ export async function loginAction(
 
   // Mit MFA ist das Passwort erst der erste Faktor. Es gibt jetzt bewusst
   // noch keine echte Sitzung — sonst wäre der zweite Faktor wirkungslos.
-  if (account.totpEnabled) {
+  // Ausnahme: ein Browser, der sich nach einem MFA-Code merken liess; dort
+  // ist er selbst der zweite Faktor.
+  const trusted = account.totpEnabled && (await isTrustedBrowser(account.id));
+  if (account.totpEnabled && !trusted) {
     await startMfaChallenge(account.id);
     await record("anmeldung.mfa-angefordert", { id: account.id, label: account.name });
     redirect("/team/mfa");
@@ -94,7 +98,11 @@ export async function loginAction(
   const store = await headers();
   await createSession(account.id, { userAgent: store.get("user-agent"), ip });
   await db.update(staff).set({ lastLoginAt: new Date() }).where(eq(staff.id, account.id));
-  await record("anmeldung.erfolgreich", { id: account.id, label: account.name });
+  await record(
+    "anmeldung.erfolgreich",
+    { id: account.id, label: account.name },
+    trusted ? { weg: "gemerkter-browser" } : undefined,
+  );
 
   redirect(account.mustChangePassword ? "/team/konto?erstanmeldung=1" : "/team");
 }

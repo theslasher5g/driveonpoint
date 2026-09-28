@@ -315,6 +315,15 @@ Beim Anmelden mit MFA gibt es nach dem Passwort noch keine echte Sitzung,
 sondern nur ein signiertes, zehn Minuten gültiges Zwischen-Cookie, bis der
 Code stimmt — ein gestohlenes Passwort allein reicht damit nicht.
 
+**Browser merken.** Auf der Codeseite lässt sich „Diesen Browser 30 Tage
+merken“ anhaken. In diesem Browser genügt danach bei der Anmeldung das
+Passwort; der Browser selbst ist der zweite Faktor (Cookie `dop_browser`,
+in der Datenbank nur als Hash). Das Passwort bleibt immer nötig, andere
+Browser verlangen weiter den Code. Das Vertrauen fällt weg nach 30 Tagen,
+bei einem Passwortwechsel, beim Zurücksetzen oder Ausschalten von MFA,
+beim Deaktivieren des Kontos und mit *Mein Konto → Gemerkte Browser
+vergessen*. Mit einem Wiederherstellungscode lässt sich kein Browser merken.
+
 **Gerät verloren?** Mit einem Wiederherstellungscode kommt man selbst wieder
 hinein (Eingabefeld auf der Codeseite, Format `xxxxx-xxxxx`). Sind auch die
 weg, setzt die Administration unter *Mitarbeitende* das MFA der Person

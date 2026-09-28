@@ -37,6 +37,14 @@ export function MfaChallengeForm() {
         </p>
       </div>
 
+      <label className="flex gap-3 items-start cursor-pointer">
+        <input type="checkbox" name="merken" value="ja" className="mt-1 w-5 h-5 accent-signal shrink-0" />
+        <span className="text-fine text-slate">
+          <span className="font-semibold text-deep">Diesen Browser 30 Tage merken.</span> Hier genügt
+          dann bei der Anmeldung das Passwort. Nur auf dem eigenen Gerät wählen.
+        </span>
+      </label>
+
       <SubmitButton />
     </form>
   );

@@ -4,7 +4,7 @@ import { hash as argonHash, verify as argonVerify } from "@node-rs/argon2";
 import { and, eq, gt, lt } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { db } from "../db";
-import { staff, staffSessions, type Staff } from "../db/schema";
+import { staff, staffSessions, trustedBrowsers, type Staff } from "../db/schema";
 import { env } from "../env";
 import { hashIp } from "../request";
 
@@ -114,13 +114,19 @@ export async function destroySession(): Promise<void> {
   store.delete(COOKIE);
 }
 
-/** Meldet alle Geräte eines Kontos ab, etwa nach einem Passwortwechsel. */
+/**
+ * Meldet alle Geräte eines Kontos ab, etwa nach einem Passwortwechsel. Auch
+ * gemerkte Browser verlieren ihr Vertrauen: danach verlangt jede Anmeldung
+ * wieder den MFA-Code.
+ */
 export async function destroyAllSessions(staffId: string): Promise<void> {
   await db.delete(staffSessions).where(eq(staffSessions.staffId, staffId));
+  await db.delete(trustedBrowsers).where(eq(trustedBrowsers.staffId, staffId));
 }
 
 export async function pruneSessions(): Promise<void> {
   await db.delete(staffSessions).where(lt(staffSessions.expiresAt, new Date()));
+  await db.delete(trustedBrowsers).where(lt(trustedBrowsers.expiresAt, new Date()));
 }
 
 /** Zeitkonstanter Vergleich für Token, die aus der Anfrage stammen. */

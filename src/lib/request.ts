@@ -2,7 +2,7 @@ import "server-only";
 import { createHmac } from "node:crypto";
 import { headers } from "next/headers";
 import { env } from "./env";
-import { ipFromHeaders } from "./ip";
+import { ipFromHeaders, networkKey } from "./ip";
 
 /**
  * Ermittelt die Adresse der Gegenstelle.
@@ -13,13 +13,16 @@ import { ipFromHeaders } from "./ip";
  * landet weiter vorne in der Liste und wird ignoriert. Ohne diese Zählung
  * liesse sich jede Sperre durch eine erfundene Adresse umgehen. Die Regel
  * selbst steht in lib/ip.ts, die Middleware verwendet dieselbe.
+ *
+ * Geliefert wird der Anschluss: bei IPv4 die Adresse, bei IPv6 das /64-Netz.
+ * Alle Zähler und Sperren hängen daran — mit einzelnen IPv6-Adressen könnte
+ * ein Anschluss für jeden Versuch eine neue nehmen und etwa beim Anmelden
+ * beliebig viele Passwörter durchprobieren.
  */
 export async function clientIp(): Promise<string> {
   const store = await headers();
-  return (
-    ipFromHeaders(store.get("x-forwarded-for"), store.get("x-real-ip"), env.trustProxyHops) ??
-    "unbekannt"
-  );
+  const ip = ipFromHeaders(store.get("x-forwarded-for"), store.get("x-real-ip"), env.trustProxyHops);
+  return ip ? networkKey(ip) : "unbekannt";
 }
 
 /**

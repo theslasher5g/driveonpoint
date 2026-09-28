@@ -470,9 +470,11 @@ Aufbewahrungspflicht und gehören nicht in diese Anwendung.
 | Rechteausweitung | Jede Seite und jede Aktion prüft die Berechtigung serverseitig, nicht nur die Navigation |
 | Bekannte Sicherheitslücken im Unterbau | Automatische Sicherheitsupdates für Betriebssystem und Docker-Basisabbilder, siehe [Serverpflege](#serverpflege-automatische-updates-und-aufräumlauf) |
 
-Gesperrt wird immer die **IP-Adresse**. Eine MAC-Adresse steht dem Server nicht
-zur Verfügung — sie wird beim ersten Router ersetzt und erreicht das Internet
-nie. Wer eine Sperre von Hand aufheben will:
+Gesperrt wird immer der **Anschluss**: bei IPv4 die Adresse, bei IPv6 das
+ganze /64-Netz (etwa `2001:db8:1:2::/64`) — ein Anschluss bekommt so ein Netz
+und könnte sonst für jeden Versuch eine neue Adresse nehmen. Eine MAC-Adresse
+steht dem Server nicht zur Verfügung — sie wird beim ersten Router ersetzt und
+erreicht das Internet nie. Wer eine Sperre von Hand aufheben will:
 
 ```bash
 docker compose exec db psql -U driveonpoint -c "delete from ip_blocks where ip = '203.0.113.42';"

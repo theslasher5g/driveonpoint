@@ -35,10 +35,17 @@ export default function AusbildungswegPage() {
           Wort um, weil beide sich eine viel zu schmale Zeile teilen mussten
           — nicht nur bei diesem Titel, sondern bei praktisch jedem.
         */}
+        <p className="text-fine text-slate mb-8 flex items-center gap-2.5">
+          <span className="inline-block w-3.5 h-3.5 rounded-full bg-signal" aria-hidden="true" />
+          Rot markierte Schritte machst du mit uns.
+        </p>
         <ol className="timeline">
           {site.path.map((step, index) => (
             <li key={step.title}>
-              <span className="timeline-mark nums text-base md:text-lg" aria-hidden="true">
+              <span
+                className={`timeline-mark nums text-base md:text-lg ${step.withUs ? "timeline-mark-us" : ""}`}
+                aria-hidden="true"
+              >
                 {index + 1}
               </span>
               <div className="max-w-3xl">
@@ -46,6 +53,7 @@ export default function AusbildungswegPage() {
                   <h2 className="text-section stretch-wide leading-tight sm:flex-1 sm:min-w-0">
                     <span className="sr-only">Schritt {index + 1}: </span>
                     {step.title}
+                    {step.withUs && <span className="sr-only"> (mit uns)</span>}
                   </h2>
                   <p className="nums text-fine text-slate sm:shrink-0 break-normal">{step.meta}</p>
                 </div>

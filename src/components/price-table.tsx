@@ -1,5 +1,5 @@
 import { activePromotions, applyPromotions, listLessonTypes, listPackages } from "@/lib/booking";
-import { formatPrice } from "@/lib/time";
+import { formatChf } from "@/lib/time";
 
 /**
  * Preise kommen aus der Datenbank und werden im Team-Bereich gepflegt.
@@ -90,18 +90,18 @@ export async function PriceTable({
                 <div>
                   {onOffer && (
                     <p className="nums text-slate text-fine line-through">
-                      CHF {formatPrice(lessonType.priceRappen)}
+                      CHF {formatChf(lessonType.priceRappen)}
                     </p>
                   )}
                   <p
-                    className={`nums font-display text-4xl font-bold leading-none mt-1 ${onOffer ? "text-signal-ink" : ""}`}
+                    className={`nums font-display text-4xl font-bold leading-none mt-1 whitespace-nowrap ${onOffer ? "text-signal-ink" : ""}`}
                   >
-                    CHF {formatPrice(priced.finalRappen)}
+                    CHF {formatChf(priced.finalRappen)}
                   </p>
                 </div>
                 {lessonType.reducedPriceRappen != null && !onOffer && (
-                  <p className="nums text-fine text-slate text-right">
-                    CHF {formatPrice(lessonType.reducedPriceRappen)}
+                  <p className="nums text-fine text-slate text-right min-w-0">
+                    <span className="whitespace-nowrap">CHF {formatChf(lessonType.reducedPriceRappen)}</span>
                     <br />
                     für {lessonType.reducedLabel}
                   </p>
@@ -129,7 +129,7 @@ export async function PriceTable({
                   {bundle.note && <p className="text-fine text-slate mt-0.5">{bundle.note}</p>}
                 </div>
                 <p className="nums font-display text-xl font-bold shrink-0">
-                  CHF {formatPrice(bundle.priceRappen)}
+                  CHF {formatChf(bundle.priceRappen)}
                 </p>
               </li>
             ))}

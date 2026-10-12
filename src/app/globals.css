@@ -148,32 +148,14 @@
 }
 
 @layer components {
-  /* --- Der Rand ---------------------------------------------------------
-     Die Randlinie eines linierten Bogens. Vorher lief hier eine gestrichelte
-     Fahrbahnmarkierung — hübsch gemeint, aber sie stellte nur etwas dar,
-     ohne je etwas zu tragen. Als Randlinie ist dieselbe Linie das, wonach
-     sie aussieht: der Rand des Blattes, an dem der Satzspiegel beginnt.
-     Auf dem Ausbildungsweg trägt sie die Schrittnummern. */
+  /* --- Satzspiegel ------------------------------------------------------
+     Früher lief hier links neben jedem Abschnitt eine feine Randlinie. Sie
+     trug nichts und wiederholte sich auf jeder Seite, Abschnitt für
+     Abschnitt. Die Klasse bleibt als gemeinsamer Anker für den Inhalt eines
+     Bands; die Linie gibt es nur noch dort, wo sie etwas bedeutet — auf dem
+     Weg zum Ausweis (.road, .timeline). */
   .lane {
     position: relative;
-    padding-left: 1.5rem;
-  }
-
-  .lane::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: currentColor;
-    opacity: 0.22;
-  }
-
-  @media (min-width: 900px) {
-    .lane {
-      padding-left: 2.5rem;
-    }
   }
 
   /* --- Die Spur als Zeitachse -------------------------------------------
@@ -222,6 +204,13 @@
     line-height: 1;
   }
 
+  /* Wie auf der Strasse der Startseite: rot heisst "machst du mit uns".
+     Dunkle Ziffer auf dem Signalrot, aus demselben Grund wie beim Knopf. */
+  .timeline-mark-us {
+    background: var(--color-signal);
+    color: var(--color-deep);
+  }
+
   @media (min-width: 900px) {
     .timeline > li {
       padding-left: 4rem;
@@ -232,6 +221,84 @@
     .timeline-mark {
       width: 2.75rem;
       height: 2.75rem;
+    }
+  }
+
+  /* --- Die Strasse zum Ausweis -------------------------------------------
+     Der eine laute Moment der Startseite: der Weg zum Ausweis als Fahrbahn
+     mit unterbrochener Mittellinie, die Schritte als Halte darauf. Die Linie
+     ist hier keine Dekoration, sie ist die Reihenfolge. Rot gefüllte Halte
+     machst du mit uns, die hohlen beim Amt oder auf eigene Faust.
+     Auf dem Telefon läuft die Strasse senkrecht, ab 1024px quer. */
+  .road {
+    position: relative;
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 2.75rem;
+    display: grid;
+    gap: 1.75rem;
+  }
+
+  /* Mittellinie: Striche und Lücken wie auf der Strasse, 3:2. */
+  .road::before {
+    content: "";
+    position: absolute;
+    left: 0.6875rem;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 3px;
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--color-paper) 0 18px,
+      transparent 18px 30px
+    );
+    opacity: 0.55;
+  }
+
+  .road > li {
+    position: relative;
+  }
+
+  .road-stop {
+    position: absolute;
+    left: -2.75rem;
+    top: 0.1rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    border: 3px solid var(--color-paper);
+    background: var(--color-deep);
+  }
+
+  .road-stop-us {
+    border-color: var(--color-signal);
+    background: var(--color-signal);
+  }
+
+  @media (min-width: 1024px) {
+    .road {
+      padding: 2.5rem 0 0;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+
+    .road::before {
+      left: 0;
+      right: 0;
+      top: 0.6875rem;
+      bottom: auto;
+      width: auto;
+      height: 3px;
+      background: repeating-linear-gradient(
+        to right,
+        var(--color-paper) 0 30px,
+        transparent 30px 50px
+      );
+    }
+
+    .road-stop {
+      left: 0;
+      top: -2.5rem;
     }
   }
 
@@ -603,7 +670,7 @@
      und dafür zählt, wie viel gleichzeitig sichtbar ist, nicht wie gross die
      Überschrift war. */
   .text-display {
-    font-size: clamp(2.75rem, 8vw, 5.75rem);
+    font-size: clamp(2.75rem, 6.4vw, 5.25rem);
   }
   .text-title {
     font-size: clamp(1.7rem, 3.4vw, 2.375rem);
@@ -620,14 +687,14 @@
     line-height: 1.55;
   }
 
-  /* Eingetragene Zahlen: Uhrzeiten, Daten, Preise, Referenzen. Schreib-
-     maschinenschrift, weil sie im Fahrtenbuch eingetragen und nicht gesetzt
-     sind — und tabellarisch, damit sie spaltentreu untereinander stehen. */
+  /* Zahlen: Uhrzeiten, Daten, Preise, Referenzen. Dieselbe Schrift wie der
+     Text, nur mit gleich breiten Ziffern, damit sie spaltentreu
+     untereinander stehen. Vorher lief hier eine Schreibmaschinenschrift —
+     sie wirkte technisch statt eingetragen und stand neben der runden
+     Grotesk wie ein Fremdkörper. */
   .nums {
-    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1;
-    letter-spacing: -0.01em;
   }
 
   .stretch-wide {

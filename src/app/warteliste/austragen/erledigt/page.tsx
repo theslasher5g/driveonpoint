@@ -14,10 +14,6 @@ export default function WartelisteErledigtPage() {
   return (
     <section className="shell pt-24 pb-14 md:pt-32 md:pb-20">
       <div className="lane">
-        <span
-          className="block w-10 h-[3px] rounded-full bg-signal mb-5"
-          aria-hidden="true"
-        />
         <h1 className="text-title max-w-[18ch]">
           Du stehst nicht mehr auf der Liste.
         </h1>

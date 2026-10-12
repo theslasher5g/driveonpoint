@@ -19,7 +19,7 @@ import { COURSE_SESSIONS_SHOWN } from "@/lib/course-horizon";
 import type { LessonType } from "@/lib/db/schema";
 import { withSoftHyphens } from "@/lib/hyphenate";
 import { site } from "@/lib/site";
-import { daysBetween, formatDayLong, formatDayShort, formatPrice, todayInZurich, zurichTime } from "@/lib/time";
+import { daysBetween, formatDayLong, formatDayShort, formatChf, todayInZurich, zurichTime } from "@/lib/time";
 import { fullCourseSessions, type FullSession } from "@/lib/waitlist";
 
 export const dynamic = "force-dynamic";
@@ -131,7 +131,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
                 <div className="flex items-baseline justify-between gap-4 mt-4 pt-4 border-t border-deep/12">
                   <p className="font-bold">Gesamtpreis</p>
                   <p className="nums font-display text-2xl font-bold text-signal-ink">
-                    CHF {formatPrice(totalRappen)}
+                    CHF {formatChf(totalRappen)}
                   </p>
                 </div>
                 {priced.promotion && <p className="promo-tag mt-3">{priced.promotion.label}</p>}
@@ -195,7 +195,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
                   )}
                 </div>
                 <p className="nums font-display text-2xl font-bold text-signal-ink">
-                  CHF {formatPrice(priced.finalRappen)}
+                  CHF {formatChf(priced.finalRappen)}
                 </p>
               </div>
               {priced.promotion && <p className="promo-tag mt-3">{priced.promotion.label}</p>}
@@ -242,7 +242,7 @@ export default async function BuchenPage({ searchParams }: { searchParams: Param
         <div className="lane">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-9">
             <p className="nums font-display text-3xl font-bold text-signal-ink">
-              CHF {formatPrice(priced.finalRappen)}
+              CHF {formatChf(priced.finalRappen)}
             </p>
             {priced.promotion && <p className="promo-tag">{priced.promotion.label}</p>}
             <Link href="/buchen" className="btn btn-outline py-2.5 px-4 text-fine ml-auto">
@@ -518,7 +518,7 @@ function OfferLine({ row }: { row: OfferRow }) {
       </div>
       <div className="col-span-2 mt-2 sm:col-span-1 sm:mt-0 sm:text-right">
         <p className="nums font-display text-lg font-bold whitespace-nowrap">
-          CHF {formatPrice(priced.finalRappen)}
+          CHF {formatChf(priced.finalRappen)}
         </p>
         {priced.promotion && <p className="promo-tag mt-1.5">{priced.promotion.label}</p>}
       </div>

@@ -206,7 +206,6 @@ export default async function VerfuegbarkeitPage({
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
-        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
         <h1 className="font-display text-3xl md:text-4xl font-bold">Verfügbarkeit</h1>
         <p className="text-slate text-lead mt-4 max-w-[58ch]">
           Diese Zeiten sieht deine Kundschaft als buchbare Termine. Jedes Angebot hat seinen
@@ -390,7 +389,6 @@ export default async function VerfuegbarkeitPage({
         )}
 
         <div className="mt-10">
-          <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
           <h2 className="font-display text-2xl font-bold">Abwesenheiten</h2>
           <p className="text-slate text-fine mt-1.5 mb-5 max-w-[60ch]">
             Ferien, Arzttermin oder Weiterbildung. Für mehrere Tage am Stück auch den

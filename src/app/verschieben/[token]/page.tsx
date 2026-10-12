@@ -208,7 +208,6 @@ function Shell({ title, children }: { title: string; children: React.ReactNode }
   return (
     <section className="shell pt-24 pb-14 md:pt-32 md:pb-20">
       <div className="lane">
-        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
         <h1 className="text-title max-w-[18ch]">{title}</h1>
         <div className="mt-7">{children}</div>
       </div>

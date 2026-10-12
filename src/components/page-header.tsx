@@ -19,15 +19,9 @@ export function PageHeader({
   if (aside) {
     return (
       <section className="relative overflow-hidden bg-concrete border-b border-deep/10">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-32 right-[-8rem] w-[26rem] h-[26rem] rounded-full opacity-[0.16] blur-3xl"
-          style={{ background: "var(--color-signal)" }}
-        />
         <div className="shell pt-24 pb-12 md:pt-32 md:pb-16 relative">
           <div className="lane lg:grid lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-14 lg:items-center">
             <div>
-              <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
               <h1 className="font-display text-4xl md:text-6xl font-bold leading-[1.02]">
                 {withSoftHyphens(title)}
               </h1>
@@ -42,21 +36,13 @@ export function PageHeader({
 
   return (
     <section className="relative overflow-hidden bg-concrete border-b border-deep/10">
-      {/* Derselbe weiche Lichtpunkt wie im Aufmacher der Startseite, nur
-          sehr zurückhaltend — genug, um die Seite als zur selben Marke
-          gehörig zu zeigen, ohne mit dem Aufmacher zu konkurrieren. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-32 right-[-8rem] w-[26rem] h-[26rem] rounded-full opacity-[0.16] blur-3xl"
-        style={{ background: "var(--color-signal)" }}
-      />
       {/* Oben mehr Luft als unten: die schwebende Kopfzeile liegt über den
-          ersten 68 px (Desktop 80 px), sonst verschwindet der rote Strich
-          darunter. */}
+          ersten 68 px (Desktop 80 px). Kein Farbfleck und kein roter Strich
+          über dem Titel mehr — beides wiederholte sich auf jeder Seite, ohne
+          etwas zu sagen. */}
       <div className="shell pt-24 pb-14 md:pt-32 md:pb-20 relative">
         <div className="lane md:grid md:grid-cols-[minmax(0,29rem)_minmax(0,1fr)] md:gap-10 md:items-end">
           <div>
-            <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
             {/* Die Spalte bremst den Titel nur ab dem Punkt, an dem er neben
                 der Einleitung steht (md:) — auf dem Telefon soll er die volle
                 Breite nutzen. Die Spalte selbst ist bewusst breit genug für

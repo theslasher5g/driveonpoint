@@ -15,7 +15,6 @@ export type TeamMember = {
   /** Kennzeichnet die Inhaberin. Erscheint als Marke auf der Karte. */
   owner: boolean;
   body: string;
-  tags: string[];
   /** Pfad zum Porträt unter /public/images. Leer lassen, bis eines da ist. */
   photo: string;
 };
@@ -31,7 +30,6 @@ const team: TeamMember[] = [
     role: "Sozialpädagogin HF & Fahrlehrerin",
     owner: true,
     body: "Ich bin Sozialpädagogin HF und seit einigen Jahren auch Fahrlehrerin, dazu Nothelfer- und BLS-AED-Instruktorin. In der Sozialpädagogik habe ich gelernt, Dinge so zu erklären, dass niemand überfordert ist. Das hilft auch auf der Autobahn.",
-    tags: ["Fahrlehrerin", "Sozialpädagogin HF", "BLS-AED Instruktorin"],
     photo: "/images/team-christina.jpg",
   },
   {
@@ -39,7 +37,6 @@ const team: TeamMember[] = [
     role: "Nothelferinstruktorin & FaBe",
     owner: false,
     body: "Hauptberuflich bin ich Fachfrau Betreuung, daneben gebe ich den Nothilfekurs. Erste Hilfe liegt mir am Herzen, weil ich weiss, wie schnell man im Ernstfall überfordert ist. Deshalb üben wir im Kurs so lange, bis die Handgriffe sitzen.",
-    tags: ["Nothelferinstruktorin", "FaBe"],
     photo: "/images/team-jolanda.jpg",
   },
 ];
@@ -81,13 +78,11 @@ export const site = {
   philosophy: {
     title: "So arbeiten wir",
     body: "Wie schnell du vorankommst, bestimmst du. Manche brauchen zehn Fahrstunden, andere vierzig. Beides ist normal, und niemand drängt dich in ein festes Tempo.",
-    tags: ["Immer dieselbe Fahrlehrerin", "Dein Tempo", "Offene Rückmeldung"],
   },
 
   /** Kurzbeschreibungen der drei Stufen, wie sie auf der Startseite stehen. */
   offers: {
     nothilfekurs: {
-      step: "Voraussetzung",
       title: "Nothilfekurs",
       lead: "Im Nothilfekurs lernst du, was bei einem Unfall zu tun ist: die Unfallstelle sichern, Hilfe rufen, jemanden wiederbeleben. Und du übst, dabei ruhig zu bleiben.",
       duration: "10 Stunden",
@@ -95,61 +90,73 @@ export const site = {
       note: "Pflicht, bevor du zur Theorieprüfung darfst",
     },
     vku: {
-      step: "VKU",
       title: "Verkehrskundeunterricht",
       lead: "Im VKU geht es um das, was beim Fahren im Kopf passiert: Gefahren früh sehen, Bremswege einschätzen, Reaktionszeit und sicheres Verhalten im Verkehr.",
       topics: ["Gefahrenwahrnehmung", "Physikalische Grundlagen", "Sicheres Verhalten"],
       note: "Pflicht vor der praktischen Prüfung, egal bei welcher Fahrschule du fährst",
     },
     fahrstunden: {
-      step: "Praxis",
       title: "Fahrstunden",
       lead: "Für den Führerausweis Kategorie B. Wir holen dich in Basel und Baselland ab. Du kannst mit einer Schnupperstunde anfangen und danach einzeln oder mit einem Abo weiterfahren.",
       note: "Alle Preise inklusive Versicherung und Administration.",
     },
   },
 
-  /** Der Schweizer Weg zum Führerausweis, in der Reihenfolge der Schritte. */
+  /**
+   * Der Schweizer Weg zum Führerausweis, in der Reihenfolge der Schritte.
+   * `withUs`: diesen Schritt machst du mit uns (Kurs, Fahrstunden, Prüfung
+   * im Schulfahrzeug) — die Startseite hebt diese Halte hervor.
+   */
   path: [
     {
       title: "Nothilfekurs",
+      withUs: true,
       body: "Zehn Stunden lebensrettende Sofortmassnahmen. Pflicht, bevor du zur Theorieprüfung antreten darfst.",
       meta: "10 Stunden, ab 14 Jahren",
     },
     {
       title: "Sehtest und Gesuch",
+      withUs: false,
       body: "Sehtest bei Optiker oder Augenarzt, danach das Gesuch beim Strassenverkehrsamt deines Wohnkantons einreichen.",
       meta: "Beim Strassenverkehrsamt",
     },
     {
       title: "Theorieprüfung",
+      withUs: false,
       body: "Die Basistheorie am Computer. Wer sie besteht, erhält den Lernfahrausweis und darf mit Begleitung fahren.",
       meta: "50 Fragen, 45 Minuten",
     },
     {
       title: "Verkehrskundeunterricht",
+      // Kurzform für die Strasse auf der Startseite: das ganze Wort ist
+      // breiter als eine der sieben Spalten.
+      short: "Verkehrskunde",
+      withUs: true,
       body: "Zwei Abende zu je vier Lektionen. Obligatorisch, bevor du zur praktischen Prüfung antreten darfst.",
       meta: "8 Lektionen an 2 Abenden",
     },
     {
       title: "Fahrstunden",
+      withUs: true,
       body: "So viele, wie du brauchst. Wir sagen dir, wann du so weit bist, und melden dich dann an.",
       meta: "45 Minuten pro Lektion",
     },
     {
       title: "Praktische Prüfung",
+      withUs: true,
       body: "Rund 60 Minuten mit dem Experten. Wenn du bestehst, bekommst du den Führerausweis auf Probe für drei Jahre.",
       meta: "Mit unserem Schulfahrzeug",
     },
     {
       title: "Weiterausbildung WAB",
+      withUs: false,
       body: "Ein Kurstag innerhalb der Probezeit. Danach wird der Ausweis unbefristet ausgestellt.",
       meta: "1 Tag, innert 3 Jahren",
     },
   ],
 
-  // Ergänzen die drei Chips oben mit echten Zusatzinfos statt sie zu
-  // wiederholen — "eigenes Tempo" und "gleiche Person" stehen schon dort.
+  // Was die Arbeit bei uns praktisch bedeutet, als Ergänzung zum Absatz
+  // unter "So arbeiten wir".
   reasons: [
     {
       title: "Kurse und Fahrstunden bei uns",

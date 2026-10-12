@@ -115,14 +115,9 @@ function TeamCard({ person }: { person: TeamMember }) {
       </div>
 
       <div className="p-6 flex flex-col flex-1">
+        {/* Keine Schlagwort-Kärtchen mehr darunter: sie wiederholten nur
+            die Rolle über dem Text und was der Text selbst sagt. */}
         <p className="text-slate flex-1">{person.body}</p>
-        <ul className="flex flex-wrap gap-2 mt-5">
-          {person.tags.map((tag) => (
-            <li key={tag} className="chip chip-quiet">
-              {tag}
-            </li>
-          ))}
-        </ul>
       </div>
     </article>
   );

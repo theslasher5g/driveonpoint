@@ -118,7 +118,6 @@ export default async function KalenderPage({
           </p>
         )}
 
-        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
 
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

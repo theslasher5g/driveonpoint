@@ -23,7 +23,6 @@ export default async function KontoPage({
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
-        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
         <h1 className="font-display text-3xl md:text-4xl font-bold">Mein Konto</h1>
         <p className="text-slate text-lead mt-4 max-w-[58ch]">
           {user.name} — {ROLE_LABEL[user.role]}. {ROLE_DESCRIPTION[user.role]}

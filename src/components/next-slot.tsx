@@ -4,12 +4,9 @@ import { site } from "@/lib/site";
 import { formatDayLong } from "@/lib/time";
 
 /**
- * Der Aufmacher der Startseite.
- *
- * Statt einer erfundenen Kennzahl steht hier der nächste tatsächlich freie
- * Termin aus dem Kalender der Mitarbeitenden. Das ist die eine Information,
- * die nur diese Seite zeigen kann — und die einzige, für die jemand
- * hierherkommt.
+ * Der nächste tatsächlich freie Termin, als Leiste unter dem Foto im
+ * Aufmacher der Startseite — statt einer erfundenen Kennzahl die eine
+ * Information, die nur diese Seite zeigen kann.
  */
 export async function NextSlotPanel() {
   let result: Awaited<ReturnType<typeof nextFreeSlot>> = null;
@@ -23,12 +20,12 @@ export async function NextSlotPanel() {
 
   if (!result) {
     return (
-      <div className="glass text-paper rounded-[var(--radius-surface)] p-6 sm:p-7 max-w-xl">
-        <p className="font-bold text-lg mb-1">Gerade ist kein Termin frei</p>
-        <p className="text-paper/90 text-fine mb-5">
-          Neue Zeiten kommen laufend dazu. Ruf uns an, wir finden etwas.
-        </p>
-        <a href={`tel:${site.contact.phoneHref}`} className="btn btn-invert">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 p-5 sm:p-6">
+        <div>
+          <p className="font-bold">Online ist gerade nichts frei.</p>
+          <p className="text-fine text-slate mt-0.5">Ruf an, oft finden wir trotzdem einen Termin.</p>
+        </div>
+        <a href={`tel:${site.contact.phoneHref}`} className="btn btn-outline nums">
           {site.contact.phone}
         </a>
       </div>
@@ -38,58 +35,49 @@ export async function NextSlotPanel() {
   const { slot, lessonType } = result;
 
   return (
-    <div className="glass text-paper rounded-[var(--radius-surface)] max-w-xl p-6 sm:p-7">
-      <p className="text-fine font-semibold text-paper/90 mb-3">Nächster freier Termin</p>
-      {/* Ohne Trennung würde der Browser "September" wie ein Kompositum
-          mitten im Wort trennen (die globale Trennregel gilt für lange
-          deutsche Wörter, nicht für Datumsangaben) — hier lieber ganz
-          umbrechen als das Wort aufreissen. */}
-      <p
-        className="font-display font-bold text-2xl sm:text-[1.75rem] leading-[1.05] tracking-tight hyphens-none"
-      >
-        {formatDayLong(slot.day)}
-      </p>
-      <p className="nums font-display font-bold text-5xl sm:text-6xl leading-none mt-2">
-        {slot.time}
-      </p>
-      <p className="text-fine text-paper/90 mt-3">
-        {lessonType.name}, {lessonType.durationMinutes} Minuten
-        {slot.staffIds.length > 1 ? ` — ${slot.staffIds.length} Fahrlehrer verfügbar` : ""}
-      </p>
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 p-5 sm:p-6">
+      <div className="min-w-0">
+        <p className="text-fine text-slate">Nächster freier Termin</p>
+        {/* hyphens-none: "Oktober" soll ganz umbrechen statt mitten im
+            Wort getrennt zu werden. */}
+        <p className="font-display font-bold text-xl sm:text-2xl leading-tight mt-0.5 hyphens-none">
+          {formatDayLong(slot.day)}, <span className="nums">{slot.time}</span>
+        </p>
+        <p className="text-fine text-slate mt-0.5">
+          {lessonType.name}, {lessonType.durationMinutes} Minuten
+        </p>
+      </div>
       <Link
         href={`/buchen?angebot=${lessonType.slug}&tag=${slot.day}&zeit=${slot.time}`}
-        className="btn btn-invert w-full mt-6"
+        className="btn btn-primary shrink-0"
       >
-        Diesen Termin sichern
+        Diesen Termin buchen
       </Link>
     </div>
   );
 }
 
-/** Platzhalter gleicher Höhe, damit beim Nachladen nichts springt. */
 /**
- * Platzhalter, bis die Karte oben fertig ist. Gleicher Aufbau, gleiche
- * Schriften, nur unsichtbarer Text: so ist er genau so hoch wie die Karte.
- * Vorher war er niedriger — beim Nachladen wuchs der Aufmacher, und
- * Lighthouse zählte das als Layoutverschiebung.
+ * Platzhalter mit demselben Aufbau und denselben Schriften, nur
+ * unsichtbarem Text: so ist er genau so hoch wie die fertige Leiste und
+ * beim Nachladen springt nichts.
  */
 export function NextSlotSkeleton() {
-  const bar = "bg-paper/20 rounded-full text-transparent select-none";
+  const bar = "bg-deep/8 rounded-full text-transparent select-none";
   return (
-    <div className="glass text-paper rounded-[var(--radius-surface)] max-w-xl p-6 sm:p-7" aria-hidden="true">
-      <p className="text-fine font-semibold mb-3">
-        <span className={bar}>Nächster freier Termin</span>
-      </p>
-      <p className="font-display font-bold text-2xl sm:text-[1.75rem] leading-[1.05] tracking-tight hyphens-none">
-        <span className={bar}>Dienstag, 6. Oktober 2026</span>
-      </p>
-      <p className="nums font-display font-bold text-5xl sm:text-6xl leading-none mt-2">
-        <span className={bar}>00:00</span>
-      </p>
-      <p className="text-fine mt-3">
-        <span className={bar}>Fahrstunde, 45 Minuten</span>
-      </p>
-      <span className="btn btn-invert w-full mt-6 opacity-30">&nbsp;</span>
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 p-5 sm:p-6" aria-hidden="true">
+      <div>
+        <p className="text-fine">
+          <span className={bar}>Nächster freier Termin</span>
+        </p>
+        <p className="font-display font-bold text-xl sm:text-2xl leading-tight mt-0.5">
+          <span className={bar}>Mittwoch, 14. Oktober 2026, 07:00</span>
+        </p>
+        <p className="text-fine mt-0.5">
+          <span className={bar}>Fahrstunde, 45 Minuten</span>
+        </p>
+      </div>
+      <span className="btn btn-primary opacity-30">Diesen Termin buchen</span>
     </div>
   );
 }

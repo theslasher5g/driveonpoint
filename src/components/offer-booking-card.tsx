@@ -9,7 +9,7 @@ import {
 } from "@/lib/booking";
 import type { LessonType } from "@/lib/db/schema";
 import { site } from "@/lib/site";
-import { formatDayLong, formatPrice, zurichTime } from "@/lib/time";
+import { formatDayLong, formatChf, zurichTime } from "@/lib/time";
 import { fullCourseSessions, type FullSession } from "@/lib/waitlist";
 
 /**
@@ -67,10 +67,10 @@ export async function OfferBookingCard({ slug }: { slug: string }) {
 
       <p className="flex flex-wrap items-baseline gap-x-2.5">
         <span className="nums font-display text-3xl font-bold text-signal-ink">
-          CHF {formatPrice(priced.finalRappen)}
+          CHF {formatChf(priced.finalRappen)}
         </span>
         {reduced && (
-          <span className="nums text-slate line-through">CHF {formatPrice(lessonType.priceRappen)}</span>
+          <span className="nums text-slate line-through">CHF {formatChf(lessonType.priceRappen)}</span>
         )}
         <span className="text-fine text-slate">
           {isCourse ? "pro Kurs" : `pro Lektion, ${lessonType.durationMinutes} Minuten`}

@@ -32,7 +32,6 @@ export default async function BestaetigtPage({ searchParams }: { searchParams: P
         <div className="shell pt-24 pb-14 md:pt-32 md:pb-20">
           <div className="lane sm:flex sm:items-start sm:justify-between sm:gap-10">
             <div>
-              <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
               <h1 className="text-title max-w-[18ch]">
                 {multiple ? "Die Termine gehören dir." : "Der Termin gehört dir."}
               </h1>

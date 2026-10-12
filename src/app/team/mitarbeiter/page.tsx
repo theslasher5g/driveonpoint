@@ -50,7 +50,6 @@ export default async function MitarbeiterPage({ searchParams }: { searchParams: 
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
-        <span className="block w-10 h-[3px] rounded-full bg-signal mb-5" aria-hidden="true" />
         <h1 className="font-display text-3xl md:text-4xl font-bold">Mitarbeitende</h1>
         <p className="text-slate text-lead mt-4 max-w-[58ch]">
           Wer hier ein Konto hat, kommt in den Team-Bereich. Die Rolle entscheidet, was jemand

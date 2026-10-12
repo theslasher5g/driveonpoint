@@ -153,3 +153,12 @@ export function todayInZurich(): string {
 export function formatPrice(rappen: number): string {
   return (rappen / 100).toFixed(2);
 }
+
+/**
+ * Preis für die Kundschaft, wie er in der Schweiz auf jedem Preisschild
+ * steht: "90.–" für ganze Franken, sonst "29.50". Buchhaltung, Export und
+ * Mails bleiben bei formatPrice mit zwei Stellen.
+ */
+export function formatChf(rappen: number): string {
+  return rappen % 100 === 0 ? `${rappen / 100}.–` : formatPrice(rappen);
+}

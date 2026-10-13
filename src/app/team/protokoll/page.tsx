@@ -56,6 +56,8 @@ const ACTION_LABELS: Record<string, string> = {
   "mitarbeiter.angebote-gesetzt": "Angebote einer Person geändert",
   "mitarbeiter.mfa-zurueckgesetzt": "MFA einer Person zurückgesetzt",
   "passwort.geaendert": "Eigenes Passwort geändert",
+  "passwort.reset-angefordert": "Link zum Zurücksetzen des Passworts angefordert",
+  "passwort.zurueckgesetzt": "Passwort per Mail-Link neu gesetzt",
   "kalenderlink.erneuert": "Kalenderlink erneuert",
   "konto.mfa-eingerichtet": "MFA eingerichtet",
   "konto.mfa-deaktiviert": "MFA deaktiviert",

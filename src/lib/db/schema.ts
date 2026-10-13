@@ -85,6 +85,24 @@ export const staffSessions = pgTable(
 );
 
 /**
+ * Links zum Zurücksetzen des Passworts, per Mail verschickt. Wie bei den
+ * Sitzungen liegt nur der Hash des Tokens hier: ein Datenbankleck liefert
+ * keine gültigen Links. Jeder Link gilt einmal und eine Stunde.
+ */
+export const passwordResets = pgTable(
+  "password_resets",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    staffId: uuid("staff_id")
+      .notNull()
+      .references(() => staff.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("password_resets_staff_idx").on(t.staffId)],
+);
+
+/**
  * Browser, die sich nach einem MFA-Code 30 Tage merken lassen: dort genügt
  * bei der Anmeldung das Passwort. Wie bei den Sitzungen liegt nur der Hash
  * des Cookie-Werts hier.

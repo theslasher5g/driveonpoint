@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { loginAction, type LoginState } from "@/app/team/anmelden/actions";
@@ -49,7 +50,10 @@ export function LoginForm() {
       <SubmitButton />
 
       <p className="text-fine text-slate">
-        Passwort vergessen? Die Administration setzt es dir im Team-Bereich zurück.
+        <Link href="/team/passwort-vergessen" className="font-semibold text-deep underline underline-offset-4">
+          Passwort vergessen?
+        </Link>{" "}
+        Du bekommst einen Link per Mail.
       </p>
     </form>
   );

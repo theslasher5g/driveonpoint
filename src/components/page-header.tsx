@@ -79,14 +79,17 @@ export function Section({
   lead,
   children,
   tone = "concrete",
+  id,
 }: {
   title?: string;
   lead?: string;
   children: React.ReactNode;
   tone?: "concrete" | "paper";
+  /** Sprunganker, etwa für "Alle Fragen" von der Startseite. */
+  id?: string;
 }) {
   return (
-    <section className={tone === "paper" ? "bg-paper" : ""}>
+    <section id={id} className={`scroll-mt-24 ${tone === "paper" ? "bg-paper" : ""}`}>
       <div className="shell band">
         <div className="lane">
           {title ? (

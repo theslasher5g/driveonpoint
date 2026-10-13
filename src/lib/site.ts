@@ -72,7 +72,7 @@ export const site = {
     headline: ["Fahren lernen,", "ohne Druck."],
     // Steht auch als Beschreibung in den Suchergebnissen, deshalb vorne
     // die Suchbegriffe und insgesamt unter 160 Zeichen.
-    lead: "Fahrschule in Basel und Baselland. Du lernst bei einer Fahrlehrerin und in deinem Tempo, und zur Prüfung gehst du erst, wenn du bereit bist.",
+    lead: "Fahrschule in Basel und Baselland. Du lernst bei Christina in deinem Tempo, sie holt dich ab, und zur Prüfung gehst du erst, wenn du bereit bist.",
   },
 
   philosophy: {

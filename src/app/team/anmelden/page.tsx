@@ -19,11 +19,11 @@ const REASONS: Record<string, string> = {
 export default async function AnmeldenPage({
   searchParams,
 }: {
-  searchParams: Promise<{ fehler?: string }>;
+  searchParams: Promise<{ fehler?: string; hinweis?: string }>;
 }) {
   if (await currentUser()) redirect("/team");
 
-  const { fehler } = await searchParams;
+  const { fehler, hinweis } = await searchParams;
   const message = fehler ? REASONS[fehler] : undefined;
 
   return (
@@ -37,6 +37,12 @@ export default async function AnmeldenPage({
         {message && (
           <p role="alert" className="notice notice-error mb-6">
             {message}
+          </p>
+        )}
+
+        {hinweis === "passwort-neu" && (
+          <p role="status" className="notice notice-success mb-6">
+            Dein neues Passwort ist gespeichert. Melde dich jetzt damit an.
           </p>
         )}
 

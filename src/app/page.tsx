@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { NextSlotPanel, NextSlotSkeleton } from "@/components/next-slot";
-import { activePromotions, applyPromotions, listLessonTypes } from "@/lib/booking";
+import { activePromotions, applyPromotions, listLessonTypes, listPackages } from "@/lib/booking";
 import { site } from "@/lib/site";
 import { formatChf, formatDayShort } from "@/lib/time";
 
@@ -18,8 +18,8 @@ const OFFERS = [
     href: "/fahrstunden",
     slug: "fahrstunde",
     title: site.offers.fahrstunden.title,
-    meta: "45 Minuten, mit Abholung",
-    body: "Einzeln oder im Abo, von der ersten Stunde bis zur Prüfung.",
+    meta: "45 Minuten",
+    body: "Wir holen dich zu Hause, an der Schule oder bei der Arbeit ab. Einzeln oder im Abo, bis zur Prüfung.",
   },
   {
     href: "/vku",
@@ -42,16 +42,34 @@ export default async function HomePage() {
   // aus, fehlen nur die Preise, nicht die Seite.
   let promotions: Awaited<ReturnType<typeof activePromotions>> = [];
   const prices = new Map<string, { final: number; regular: number }>();
+  // Günstigster Preis pro Lektion in einem Abo, je Angebot — damit die
+  // Ersparnis sichtbar ist, ohne die ganze Preistabelle zu zeigen.
+  const bestBundle = new Map<string, { label: string; perLesson: number }>();
   try {
-    const [found, types] = await Promise.all([activePromotions(), listLessonTypes()]);
+    const [found, types, bundles] = await Promise.all([activePromotions(), listLessonTypes(), listPackages()]);
     promotions = found;
     for (const type of types) {
       prices.set(type.slug, { final: applyPromotions(type, found).finalRappen, regular: type.priceRappen });
+      for (const bundle of bundles) {
+        if (bundle.lessonTypeId !== type.id || !bundle.lessons) continue;
+        const perLesson = Math.round(bundle.priceRappen / bundle.lessons);
+        const current = bestBundle.get(type.slug);
+        if (perLesson < type.priceRappen && (!current || perLesson < current.perLesson)) {
+          bestBundle.set(type.slug, { label: bundle.label, perLesson });
+        }
+      }
     }
   } catch (error) {
     console.error("Preise und Aktionen konnten nicht geladen werden:", error);
   }
   const promotion = promotions[0];
+  const trial = prices.get("schnupperstunde");
+  const owner = site.team.find((person) => person.owner);
+  // Drei Fragen, die vor dem Buchen am häufigsten aufkommen; alle weiteren
+  // auf der Seite Fahrstunden.
+  const questions = site.faq.filter((entry) =>
+    ["Wie viele Fahrstunden brauche ich?", "Kann ich eine Lektion absagen?", "Bekomme ich das Auto für die Prüfung?"].includes(entry.q),
+  );
 
   return (
     <>
@@ -78,8 +96,13 @@ export default async function HomePage() {
               <Link href="/buchen" className="btn btn-primary">
                 Termin buchen
               </Link>
-              <Link href="/preise" className="btn btn-outline">
-                Preise ansehen
+              {/* Der zweite Weg für alle, die noch nicht sicher sind: eine
+                  einzelne Lektion zum Kennenlernen. */}
+              <Link href="/buchen?angebot=schnupperstunde" className="btn btn-outline">
+                <span>
+                  Schnupperstunde buchen
+                  {trial && <span className="nums font-semibold text-slate">, CHF {formatChf(trial.final)}</span>}
+                </span>
               </Link>
             </div>
             <p className="text-fine text-slate mt-6 max-w-[48ch]">
@@ -95,7 +118,9 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <figure className="surface bg-paper m-0">
+          {/* Auf dem Telefon steht der nächste freie Termin über dem Foto —
+              sonst käme er erst nach einem ganzen Bildschirm. */}
+          <figure className="surface bg-paper m-0 flex flex-col">
             <Image
               src={site.images.hero.src}
               alt={site.images.hero.alt}
@@ -106,7 +131,7 @@ export default async function HomePage() {
               style={{ aspectRatio: `${site.images.hero.width} / ${site.images.hero.height}` }}
               sizes="(min-width: 1024px) 34rem, 100vw"
             />
-            <div className="border-t border-rule">
+            <div className="order-first border-b border-rule lg:order-none lg:border-b-0 lg:border-t">
               <Suspense fallback={<NextSlotSkeleton />}>
                 <NextSlotPanel />
               </Suspense>
@@ -131,7 +156,7 @@ export default async function HomePage() {
                 <li key={offer.href} className="border-b border-rule">
                   <Link
                     href={offer.href}
-                    className="group grid gap-x-8 gap-y-2 py-6 md:py-8 md:grid-cols-[minmax(0,1fr)_14rem_9rem] md:items-baseline"
+                    className="group grid gap-x-8 gap-y-2 py-6 md:py-8 md:grid-cols-[minmax(0,1fr)_12rem_11rem] md:items-baseline"
                   >
                     <div className="min-w-0">
                       <h3 className="font-display text-2xl md:text-3xl font-bold leading-tight group-hover:text-signal-ink transition-colors">
@@ -141,29 +166,72 @@ export default async function HomePage() {
                     </div>
                     <p className="text-fine text-slate">{offer.meta}</p>
                     {price && (
-                      <p className="md:text-right">
-                        {price.final < price.regular && (
-                          <span className="nums text-fine text-slate line-through mr-2">
-                            {formatChf(price.regular)}
-                          </span>
+                      <div className="md:text-right">
+                        <p>
+                          {price.final < price.regular && (
+                            <span className="nums text-fine text-slate line-through mr-2">
+                              {formatChf(price.regular)}
+                            </span>
+                          )}
+                          <span className="nums font-display font-bold text-xl">CHF {formatChf(price.final)}</span>
+                        </p>
+                        {bestBundle.get(offer.slug) && (
+                          <p className="text-fine text-slate mt-0.5">
+                            im {bestBundle.get(offer.slug)!.label}{" "}
+                            <span className="nums font-semibold text-deep">{formatChf(bestBundle.get(offer.slug)!.perLesson)}</span>{" "}
+                            pro Lektion
+                          </p>
                         )}
-                        <span className="nums font-display font-bold text-xl">CHF {formatChf(price.final)}</span>
-                      </p>
+                      </div>
                     )}
                   </Link>
                 </li>
               );
             })}
           </ul>
-          <p className="text-fine text-slate mt-5">
-            Noch unsicher? Die{" "}
-            <Link href="/buchen?angebot=schnupperstunde" className="font-semibold text-deep underline underline-offset-4">
-              Schnupperstunde
-            </Link>{" "}
-            ist eine einzelne Lektion zum Kennenlernen, ohne Verpflichtung.
-          </p>
         </div>
       </section>
+
+      {/* Bei einer Fahrschule mit einer Fahrlehrerin ist die Person das
+          stärkste Argument: wer sie ist, in ihren eigenen Worten, und was das
+          für die Lektionen heisst. */}
+      {owner && (
+        <section className="shell band">
+          <div className="grid gap-8 md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] md:gap-12 lg:gap-14 items-start">
+            <Image
+              src={owner.photo}
+              alt={`${owner.name}, ${owner.role}`}
+              width={741}
+              height={722}
+              className="surface w-full max-w-[22rem] h-auto"
+              sizes="(min-width: 1024px) 22rem, (min-width: 768px) 18rem, 100vw"
+            />
+            <div className="min-w-0">
+              <h2 className="text-title max-w-[18ch]">Du fährst bei {owner.name}.</h2>
+              <p className="text-fine text-slate mt-1.5">{owner.role}</p>
+              <blockquote className="mt-6 max-w-[56ch] border-l-[3px] border-signal pl-5">
+                <p className="text-lead">«{owner.body}»</p>
+              </blockquote>
+              <p className="text-slate mt-6 max-w-[56ch]">{site.philosophy.body}</p>
+
+              <dl className="grid gap-6 sm:grid-cols-3 sm:gap-6 mt-8">
+                {site.reasons.map((reason) => (
+                  <div key={reason.title} className="border-t-2 border-deep pt-3.5">
+                    <dt className="font-bold leading-snug">{reason.title}</dt>
+                    <dd className="text-slate text-fine mt-1.5 m-0">{reason.body}</dd>
+                  </div>
+                ))}
+              </dl>
+              <Link
+                href="/ueber-uns"
+                className="inline-block text-fine font-semibold text-signal-ink underline-offset-4 hover:underline mt-6"
+              >
+                Mehr über uns
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Der Weg zum Ausweis als Fahrbahn: die Reihenfolge ist die
           Mittellinie, die Schritte sind Halte. Rot heisst: machst du mit
@@ -201,20 +269,34 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Häufige Fragen vor dem Buchen, aufklappbar. */}
       <section className="shell band">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-14">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-14">
           <div>
-            <h2 className="text-title max-w-[14ch]">{site.philosophy.title}</h2>
-            <p className="text-slate mt-4 max-w-[46ch]">{site.philosophy.body}</p>
+            <h2 className="text-title max-w-[14ch]">Was oft gefragt wird</h2>
+            <Link
+              href="/fahrstunden#fragen"
+              className="inline-block text-fine font-semibold text-signal-ink underline-offset-4 hover:underline mt-3"
+            >
+              Alle Fragen
+            </Link>
           </div>
-          <dl className="grid gap-6 sm:grid-cols-3 sm:gap-8 content-start">
-            {site.reasons.map((reason) => (
-              <div key={reason.title} className="border-t-2 border-deep pt-4">
-                <dt className="font-bold leading-snug">{reason.title}</dt>
-                <dd className="text-slate text-fine mt-2 m-0">{reason.body}</dd>
-              </div>
+          <div className="grid gap-2.5">
+            {questions.map((entry) => (
+              <details key={entry.q} className="group surface bg-paper">
+                <summary className="flex items-baseline gap-4 px-5 py-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                  <span className="flex-1 font-bold">{entry.q}</span>
+                  <span
+                    aria-hidden="true"
+                    className="shrink-0 text-xl leading-none text-slate transition-transform duration-150 group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="text-slate px-5 pb-4 max-w-[62ch]">{entry.a}</p>
+              </details>
             ))}
-          </dl>
+          </div>
         </div>
       </section>
 

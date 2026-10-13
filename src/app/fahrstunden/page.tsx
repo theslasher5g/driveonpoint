@@ -100,7 +100,7 @@ export default function FahrstundenPage() {
           sind so auf einen Blick zu überfliegen, und wer eine davon hat,
           klappt sie auf. <details> kann das von sich aus — mit Tastatur,
           ohne JavaScript und auch dann, wenn die Seite noch lädt. */}
-      <Section title="Häufige Fragen">
+      <Section title="Häufige Fragen" id="fragen">
         <div className="space-y-2.5 max-w-3xl">
           {site.faq.map((entry) => (
             <details key={entry.q} className="group surface bg-paper">

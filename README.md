@@ -297,6 +297,24 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile mail up
 
 ---
 
+## Passwort vergessen
+
+Auf der Anmeldeseite führt „Passwort vergessen?“ zu `/team/passwort-vergessen`.
+Wer dort die Mailadresse seines Kontos eingibt, bekommt vom Absender aus
+`MAIL_FROM` (Standard `inbox@driveonpoint.ch`) einen Link, mit dem er ein neues
+Passwort festlegt.
+
+- Die Seite antwortet immer gleich, ob es zur Adresse ein Konto gibt oder
+  nicht; die Mail geht erst nach der Antwort raus.
+- Der Link gilt 60 Minuten und nur einmal. In der Datenbank liegt nur sein
+  Hash (`password_resets`); ein neuer Link entwertet ältere.
+- Höchstens 5 Anfragen pro Stunde je Anschluss und 3 Mails pro Stunde je
+  Adresse.
+- Nach dem Zurücksetzen sind alle Sitzungen und gemerkten Browser des Kontos
+  weg. MFA bleibt: wer es eingerichtet hat, braucht danach weiterhin den Code.
+- Deaktivierte Konten bekommen keine Mail. Setzt die Administration ein
+  Passwort zurück, verfallen offene Links.
+
 ## Zwei-Faktor-Authentifizierung (MFA)
 
 Jede Person schaltet das selbst unter *Mein Konto* ein — keine Einrichtung

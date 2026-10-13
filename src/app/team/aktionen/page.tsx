@@ -39,7 +39,7 @@ export default async function AktionenPage() {
     <section className="shell py-10 md:py-14">
       <div className="lane">
         <h1 className="text-title">Rabattaktionen</h1>
-        <p className="text-slate text-lead mt-4 max-w-[58ch]">
+        <p className="text-slate mt-2 max-w-[58ch]">
           Eine laufende Aktion erscheint sofort in der Preisliste und im Buchungsablauf. Läuft
           mehr als eine, gilt für die Kundschaft automatisch die günstigste.
         </p>

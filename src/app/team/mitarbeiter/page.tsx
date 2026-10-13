@@ -50,20 +50,11 @@ export default async function MitarbeiterPage({ searchParams }: { searchParams: 
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
-        <h1 className="font-display text-3xl md:text-4xl font-bold">Mitarbeitende</h1>
-        <p className="text-slate text-lead mt-4 max-w-[58ch]">
+        <h1 className="text-title">Mitarbeitende</h1>
+        <p className="text-slate mt-2 max-w-[58ch]">
           Wer hier ein Konto hat, kommt in den Team-Bereich. Die Rolle entscheidet, was jemand
           dort sehen und ändern darf.
         </p>
-
-        <dl className="grid gap-4 sm:grid-cols-3 mt-9">
-          {staffRole.enumValues.map((role) => (
-            <div key={role} className="surface bg-paper p-4">
-              <dt className="font-bold">{ROLE_LABEL[role]}</dt>
-              <dd className="text-fine text-slate mt-1">{ROLE_DESCRIPTION[role]}</dd>
-            </div>
-          ))}
-        </dl>
 
         {params.geloescht && (
           <p role="status" className="notice notice-success mt-9">
@@ -80,7 +71,7 @@ export default async function MitarbeiterPage({ searchParams }: { searchParams: 
           </p>
         )}
 
-        <h2 className="text-section mt-14 mb-6">Konten</h2>
+        <h2 className="text-section mt-10 mb-4">Konten</h2>
         <div className="space-y-5">
           {people.map((person) => (
             <StaffRow
@@ -95,8 +86,23 @@ export default async function MitarbeiterPage({ searchParams }: { searchParams: 
           ))}
         </div>
 
-        <h2 className="text-section mt-14 mb-6">Neues Konto anlegen</h2>
-        <CreateStaffForm />
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] mt-12 items-start">
+          <div>
+            <h2 className="text-section mb-4">Neues Konto anlegen</h2>
+            <CreateStaffForm />
+          </div>
+          {/* Die Rollen erklärt neben dem Formular, wo man sie beim Anlegen
+              braucht — vorher standen sie als drei Kacheln ganz oben und
+              schoben die Konten selbst unter den Bildschirmrand. */}
+          <dl className="surface bg-paper divide-y divide-rule lg:mt-11">
+            {staffRole.enumValues.map((role) => (
+              <div key={role} className="px-5 py-3.5">
+                <dt className="text-fine font-bold">{ROLE_LABEL[role]}</dt>
+                <dd className="text-fine text-slate mt-0.5">{ROLE_DESCRIPTION[role]}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </div>
     </section>
   );

@@ -121,7 +121,7 @@ export default async function KalenderPage({
 
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl md:text-4xl font-bold">Kalender</h1>
+            <h1 className="text-title">Kalender</h1>
             <p className="nums text-slate mt-2">
               {view === "monat"
                 ? monthLabel(yearMonth)
@@ -145,7 +145,7 @@ export default async function KalenderPage({
               href={monthHref}
               aria-current={view === "monat" ? "page" : undefined}
               className={`px-4 py-1.5 rounded-full text-fine font-semibold transition-colors ${
-                view === "monat" ? "bg-signal text-deep" : "text-deep/70 hover:text-deep"
+                view === "monat" ? "bg-deep text-paper" : "text-deep/70 hover:text-deep"
               }`}
             >
               Monat
@@ -154,7 +154,7 @@ export default async function KalenderPage({
               href={weekHref}
               aria-current={view === "woche" ? "page" : undefined}
               className={`px-4 py-1.5 rounded-full text-fine font-semibold transition-colors ${
-                view === "woche" ? "bg-signal text-deep" : "text-deep/70 hover:text-deep"
+                view === "woche" ? "bg-deep text-paper" : "text-deep/70 hover:text-deep"
               }`}
             >
               Woche

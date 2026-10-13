@@ -120,7 +120,7 @@ export async function MonthView({
       {/* Wochentagsköpfe, nur einmal statt in jeder Zeile. */}
       <div className="grid grid-cols-7 gap-px bg-deep/12">
         {Array.from({ length: 7 }, (_, index) => (
-          <div key={index} className="bg-deep text-paper text-center py-2.5">
+          <div key={index} className="bg-paper text-slate text-center py-2.5">
             <span className="text-fine font-bold hidden sm:inline">{weekdayName(index === 6 ? 0 : index + 1, false)}</span>
             <span className="text-fine font-bold sm:hidden">{weekdayName(index === 6 ? 0 : index + 1, true)}</span>
           </div>

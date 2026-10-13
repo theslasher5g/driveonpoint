@@ -26,8 +26,8 @@ export default async function BuchhaltungPage({ searchParams }: { searchParams: 
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
-        <h1 className="font-display text-3xl md:text-4xl font-bold">Buchhaltung</h1>
-        <p className="text-slate text-lead mt-4 max-w-[62ch]">
+        <h1 className="text-title">Buchhaltung</h1>
+        <p className="text-slate mt-2 max-w-[62ch]">
           Auszüge für die Steuererklärung: Datum, Angebot, Betrag. Ohne Personendaten.
         </p>
 

@@ -206,8 +206,8 @@ export default async function VerfuegbarkeitPage({
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
-        <h1 className="font-display text-3xl md:text-4xl font-bold">Verfügbarkeit</h1>
-        <p className="text-slate text-lead mt-4 max-w-[58ch]">
+        <h1 className="text-title">Verfügbarkeit</h1>
+        <p className="text-slate mt-2 max-w-[58ch]">
           Diese Zeiten sieht deine Kundschaft als buchbare Termine. Jedes Angebot hat seinen
           eigenen Plan.
         </p>
@@ -220,7 +220,7 @@ export default async function VerfuegbarkeitPage({
                   href={`/team/verfuegbarkeit?person=${person.id}`}
                   className={`block px-4 py-2 rounded-full text-fine font-semibold border ${
                     person.id === targetId
-                      ? "border-signal bg-signal text-deep"
+                      ? "border-deep bg-deep text-paper"
                       : "border-deep/15 bg-paper hover:border-deep/30"
                   }`}
                 >
@@ -373,14 +373,28 @@ export default async function VerfuegbarkeitPage({
                       </div>
                     )}
 
-                    <OfferingDateForm
-                      course={isCourse}
-                      today={today}
-                      person={targetId}
-                      lessonTypeId={offering.id}
-                      lessonTypeName={offering.name}
-                      durationMinutes={offering.durationMinutes}
-                    />
+                    {/* Ist schon etwas eingetragen, bleibt die Eingabe
+                        zugeklappt — sonst bestünde die Seite aus vier offenen
+                        Formularen untereinander. Ohne Einträge ist sie offen,
+                        weil Eintragen dann das Einzige ist, was zu tun ist. */}
+                    <details className="group" open={ownRules.length === 0 && ownDates.length === 0}>
+                      <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer inline-flex">
+                        <span className="btn btn-outline py-2 px-3.5 text-fine group-open:hidden">
+                          {isCourse ? "Kurstermin hinzufügen" : "Zeit hinzufügen"}
+                        </span>
+                        <span className="hidden group-open:inline text-fine font-semibold text-slate hover:text-deep underline underline-offset-4 mb-2">
+                          Eingabe schliessen
+                        </span>
+                      </summary>
+                      <OfferingDateForm
+                        course={isCourse}
+                        today={today}
+                        person={targetId}
+                        lessonTypeId={offering.id}
+                        lessonTypeName={offering.name}
+                        durationMinutes={offering.durationMinutes}
+                      />
+                    </details>
                   </div>
                 </div>
               );

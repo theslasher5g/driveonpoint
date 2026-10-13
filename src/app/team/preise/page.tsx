@@ -17,8 +17,8 @@ export default async function PreisePage() {
   return (
     <section className="shell py-10 md:py-14">
       <div className="lane">
-        <h1 className="font-display text-3xl md:text-4xl font-bold">Preise und Angebote</h1>
-        <p className="text-slate text-lead mt-4 max-w-[58ch]">
+        <h1 className="text-title">Preise und Angebote</h1>
+        <p className="text-slate mt-2 max-w-[58ch]">
           Änderungen sind sofort auf der Website sichtbar. Bereits gebuchte Termine behalten den
           Preis, der beim Buchen galt.
         </p>

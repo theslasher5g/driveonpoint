@@ -62,7 +62,7 @@ export default async function ErfassenPage({ searchParams }: { searchParams: Par
     <section className="shell py-10 md:py-14">
       <div className="lane max-w-2xl">
         <h1 className="text-title">Termin erfassen</h1>
-        <p className="text-slate text-lead mt-4 max-w-[58ch]">
+        <p className="text-slate mt-2 max-w-[58ch]">
           Für Anrufe und Laufkundschaft. Der Termin entsteht genau wie eine Online-Buchung — mit
           derselben Prüfung auf freie Zeiten und ohne doppelte Vergabe.
         </p>

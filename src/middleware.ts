@@ -5,8 +5,14 @@ import { ipFromHeaders, networkKey } from "./lib/ip";
  * Grobe Bremse gegen Dauerabrufe: höchstens so viele Anfragen pro Minute und
  * Anschluss. Jede Seite wird pro Anfrage gerendert und rechnet freie Termine
  * aus; eine einzelne Verbindung könnte die Anwendung sonst mit Dauerabrufen
- * auslasten. Ein Mensch kommt nie in die Nähe, auch nicht mit Vorabladen.
- * Statische Dateien zählen nicht (siehe matcher).
+ * auslasten. Statische Dateien zählen nicht (siehe matcher).
+ *
+ * 600 statt weniger: eine Seitennavigation im Team-Bereich löst gut ein
+ * Dutzend Anfragen aus, weil der Browser die Menü-Links vorlädt. Next.js
+ * entfernt die Kopfzeilen dafür, bevor die Middleware die Anfrage sieht;
+ * das Vorladen lässt sich hier also nicht sauber vom Rest trennen und
+ * zählt mit. Bei 300 stiess schnelles Klicken durch die Menüs ans Limit und
+ * bekam statt der Seite eine unverständliche Fehlermeldung.
  *
  * Ausnahmen gibt es keine: Docker-Lebenszeichen und Cron rufen die Anwendung
  * direkt ohne Proxy auf und teilen sich den Zähler "direkt", ein paar
@@ -17,7 +23,7 @@ import { ipFromHeaders, networkKey } from "./lib/ip";
  * um Genauigkeit, und die Anwendung läuft als ein einzelner Prozess. Die
  * genauen Limits für Buchen, Anmelden & Co. bleiben in lib/rate-limit.
  */
-const LIMIT_PER_MINUTE = 300;
+const LIMIT_PER_MINUTE = 600;
 const WINDOW_MS = 60_000;
 /** Obergrenze der Liste; darüber fliegt der älteste Eintrag. */
 const MAX_TRACKED = 20_000;

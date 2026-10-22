@@ -484,7 +484,7 @@ Aufbewahrungspflicht und gehören nicht in diese Anwendung.
 | Sitzungsdiebstahl | Cookie `HttpOnly`, `Secure`, `SameSite=Lax`; in der Datenbank liegt nur der Hash |
 | CSRF | Next prüft bei jeder Server Action die Herkunft der Anfrage |
 | Passwortdiebstahl | argon2id nach OWASP-Empfehlung; Passwörter sind nirgends lesbar |
-| Überlastung durch Seitenaufrufe | Höchstens 300 Anfragen pro Minute und Anschluss (src/middleware.ts), darüber Antwort 429. Gezählt wird pro IPv4-Adresse bzw. pro IPv6-/64-Netz, ohne Ausnahmen; Docker-Lebenszeichen und Cron kommen ohne Proxy und bleiben weit darunter. Nur im Produktionsbetrieb aktiv, zählt pro Serverprozess im Speicher |
+| Überlastung durch Seitenaufrufe | Höchstens 600 Anfragen pro Minute und Anschluss (src/middleware.ts), darüber Antwort 429. Das ist grosszügig gewählt: der Browser lädt Menü-Links vor, eine Seitennavigation im Team-Bereich löst gut ein Dutzend Anfragen aus. Gezählt wird pro IPv4-Adresse bzw. pro IPv6-/64-Netz, ohne Ausnahmen; Docker-Lebenszeichen und Cron kommen ohne Proxy und bleiben weit darunter. Nur im Produktionsbetrieb aktiv, zählt pro Serverprozess im Speicher |
 | Rechteausweitung | Jede Seite und jede Aktion prüft die Berechtigung serverseitig, nicht nur die Navigation |
 | Bekannte Sicherheitslücken im Unterbau | Automatische Sicherheitsupdates für Betriebssystem und Docker-Basisabbilder, siehe [Serverpflege](#serverpflege-automatische-updates-und-aufräumlauf) |
 

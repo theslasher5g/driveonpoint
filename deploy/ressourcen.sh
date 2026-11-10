@@ -23,6 +23,13 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 DIR="$(pwd)"
 
+# Zustandsdateien, Protokoll und die Mail-Zwischendatei nur für root lesbar.
+umask 077
+
+# Docker-Befehle können hängen, gerade wenn der Server unter Druck steht. Ohne
+# Zeitlimit würde sich alle 3 Minuten ein weiterer Lauf dahinter aufstauen.
+dk() { timeout 20 docker "$@"; }
+
 # --- Schwellen (per Umgebungsvariable überschreibbar) ----------------------
 RAM_MIN_AVAILABLE_PCT="${RAM_MIN_AVAILABLE_PCT:-12}"   # Warnung, wenn weniger frei
 SWAP_MAX_USED_PCT="${SWAP_MAX_USED_PCT:-50}"           # Warnung, wenn mehr belegt
@@ -82,22 +89,29 @@ send_mail() {
     # Der mitgelieferte mail-Container hat keinen Port auf dem Host; seine
     # Adresse im internen Docker-Netz ist von hier aus erreichbar.
     local cid
-    cid="$(docker compose ps -q mail 2>/dev/null | head -n1)"
-    [ -n "$cid" ] && target="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$cid" 2>/dev/null)"
+    cid="$(dk compose ps -q mail 2>/dev/null | head -n1)"
+    [ -n "$cid" ] && target="$(dk inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$cid" 2>/dev/null)"
     [ -z "${cid:-}" ] && target=""
   fi
   case "$SMTP_HOST" in
     127.*|localhost|mail) ;;                          # lokal bzw. internes Netz: ohne TLS
     *) if [ "$SMTP_SECURE" = "true" ]; then scheme="smtps"; else opts+=(--ssl-reqd); fi ;;
   esac
-  [ -n "$SMTP_USER" ] && opts+=(--user "$SMTP_USER:$SMTP_PASS")
 
-  if [ -n "$target" ] && curl -sS --max-time 30 --crlf "${opts[@]}" \
+  # Zugangsdaten über stdin statt als Argument: Argumente stehen für jeden
+  # Benutzer des Servers in der Prozessliste (ps), stdin nicht.
+  local auth=""
+  if [ -n "$SMTP_USER" ]; then
+    auth="$(printf '%s:%s' "$SMTP_USER" "$SMTP_PASS" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+    auth="user = \"$auth\""
+  fi
+
+  if [ -n "$target" ] && printf '%s\n' "$auth" | curl -sS --max-time 30 --crlf -K - "${opts[@]}" \
       --url "${scheme}://${target}:${SMTP_PORT}" \
       --mail-from "$FROM_ADDR" --mail-rcpt "$ALERT_EMAIL" -T "$msg" >/dev/null 2>>"${LOG}"; then
     ok=0
   elif [ "$SMTP_HOST" = "mail" ] && command -v docker >/dev/null \
-      && docker compose exec -T mail sendmail -i -f "$FROM_ADDR" "$ALERT_EMAIL" < "$msg" 2>>"${LOG}"; then
+      && timeout 60 docker compose exec -T mail sendmail -i -f "$FROM_ADDR" "$ALERT_EMAIL" < "$msg" 2>>"${LOG}"; then
     ok=0
   fi
   rm -f "$msg"
@@ -185,13 +199,13 @@ check_docker() {
   command -v docker >/dev/null || return 0
   local svc cid info status restarts oom started key last
   for svc in app db proxy; do
-    cid="$(docker compose ps -q "$svc" 2>/dev/null | head -n1)"
+    cid="$(dk compose ps -q "$svc" 2>/dev/null | head -n1)"
     if [ -z "$cid" ]; then
       TITLE[container:$svc]="Container $svc läuft nicht"; PROBLEM[container:$svc]="Der Container \"$svc\" existiert nicht oder ist gestoppt (docker compose ps)."
       NEEDRUNS[container:$svc]=2
       continue
     fi
-    info="$(docker inspect -f '{{.State.Status}} {{.RestartCount}} {{.State.OOMKilled}} {{.State.StartedAt}}' "$cid" 2>/dev/null)" || continue
+    info="$(dk inspect -f '{{.State.Status}} {{.RestartCount}} {{.State.OOMKilled}} {{.State.StartedAt}}' "$cid" 2>/dev/null)" || continue
     read -r status restarts oom started <<< "$info"
     DOCKER_LINE+="Container $svc: $status, Neustarts $restarts"$'\n'
     if [ "$status" != "running" ]; then
@@ -262,7 +276,14 @@ if [ "$MODE" != "status" ]; then
   fi
   mkdir -p "$STATE_DIR" 2>/dev/null || { echo "Kann $STATE_DIR nicht anlegen (mit sudo ausführen?)" >&2; exit 1; }
 fi
-[ "$MODE" = "status" ] && STATE_DIR="$(mktemp -d)"
+if [ "$MODE" = "status" ]; then
+  STATE_DIR="$(mktemp -d /tmp/driveonpoint-status.XXXXXX)" || exit 1
+elif [ "$MODE" = "pruefen" ] && command -v flock >/dev/null; then
+  # Nie zwei Prüfläufe gleichzeitig: ein hängender Lauf blockiert den nächsten
+  # nicht, aber es stapeln sich auch keine.
+  exec 9>"$STATE_DIR/lock"
+  flock -n 9 || { log "Vorheriger Lauf läuft noch — übersprungen."; exit 0; }
+fi
 
 check_ram; check_cpu; check_disk; check_docker; check_health
 
@@ -274,7 +295,7 @@ if [ "$MODE" = "status" ]; then
   else
     echo; echo "Keine Probleme."
   fi
-  rm -rf "$STATE_DIR"
+  case "$STATE_DIR" in /tmp/*) rm -rf "$STATE_DIR" ;; esac
   exit 0
 fi
 

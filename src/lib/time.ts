@@ -1,5 +1,10 @@
 export const ZONE = "Europe/Zurich";
 
+// Genau ein Formatter für das ganze Modul. Ein `new Intl.DateTimeFormat` pro
+// Aufruf (etwa in einer Schleife über Tage und Buchungen) belegt jedes Mal
+// nativen ICU-Speicher, den V8 nicht mitzählt und deshalb kaum aufräumt —
+// das hat im Betrieb einmal den Server-RAM gefüllt. Für Zürcher Zeiten
+// darum immer zurichDay/zurichTime/zurichToInstant verwenden.
 const PARTS = new Intl.DateTimeFormat("en-CA", {
   timeZone: ZONE,
   year: "numeric",

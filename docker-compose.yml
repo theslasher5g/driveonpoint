@@ -11,6 +11,9 @@ services:
       PGTZ: Europe/Zurich
     volumes:
       - db-data:/var/lib/postgresql/data
+    # Obergrenze, damit ein Ausreisser nicht den ganzen Server in die Knie
+    # zwingt (siehe README, "Speicher"). Bei Bedarf in .env anheben.
+    mem_limit: ${DB_MEM_LIMIT:-1g}
     networks:
       - internal
     healthcheck:
@@ -53,6 +56,10 @@ services:
     environment:
       NODE_ENV: production
       TZ: Europe/Zurich
+      # Obergrenze für den JavaScript-Speicher von Node. Ohne sie darf Node
+      # bis zu einem Viertel des Server-RAMs belegen, bevor aufgeräumt wird;
+      # mit ihr wird früher aufgeräumt. Muss unter APP_MEM_LIMIT bleiben.
+      NODE_OPTIONS: --max-old-space-size=${APP_HEAP_MB:-768}
       DATABASE_URL: postgres://${POSTGRES_USER:-driveonpoint}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-driveonpoint}
       # Ohne Domain zunächst http://localhost:3000 — genügt zum ersten
       # Testen. Sitzungs-Cookies laufen dann automatisch ohne Secure-Schutz
@@ -76,6 +83,9 @@ services:
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+    # Harte Grenze des Containers: Wird sie erreicht, startet nur die
+    # Anwendung neu (restart: unless-stopped), der Rest des Servers bleibt heil.
+    mem_limit: ${APP_MEM_LIMIT:-1536m}
     ports:
       # Nur auf localhost — zum Testen per SSH-Tunnel (siehe README). Öffentlich
       # erreichbar wird die Anwendung ausschliesslich über den proxy-Dienst unten.
@@ -95,6 +105,7 @@ services:
       - app
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    mem_limit: ${PROXY_MEM_LIMIT:-256m}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data

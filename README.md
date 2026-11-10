@@ -228,6 +228,26 @@ den externen Monitor aus „Wenn etwas stillsteht“ nutzen. Läuft der Mailserv
 (`--profile mail`) auf demselben Server, kommt eine Warnung nur an, solange
 er selbst noch läuft.
 
+### Speicher
+
+Die Container haben Speichergrenzen (`docker-compose.yml`): `app` 1,5 GB
+(davon höchstens 768 MB JavaScript-Heap), `db` 1 GB, `proxy` 256 MB. Wird
+eine Grenze erreicht, startet nur dieser Container neu
+(`restart: unless-stopped`) — der Rest des Servers läuft weiter, und die
+[Serverüberwachung](#serverüberwachung) meldet den Neustart samt Hinweis auf
+Speichermangel. Anpassen in der `.env`: `APP_MEM_LIMIT`, `APP_HEAP_MB`,
+`DB_MEM_LIMIT`, `PROXY_MEM_LIMIT` (Vorgabe: siehe `docker-compose.yml`).
+Empfohlen sind mindestens 2 GB RAM auf dem Server plus 1–2 GB Swap als
+Puffer.
+
+Ein früherer Speicherüberlauf im laufenden Betrieb kam von den
+Terminseiten (Startseite, `/buchen`): Die Zeitumrechnung legte pro Buchung und
+Tag ein neues `Intl.DateTimeFormat` an. Das belegt nativen Speicher, den
+Node nicht mitzählt — rund 20 MB pro Seitenaufruf, bei einigen hundert
+Aufrufen mehrere GB. Behoben (ein gemeinsamer Formatter in `src/lib/time.ts`);
+gemessen: 150 Seitenaufrufe zuvor +1,9 GB, jetzt +0,2 GB, und über 3000
+Aufrufe unter Dauerlast bleibt der Server stabil.
+
 ### Bitte um Google-Bewertungen
 
 Im Kalender gibt es bei vergangenen Terminen „Um Bewertung bitten“ und bei

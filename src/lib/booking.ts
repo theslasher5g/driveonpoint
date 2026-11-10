@@ -30,6 +30,7 @@ import {
   minutesSinceMidnight,
   todayInZurich,
   zurichDay,
+  zurichTime,
   zurichToInstant,
   zurichWeekday,
 } from "./time";
@@ -475,22 +476,12 @@ function bookingCutsFor(
     }
     for (const [from, to] of parts) {
       if (zurichDay(from) !== day) continue;
-      const start = minutesSinceMidnight(localTime(from));
-      const end = minutesSinceMidnight(localTime(to));
+      const start = minutesSinceMidnight(zurichTime(from));
+      const end = minutesSinceMidnight(zurichTime(to));
       cuts.push({ start: start - pause, end: end + pause });
     }
   }
   return cuts;
-}
-
-function localTime(instant: Date): string {
-  const formatted = new Intl.DateTimeFormat("de-CH", {
-    timeZone: "Europe/Zurich",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(instant);
-  return formatted.replace(/^24:/, "00:");
 }
 
 function pushSlot(

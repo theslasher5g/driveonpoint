@@ -153,13 +153,14 @@ unless-stopped` gesetzt hat. Nur die Sicherheits-Paketquelle ist aktiviert,
 keine sonstigen Aktualisierungen. Protokoll unter
 `/var/log/unattended-upgrades/`.
 
-**`install-cron.sh`** trägt drei Zeilen in die crontab von root ein:
+**`install-cron.sh`** trägt vier Zeilen in die crontab von root ein:
 
 | Wann | Skript | Macht |
 |---|---|---|
 | stündlich, :07 | `deploy/stuendlich.sh` | Verschickt die Erinnerungen vor dem Termin, löscht Online-Buchungen, die nie bestätigt wurden, und Wartelisten vergangener Kurse; meldet Angebote, die nicht buchbar sind |
 | täglich 03:17 | `deploy/aufraeumen.sh` | Löscht Kundendaten nach Ablauf der Frist, entfernt abgelaufene Sitzungen und alte Zähler ([Aufbewahrung](#rechtliches)) |
 | wöchentlich, So 04:00 | `deploy/docker-updates.sh` | Holt Sicherheitskorrekturen der Docker-Basisabbilder (siehe unten) |
+| alle 3 Minuten | `deploy/ressourcen.sh` | Überwacht Arbeitsspeicher, Prozessor, Festplatte und Container und mailt bei Problemen ([Serverüberwachung](#serverüberwachung)) |
 
 Alle protokollieren nach `/var/log/driveonpoint-*.log`
 (`install-cron.sh` richtet dafür auch gleich eine Log-Rotation ein). Läuft
@@ -187,6 +188,45 @@ sudo deploy/stuendlich.sh && sudo tail -5 /var/log/driveonpoint-stuendlich.log
 sudo deploy/aufraeumen.sh && sudo tail -5 /var/log/driveonpoint-aufraeumen.log
 sudo deploy/docker-updates.sh && sudo tail -20 /var/log/driveonpoint-docker-updates.log
 ```
+
+### Serverüberwachung
+
+`deploy/ressourcen.sh` läuft alle 3 Minuten direkt auf dem Server (nicht
+in der Anwendung — eine abgestürzte Anwendung kann sich nicht selbst
+melden) und schickt von `inbox@driveonpoint.ch` eine Mail an `ALERT_EMAIL`
+aus der `.env`. Dort die Empfängeradresse eintragen, am besten bei einem
+anderen Anbieter als dem eigenen Mailserver:
+
+```bash
+# in .env
+ALERT_EMAIL=deine-adresse@beispiel.ch
+sudo deploy/install-cron.sh        # trägt die Überwachung ein (falls noch nicht geschehen)
+sudo deploy/ressourcen.sh test     # schickt sofort eine Testmail
+sudo deploy/ressourcen.sh status   # zeigt die aktuellen Werte, ohne etwas zu senden
+```
+
+Gemeldet wird, wenn
+
+| Was | Schwelle |
+|---|---|
+| Arbeitsspeicher | weniger als 12 % frei |
+| Auslagerungsspeicher (Swap) | mehr als 50 % belegt |
+| Prozessor | 3 Läufe in Folge (~9 Minuten) über 90 % |
+| Festplatte (jedes Dateisystem, auch Inodes) | über 85 % belegt (Inodes: 90 %) |
+| Container `app`, `db`, `proxy` | laufen nicht — oder wurden seit dem letzten Lauf neu gestartet (mit Hinweis, ob wegen Speichermangel) |
+| Anwendung | `/api/health` antwortet 2 Läufe in Folge nicht |
+
+Pro Problem kommt eine Mail beim Auftreten, eine Erinnerung alle 6 Stunden,
+solange es besteht, und eine Entwarnung am Ende. Jede Mail enthält die
+aktuellen Werte, die grössten Speicherverbraucher und die Auslastung der
+Container. Die Schwellen stehen oben im Skript und lassen sich per
+Umgebungsvariable überschreiben (`RAM_MIN_AVAILABLE_PCT`, `DISK_MAX_PCT`, …).
+Protokoll: `/var/log/driveonpoint-ressourcen.log`.
+
+Grenzen: Fällt der ganze Server aus, kann er nichts mehr mailen — dafür
+den externen Monitor aus „Wenn etwas stillsteht“ nutzen. Läuft der Mailserver
+(`--profile mail`) auf demselben Server, kommt eine Warnung nur an, solange
+er selbst noch läuft.
 
 ### Bitte um Google-Bewertungen
 

@@ -3,7 +3,8 @@ set -euo pipefail
 
 # Trägt die wiederkehrenden Aufgaben in die crontab von root ein: stündlich
 # Erinnerungen und verfallene Anfragen, täglich den Aufräumlauf, wöchentlich
-# die Docker-Image-Updates. Läuft
+# die Docker-Image-Updates, alle 3 Minuten die Serverüberwachung
+# (Arbeitsspeicher, Prozessor, Festplatte). Läuft
 # als root, damit der Cron-Aufruf ohne weitere Einrichtung auf den
 # Docker-Socket zugreifen kann.
 #
@@ -19,7 +20,7 @@ fi
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MARKER="# driveonpoint"
 
-chmod +x "$DIR/deploy/cron-aufruf.sh" "$DIR/deploy/aufraeumen.sh" "$DIR/deploy/stuendlich.sh" "$DIR/deploy/docker-updates.sh"
+chmod +x "$DIR/deploy/cron-aufruf.sh" "$DIR/deploy/aufraeumen.sh" "$DIR/deploy/stuendlich.sh" "$DIR/deploy/docker-updates.sh" "$DIR/deploy/ressourcen.sh"
 
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
@@ -30,6 +31,7 @@ crontab -l 2>/dev/null | grep -vF "$MARKER" > "$TMP" || true
   echo "7 * * * * $DIR/deploy/stuendlich.sh $MARKER stuendlich"
   echo "17 3 * * * $DIR/deploy/aufraeumen.sh $MARKER aufraeumen"
   echo "0 4 * * 0 $DIR/deploy/docker-updates.sh $MARKER docker-updates"
+  echo "*/3 * * * * $DIR/deploy/ressourcen.sh $MARKER ressourcen"
 } | crontab -
 
 if [ -f "$DIR/deploy/logrotate.conf" ]; then
@@ -39,4 +41,9 @@ fi
 echo "Eingetragen:"
 crontab -l | grep -F "$MARKER"
 echo
-echo "Protokolle: /var/log/driveonpoint-stuendlich.log, /var/log/driveonpoint-aufraeumen.log, /var/log/driveonpoint-docker-updates.log"
+if ! grep -qE '^ALERT_EMAIL=.+' "$DIR/.env" 2>/dev/null; then
+  echo
+  echo "ACHTUNG: ALERT_EMAIL fehlt in .env — ohne Empfängeradresse schickt die Überwachung nichts."
+fi
+echo
+echo "Protokolle: /var/log/driveonpoint-stuendlich.log, /var/log/driveonpoint-aufraeumen.log, /var/log/driveonpoint-docker-updates.log, /var/log/driveonpoint-ressourcen.log"

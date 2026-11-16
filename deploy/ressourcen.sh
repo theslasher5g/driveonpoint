@@ -17,6 +17,16 @@ set -uo pipefail
 # Mailserver auf demselben Server und fällt mit aus, kommt keine Warnung an —
 # dafür ALERT_EMAIL auf eine Adresse bei einem anderen Anbieter legen.
 #
+# Selbstheilung (abschaltbar mit SELBSTHEILUNG=aus in .env), jede Aktion mit Mail:
+#  1. Antwortet die Anwendung 3 Läufe in Folge nicht (~9 Min), startet das Skript
+#     den Container "app" neu — höchstens einmal pro Stunde und 3-mal pro Tag.
+#     Meldet die App "Datenbank nicht erreichbar" (503), wird nichts neu gestartet:
+#     ein Neustart der App hilft dann nicht.
+#  2. Läuft das wöchentliche Update (docker-updates.sh), während der Server fast
+#     keinen Speicher mehr frei hat und überlastet ist (2 Läufe in Folge), wird
+#     der Build abgebrochen. Die Website bleibt auf der bisherigen Version.
+# Ganze Server werden nie neu gestartet und keine anderen Prozesse beendet.
+#
 # Pro Problem gibt es eine Mail beim Auftreten, eine Erinnerung alle
 # REPEAT_HOURS Stunden, solange es besteht, und eine Entwarnung am Ende.
 
@@ -41,6 +51,10 @@ HEALTH_RUNS="${HEALTH_RUNS:-2}"                        # Fehlversuche in Folge b
 HEALTH_MAX_SECONDS="${HEALTH_MAX_SECONDS:-5}"          # langsamer als das gilt als Problem
 LOAD_PER_CORE_MAX="${LOAD_PER_CORE_MAX:-4}"            # Systemlast pro Kern, ab der gewarnt wird
 REPEAT_HOURS="${REPEAT_HOURS:-6}"
+HEAL_APP_RUNS="${HEAL_APP_RUNS:-3}"                    # Läufe ohne Antwort bis zum Neustart der App
+HEAL_APP_PER_DAY="${HEAL_APP_PER_DAY:-3}"              # höchstens so viele Neustarts pro 24 h
+HEAL_COOLDOWN_MIN="${HEAL_COOLDOWN_MIN:-60}"           # Mindestabstand zwischen zwei Neustarts
+HEAL_BUILD_RAM_PCT="${HEAL_BUILD_RAM_PCT:-5}"          # Build abbrechen, wenn weniger RAM frei …
 STATE_DIR="${MONITOR_STATE_DIR:-/var/lib/driveonpoint-monitor}"
 LOG="${MONITOR_LOG:-/var/log/driveonpoint-ressourcen.log}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3000/api/health}"
@@ -64,6 +78,7 @@ SMTP_PORT="$(envget SMTP_PORT)"; SMTP_PORT="${SMTP_PORT:-587}"
 SMTP_SECURE="$(envget SMTP_SECURE)"
 SMTP_USER="$(envget SMTP_USER)"
 SMTP_PASS="$(envget SMTP_PASS)"
+HEAL="$(envget SELBSTHEILUNG)"; HEAL="${HEAL:-an}"
 FROM_ADDR="$(printf '%s' "$MAIL_FROM" | sed -E 's/^.*<([^>]+)>.*$/\1/')"
 HOST="$(hostname)"
 
@@ -176,9 +191,8 @@ check_cpu() {
   # Die Systemlast verrät mehr als die Auslastung: Ein Server, der wegen
   # Speichermangel ständig auslagert oder wartet, steht bei 60 % CPU und
   # Last 100 faktisch still.
-  local per_core
-  per_core="$(awk -v l="${load%% *}" -v c="$cores" 'BEGIN {printf "%d", l / c}')"
-  if [ "$per_core" -ge "$LOAD_PER_CORE_MAX" ]; then
+  PER_CORE="$(awk -v l="${load%% *}" -v c="$cores" 'BEGIN {printf "%d", l / c}')"
+  if [ "$PER_CORE" -ge "$LOAD_PER_CORE_MAX" ]; then
     TITLE[load]="Server überlastet"; PROBLEM[load]="Server überlastet: Systemlast ${load%% *} bei $cores Kern(en) (normal: unter $cores). Meist Speichermangel, ein laufender Build oder ein Dauerangriff — die Website ist dann sehr langsam oder nicht erreichbar."
     NEEDRUNS[load]=2
   fi
@@ -237,16 +251,18 @@ check_docker() {
 }
 
 check_health() {
-  local t
-  if t="$(curl -fsS --max-time 10 -o /dev/null -w '%{time_total}' "$HEALTH_URL" 2>/dev/null)"; then
+  local out t
+  if out="$(curl -fsS --max-time 10 -o /dev/null -w '%{time_total} %{http_code}' "$HEALTH_URL" 2>/dev/null)"; then
+    t="${out%% *}"; HEALTH_CODE="${out##* }"
     HEALTH_LINE="Anwendung: antwortet (${t} s)"; HEALTH_T="${t}s"
     if awk -v t="$t" -v m="$HEALTH_MAX_SECONDS" 'BEGIN {exit !(t > m)}'; then
       TITLE[healthslow]="Anwendung antwortet langsam"; PROBLEM[healthslow]="Die Anwendung antwortet sehr langsam (${t} Sekunden statt unter einer)."
       NEEDRUNS[healthslow]=2
     fi
   else
-    HEALTH_LINE="Anwendung: antwortet NICHT ($HEALTH_URL)"; HEALTH_T="keine"
-    TITLE[health]="Anwendung antwortet nicht"; PROBLEM[health]="Die Anwendung antwortet nicht auf $HEALTH_URL — die Website ist vermutlich nicht erreichbar."
+    HEALTH_CODE="${out##* }"; [ -n "$HEALTH_CODE" ] || HEALTH_CODE="000"
+    HEALTH_LINE="Anwendung: antwortet NICHT ($HEALTH_URL, Status $HEALTH_CODE)"; HEALTH_T="keine"
+    TITLE[health]="Anwendung antwortet nicht"; PROBLEM[health]="Die Anwendung antwortet nicht auf $HEALTH_URL (Status $HEALTH_CODE) — die Website ist vermutlich nicht erreichbar."
     NEEDRUNS[health]="$HEALTH_RUNS"
   fi
 }
@@ -324,8 +340,74 @@ label() {
   esac
 }
 
+# --- Selbstheilung ----------------------------------------------------------
+heal() {
+  [ "$HEAL" = "aus" ] && return 0
+  command -v docker >/dev/null || return 0
+  local updating=0
+  pgrep -f 'docker-updates.sh' >/dev/null 2>&1 && updating=1
+
+  # 2) Überlastenden Build abbrechen
+  local bf="$STATE_DIR/build-bad" n=0
+  if [ "$updating" -eq 1 ] && [ -n "$RAM_PCT" ] && [ "$RAM_PCT" -lt "$HEAL_BUILD_RAM_PCT" ] && [ "$PER_CORE" -ge "$LOAD_PER_CORE_MAX" ]; then
+    [ -f "$bf" ] && n="$(cat "$bf")"
+    n=$(( n + 1 )); echo "$n" > "$bf"
+    if [ "$n" -ge 2 ]; then
+      # Zuerst das Skript (damit es nicht mit "up -d" weitermacht), dann den Build.
+      pkill -TERM -f 'docker-updates.sh' 2>/dev/null
+      pkill -TERM -f 'compose.* build' 2>/dev/null
+      rm -f "$bf"
+      EVTITLE+=("Build abgebrochen")
+      EVENTS+=("Selbstheilung: Das wöchentliche Update (docker-updates.sh) wurde abgebrochen, weil der Server überlastet war (nur ${RAM_PCT} % RAM frei, Last pro Kern ${PER_CORE}). Die Website bleibt auf der bisherigen Version; der nächste Versuch ist am nächsten Sonntag. Tipp: Swap einrichten (deploy/swap-einrichten.sh).")
+      log "Selbstheilung: Update-Build abgebrochen"
+    fi
+  else
+    rm -f "$bf"
+  fi
+
+  # 1) Hängende App neu starten
+  if [ -n "${PROBLEM[health]+x}" ] && [ -f "$STATE_DIR/p-health" ] && [ "$updating" -eq 0 ]; then
+    local runs
+    read -r runs _ < "$STATE_DIR/p-health"
+    if [ "$runs" -ge "$HEAL_APP_RUNS" ]; then
+      if [ "$HEALTH_CODE" = "503" ]; then
+        # Die App läuft, kommt aber nicht an die Datenbank — Neustart der App hilft nicht.
+        [ ! -f "$STATE_DIR/heal-note-503" ] && {
+          touch "$STATE_DIR/heal-note-503"
+          EVTITLE+=("App meldet Datenbankfehler")
+          EVENTS+=("Die App antwortet mit 503: Sie erreicht die Datenbank nicht. Ein Neustart der App würde nicht helfen, darum wurde nichts neu gestartet. Bitte prüfen: docker compose ps db / docker compose logs db")
+        }
+        return 0
+      fi
+      local hf="$STATE_DIR/heal-app" recent last
+      recent="$(awk -v n="$NOW" 'n - $1 < 86400' "$hf" 2>/dev/null | wc -l)"
+      last="$(tail -n1 "$hf" 2>/dev/null || echo 0)"; [ -n "$last" ] || last=0
+      if [ "$recent" -ge "$HEAL_APP_PER_DAY" ]; then
+        [ ! -f "$STATE_DIR/heal-note-limit" ] && {
+          touch "$STATE_DIR/heal-note-limit"
+          EVTITLE+=("Selbstheilung pausiert")
+          EVENTS+=("Die App wurde heute schon ${recent}-mal automatisch neu gestartet und antwortet weiter nicht. Die Selbstheilung pausiert — bitte nachsehen: docker compose logs --tail 100 app")
+        }
+      elif [ $(( NOW - last )) -ge $(( HEAL_COOLDOWN_MIN * 60 )) ]; then
+        echo "$NOW" >> "$hf"
+        if timeout 120 docker compose restart app >> "$LOG" 2>&1; then
+          EVTITLE+=("App neu gestartet")
+          EVENTS+=("Selbstheilung: Die App hat ${runs} Läufe in Folge nicht geantwortet (Status $HEALTH_CODE) und wurde neu gestartet. Antwortet sie danach weiter nicht, folgt der nächste Versuch frühestens in ${HEAL_COOLDOWN_MIN} Minuten (höchstens ${HEAL_APP_PER_DAY} pro Tag).")
+          log "Selbstheilung: App neu gestartet"
+        else
+          EVTITLE+=("Neustart der App fehlgeschlagen")
+          EVENTS+=("Selbstheilung: Der Neustart der App (docker compose restart app) ist fehlgeschlagen — Einzelheiten in $LOG.")
+          log "Selbstheilung: Neustart der App fehlgeschlagen"
+        fi
+      fi
+    fi
+  else
+    rm -f "$STATE_DIR/heal-note-503" "$STATE_DIR/heal-note-limit"
+  fi
+}
+
 # --- Ablauf -----------------------------------------------------------------
-RAM_PCT=""; CPU_PCT=""; HEALTH_T=""
+RAM_PCT=""; CPU_PCT=""; HEALTH_T=""; HEALTH_CODE=""; PER_CORE=0
 RAM_LINE=""; SWAP_LINE=""; CPU_LINE=""; DISK_LINES=""; DOCKER_LINE=""; HEALTH_LINE=""
 
 if [ "$MODE" != "status" ]; then
@@ -399,6 +481,8 @@ for f in "$STATE_DIR"/p-*; do
     rm -f "$f"
   fi
 done
+
+heal
 
 if [ "${#NEW[@]}" -gt 0 ] || [ "${#REPEATED[@]}" -gt 0 ] || [ "${#EVENTS[@]}" -gt 0 ]; then
   body=""

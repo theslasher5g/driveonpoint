@@ -227,6 +227,21 @@ Systemupdates und die Auslastung der Container. Die Schwellen stehen oben im Skr
 Umgebungsvariable überschreiben (`RAM_MIN_AVAILABLE_PCT`, `DISK_MAX_PCT`, …).
 Protokoll: `/var/log/driveonpoint-ressourcen.log`.
 
+**Selbstheilung** (jede Aktion kommt per Mail, abschaltbar mit
+`SELBSTHEILUNG=aus` in der `.env`):
+
+- Antwortet die App 3 Läufe in Folge nicht (~9 Minuten), wird nur der
+  Container `app` neu gestartet — höchstens einmal pro Stunde und 3-mal pro
+  Tag. Danach pausiert die Selbstheilung, und du bekommst eine Mail, dass
+  jemand nachsehen muss. Antwortet die App mit „Datenbank nicht erreichbar“
+  (503), wird nichts neu gestartet, weil das nichts bringen würde.
+- Läuft das wöchentliche Update, während weniger als 5 % RAM frei sind und
+  der Server überlastet ist (2 Läufe in Folge), wird der Build abgebrochen.
+  Die Website bleibt auf der bisherigen Version, der nächste Versuch ist am
+  nächsten Sonntag. Das hätte den Vorfall vom 15.11. abgekürzt.
+- Nie automatisch: den ganzen Server neu starten, die Datenbank neu starten
+  oder andere Prozesse beenden.
+
 Grenzen: Fällt der ganze Server aus, kann er nichts mehr mailen — dafür
 den externen Monitor aus „Wenn etwas stillsteht“ nutzen. Läuft der Mailserver
 (`--profile mail`) auf demselben Server, kommt eine Warnung nur an, solange

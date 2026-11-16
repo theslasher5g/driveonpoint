@@ -30,6 +30,11 @@ LOG=/var/log/driveonpoint-docker-updates.log
 MIN_FREE_MB="${MIN_FREE_MB:-1600}"   # frei = verfügbarer RAM + freier Swap
 BUILD_TIMEOUT="${BUILD_TIMEOUT:-40m}"
 
+# Wird der Lauf von aussen beendet (die Serverüberwachung bricht ihn bei
+# Überlastung ab, siehe deploy/ressourcen.sh), im Protokoll festhalten. Der
+# Abbruch hindert das Skript auch daran, mit "up -d" weiterzumachen.
+trap 'echo "ABGEBROCHEN (Signal) um $(date -Is) — keine Container ersetzt." >> "$LOG"; exit 143' TERM INT
+
 {
   echo "=== $(date -Is) ==="
 

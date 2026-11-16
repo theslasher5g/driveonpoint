@@ -38,6 +38,8 @@ CPU_RUNS="${CPU_RUNS:-3}"                              # … wenn sie so viele L
 DISK_MAX_PCT="${DISK_MAX_PCT:-85}"                     # Warnung, wenn Dateisystem voller
 INODE_MAX_PCT="${INODE_MAX_PCT:-90}"
 HEALTH_RUNS="${HEALTH_RUNS:-2}"                        # Fehlversuche in Folge bis zur Warnung
+HEALTH_MAX_SECONDS="${HEALTH_MAX_SECONDS:-5}"          # langsamer als das gilt als Problem
+LOAD_PER_CORE_MAX="${LOAD_PER_CORE_MAX:-4}"            # Systemlast pro Kern, ab der gewarnt wird
 REPEAT_HOURS="${REPEAT_HOURS:-6}"
 STATE_DIR="${MONITOR_STATE_DIR:-/var/lib/driveonpoint-monitor}"
 LOG="${MONITOR_LOG:-/var/log/driveonpoint-ressourcen.log}"
@@ -51,7 +53,8 @@ esac
 
 # --- .env lesen (nur die nötigen Schlüssel, ohne die Datei zu laden) --------
 envget() {
-  grep -E "^$1=" .env 2>/dev/null | head -n1 | cut -d= -f2- \
+  # Bei doppelten Zeilen gilt die letzte — wie bei docker compose.
+  grep -E "^$1=" .env 2>/dev/null | tail -n1 | cut -d= -f2- \
     | sed -E 's/^["'\'']//; s/["'\'']$//'
 }
 ALERT_EMAIL="$(envget ALERT_EMAIL)"
@@ -170,6 +173,15 @@ check_cpu() {
     TITLE[cpu]="Prozessor überlastet"; PROBLEM[cpu]="Prozessor dauerhaft hoch ausgelastet (jetzt ${cpu} %, Last $load bei $cores Kernen)."
     NEEDRUNS[cpu]="$CPU_RUNS"
   fi
+  # Die Systemlast verrät mehr als die Auslastung: Ein Server, der wegen
+  # Speichermangel ständig auslagert oder wartet, steht bei 60 % CPU und
+  # Last 100 faktisch still.
+  local per_core
+  per_core="$(awk -v l="${load%% *}" -v c="$cores" 'BEGIN {printf "%d", l / c}')"
+  if [ "$per_core" -ge "$LOAD_PER_CORE_MAX" ]; then
+    TITLE[load]="Server überlastet"; PROBLEM[load]="Server überlastet: Systemlast ${load%% *} bei $cores Kern(en) (normal: unter $cores). Meist Speichermangel, ein laufender Build oder ein Dauerangriff — die Website ist dann sehr langsam oder nicht erreichbar."
+    NEEDRUNS[load]=2
+  fi
 }
 
 check_disk() {
@@ -225,13 +237,53 @@ check_docker() {
 }
 
 check_health() {
-  if curl -fsS --max-time 10 -o /dev/null "$HEALTH_URL" 2>/dev/null; then
-    HEALTH_LINE="Anwendung: antwortet"
+  local t
+  if t="$(curl -fsS --max-time 10 -o /dev/null -w '%{time_total}' "$HEALTH_URL" 2>/dev/null)"; then
+    HEALTH_LINE="Anwendung: antwortet (${t} s)"
+    if awk -v t="$t" -v m="$HEALTH_MAX_SECONDS" 'BEGIN {exit !(t > m)}'; then
+      TITLE[healthslow]="Anwendung antwortet langsam"; PROBLEM[healthslow]="Die Anwendung antwortet sehr langsam (${t} Sekunden statt unter einer)."
+      NEEDRUNS[healthslow]=2
+    fi
   else
     HEALTH_LINE="Anwendung: antwortet NICHT ($HEALTH_URL)"
     TITLE[health]="Anwendung antwortet nicht"; PROBLEM[health]="Die Anwendung antwortet nicht auf $HEALTH_URL — die Website ist vermutlich nicht erreichbar."
     NEEDRUNS[health]="$HEALTH_RUNS"
   fi
+}
+
+OOM_PATTERN='Out of memory|Killed process|oom-kill|oom_reaper'
+
+# Neustart des ganzen Servers und Speichermangel-Abschüsse des Kernels.
+check_boot() {
+  [ "$MODE" = "pruefen" ] || return 0
+  local id last_id since lines
+  id="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)"
+  last_id="$(cat "$STATE_DIR/boot-id" 2>/dev/null || true)"
+  if [ -n "$id" ] && [ -n "$last_id" ] && [ "$id" != "$last_id" ]; then
+    EVTITLE+=("Server neu gestartet")
+    EVENTS+=("Der ganze Server wurde neu gestartet (laufend seit $(uptime -s 2>/dev/null || echo "unbekannt")). Ein Neustart nach Sicherheitsupdates ist um 04:00 gewollt; zu anderen Zeiten spricht er für einen Absturz oder einen Eingriff des Anbieters.")
+    if command -v journalctl >/dev/null; then
+      lines="$(journalctl -k -b -1 --no-pager -q 2>/dev/null | grep -E "$OOM_PATTERN" | tail -n 3 | cut -c1-200)"
+      [ -n "$lines" ] && { EVTITLE+=("Speichermangel vor dem Neustart"); EVENTS+=("Im Protokoll vor dem Neustart meldet der Kernel Speichermangel:"$'\n'"$lines"); }
+    fi
+  fi
+  [ -n "$id" ] && printf '%s\n' "$id" > "$STATE_DIR/boot-id"
+
+  since="$(cat "$STATE_DIR/last-run" 2>/dev/null || true)"
+  date +%s > "$STATE_DIR/last-run"
+  if [ -n "$since" ] && [ "$id" = "$last_id" ] && command -v journalctl >/dev/null; then
+    lines="$(journalctl -k --since "@$since" --no-pager -q 2>/dev/null | grep -E "$OOM_PATTERN" | tail -n 3 | cut -c1-200)"
+    [ -n "$lines" ] && { EVTITLE+=("Speichermangel: Prozess beendet"); EVENTS+=("Das System hat wegen Speichermangel Prozesse beendet:"$'\n'"$lines"); }
+  fi
+}
+
+# Was gerade an Wartung läuft — erklärt oft, warum der Speicher knapp ist.
+maintenance_line() {
+  local found="" pat
+  for pat in "docker-updates.sh" "compose.* build" "buildkitd" "unattended-upgrade" "apt-get" "dpkg"; do
+    pgrep -f "$pat" >/dev/null 2>&1 && found+="${found:+, }$pat"
+  done
+  [ -n "$found" ] && echo "Läuft gerade: $found"
 }
 
 # --- Zusammenfassung für den Mailtext ---------------------------------------
@@ -242,9 +294,10 @@ summary() {
   printf '%s' "$DISK_LINES"
   [ -n "$DOCKER_LINE" ] && printf '%s' "$DOCKER_LINE"
   echo "$HEALTH_LINE"
+  maintenance_line
   echo
   echo "Die grössten Speicherverbraucher:"
-  ps -eo rss,comm --sort=-rss 2>/dev/null | head -n 6 | awk 'NR>1 {printf "  %5d MB  %s\n", $1/1024, $2}'
+  ps -eo rss,args --sort=-rss 2>/dev/null | head -n 7 | awk 'NR>1 {rss=$1; $1=""; printf "  %5d MB %s\n", rss/1024, substr($0, 1, 100)}'
   if command -v docker >/dev/null; then
     local stats
     stats="$(timeout 20 docker stats --no-stream --format '  {{.Name}}: {{.MemUsage}} Speicher, {{.CPUPerc}} CPU' 2>/dev/null)"
@@ -261,6 +314,8 @@ label() {
     inode) echo "Dateieinträge (Inodes) auf ${1#*:}" ;;
     container) echo "Container ${1#*:}" ;;
     health) echo "Erreichbarkeit der Anwendung" ;;
+    healthslow) echo "Antwortzeit der Anwendung" ;;
+    load) echo "Systemlast" ;;
     *) echo "$1" ;;
   esac
 }
@@ -285,7 +340,7 @@ elif [ "$MODE" = "pruefen" ] && command -v flock >/dev/null; then
   flock -n 9 || { log "Vorheriger Lauf läuft noch — übersprungen."; exit 0; }
 fi
 
-check_ram; check_cpu; check_disk; check_docker; check_health
+check_ram; check_cpu; check_disk; check_docker; check_health; check_boot
 
 if [ "$MODE" = "status" ]; then
   summary

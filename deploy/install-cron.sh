@@ -20,7 +20,7 @@ fi
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MARKER="# driveonpoint"
 
-chmod +x "$DIR/deploy/cron-aufruf.sh" "$DIR/deploy/aufraeumen.sh" "$DIR/deploy/stuendlich.sh" "$DIR/deploy/docker-updates.sh" "$DIR/deploy/ressourcen.sh"
+chmod +x "$DIR/deploy/swap-einrichten.sh" "$DIR/deploy/cron-aufruf.sh" "$DIR/deploy/aufraeumen.sh" "$DIR/deploy/stuendlich.sh" "$DIR/deploy/docker-updates.sh" "$DIR/deploy/ressourcen.sh"
 
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
@@ -30,7 +30,8 @@ crontab -l 2>/dev/null | grep -vF "$MARKER" > "$TMP" || true
   cat "$TMP"
   echo "7 * * * * $DIR/deploy/stuendlich.sh $MARKER stuendlich"
   echo "17 3 * * * $DIR/deploy/aufraeumen.sh $MARKER aufraeumen"
-  echo "0 4 * * 0 $DIR/deploy/docker-updates.sh $MARKER docker-updates"
+  # 04:30 statt 04:00: um vier startet bei Bedarf der Neustart nach Sicherheitsupdates.
+  echo "30 4 * * 0 $DIR/deploy/docker-updates.sh $MARKER docker-updates"
   echo "*/3 * * * * $DIR/deploy/ressourcen.sh $MARKER ressourcen"
 } | crontab -
 

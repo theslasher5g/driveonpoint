@@ -159,7 +159,7 @@ keine sonstigen Aktualisierungen. Protokoll unter
 |---|---|---|
 | stündlich, :07 | `deploy/stuendlich.sh` | Verschickt die Erinnerungen vor dem Termin, löscht Online-Buchungen, die nie bestätigt wurden, und Wartelisten vergangener Kurse; meldet Angebote, die nicht buchbar sind |
 | täglich 03:17 | `deploy/aufraeumen.sh` | Löscht Kundendaten nach Ablauf der Frist, entfernt abgelaufene Sitzungen und alte Zähler ([Aufbewahrung](#rechtliches)) |
-| wöchentlich, So 04:00 | `deploy/docker-updates.sh` | Holt Sicherheitskorrekturen der Docker-Basisabbilder (siehe unten) |
+| wöchentlich, So 04:30 | `deploy/docker-updates.sh` | Holt Sicherheitskorrekturen der Docker-Basisabbilder (siehe unten) |
 | alle 3 Minuten | `deploy/ressourcen.sh` | Überwacht Arbeitsspeicher, Prozessor, Festplatte und Container und mailt bei Problemen ([Serverüberwachung](#serverüberwachung)) |
 
 Alle protokollieren nach `/var/log/driveonpoint-*.log`
@@ -214,12 +214,16 @@ Gemeldet wird, wenn
 | Prozessor | 3 Läufe in Folge (~9 Minuten) über 90 % |
 | Festplatte (jedes Dateisystem, auch Inodes) | über 85 % belegt (Inodes: 90 %) |
 | Container `app`, `db`, `proxy` | laufen nicht — oder wurden seit dem letzten Lauf neu gestartet (mit Hinweis, ob wegen Speichermangel) |
-| Anwendung | `/api/health` antwortet 2 Läufe in Folge nicht |
+| Anwendung | `/api/health` antwortet 2 Läufe in Folge nicht oder braucht länger als 5 Sekunden |
+| Systemlast | 2 Läufe in Folge mehr als 4 pro Prozessorkern — typisch bei Speichermangel, wenn der Server ständig auslagert und „steht“, obwohl noch alles läuft |
+| Neustart des ganzen Servers | einmalig, mit Hinweis auf Speichermangel im Kernel-Protokoll davor |
+| Speichermangel im Kernel | einmalig, mit dem betroffenen Prozess („Killed process …“) |
 
 Pro Problem kommt eine Mail beim Auftreten, eine Erinnerung alle 6 Stunden,
 solange es besteht, und eine Entwarnung am Ende. Jede Mail enthält die
-aktuellen Werte, die grössten Speicherverbraucher und die Auslastung der
-Container. Die Schwellen stehen oben im Skript und lassen sich per
+aktuellen Werte, die grössten Speicherverbraucher (mit vollem Aufruf, damit
+klar ist, was hinter „node“ steckt), laufende Wartung wie Build oder
+Systemupdates und die Auslastung der Container. Die Schwellen stehen oben im Skript und lassen sich per
 Umgebungsvariable überschreiben (`RAM_MIN_AVAILABLE_PCT`, `DISK_MAX_PCT`, …).
 Protokoll: `/var/log/driveonpoint-ressourcen.log`.
 
@@ -237,8 +241,13 @@ eine Grenze erreicht, startet nur dieser Container neu
 [Serverüberwachung](#serverüberwachung) meldet den Neustart samt Hinweis auf
 Speichermangel. Anpassen in der `.env`: `APP_MEM_LIMIT`, `APP_HEAP_MB`,
 `DB_MEM_LIMIT`, `PROXY_MEM_LIMIT` (Vorgabe: siehe `docker-compose.yml`).
-Empfohlen sind mindestens 2 GB RAM auf dem Server plus 1–2 GB Swap als
-Puffer.
+Empfohlen sind mindestens 2 GB RAM auf dem Server plus 2 GB Swap als
+Puffer — einmalig einrichten mit `sudo deploy/swap-einrichten.sh`. Ohne
+Swap gibt es keinen Spielraum: Der wöchentliche Build der App
+(`docker-updates.sh`) braucht in der Spitze rund 1,4 GB, auf einem Server mit
+2 GB RAM reicht das, um die Website lahmzulegen. Das Skript überspringt den
+Build darum, wenn weniger als 1,6 GB (RAM + Swap) frei sind, und baut sonst
+mit niedrigster Priorität und 40 Minuten Zeitlimit.
 
 Ein früherer Speicherüberlauf im laufenden Betrieb kam von den
 Terminseiten (Startseite, `/buchen`): Die Zeitumrechnung legte pro Buchung und

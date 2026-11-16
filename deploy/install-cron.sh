@@ -20,7 +20,7 @@ fi
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MARKER="# driveonpoint"
 
-chmod +x "$DIR/deploy/swap-einrichten.sh" "$DIR/deploy/cron-aufruf.sh" "$DIR/deploy/aufraeumen.sh" "$DIR/deploy/stuendlich.sh" "$DIR/deploy/docker-updates.sh" "$DIR/deploy/ressourcen.sh"
+chmod +x "$DIR/deploy/swap-einrichten.sh" "$DIR/deploy/oom-schutz.sh" "$DIR/deploy/cron-aufruf.sh" "$DIR/deploy/aufraeumen.sh" "$DIR/deploy/stuendlich.sh" "$DIR/deploy/docker-updates.sh" "$DIR/deploy/ressourcen.sh"
 
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
@@ -45,6 +45,11 @@ echo
 if ! grep -qE '^ALERT_EMAIL=.+' "$DIR/.env" 2>/dev/null; then
   echo
   echo "ACHTUNG: ALERT_EMAIL fehlt in .env — ohne Empfängeradresse schickt die Überwachung nichts."
+fi
+echo
+if ! command -v earlyoom >/dev/null 2>&1; then
+  echo
+  echo "Tipp: Speicherschutz einrichten (beendet bei Speichermangel rechtzeitig den grössten Verbraucher): sudo $DIR/deploy/oom-schutz.sh"
 fi
 echo
 echo "Protokolle: /var/log/driveonpoint-stuendlich.log, /var/log/driveonpoint-aufraeumen.log, /var/log/driveonpoint-docker-updates.log, /var/log/driveonpoint-ressourcen.log"

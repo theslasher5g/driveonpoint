@@ -292,6 +292,9 @@ check_boot() {
   if [ -n "$since" ] && [ "$id" = "$last_id" ] && command -v journalctl >/dev/null; then
     lines="$(journalctl -k --since "@$since" --no-pager -q 2>/dev/null | grep -E "$OOM_PATTERN" | tail -n 3 | cut -c1-200)"
     [ -n "$lines" ] && { EVTITLE+=("Speichermangel: Prozess beendet"); EVENTS+=("Das System hat wegen Speichermangel Prozesse beendet:"$'\n'"$lines"); }
+    # earlyoom (deploy/oom-schutz.sh) greift früher ein als der Kernel.
+    lines="$(journalctl -u earlyoom --since "@$since" --no-pager -q 2>/dev/null | grep -E 'sending SIG(TERM|KILL)|low memory' | tail -n 3 | cut -c1-200)"
+    [ -n "$lines" ] && { EVTITLE+=("Speicherschutz hat eingegriffen"); EVENTS+=("Der Speicherschutz (earlyoom) hat einen Prozess beendet, damit der Server nicht einfriert:"$'\n'"$lines"$'\n'"Docker startet Container von selbst neu; prüfe mit docker compose ps."); }
   fi
 }
 
@@ -313,6 +316,10 @@ summary() {
   [ -n "$DOCKER_LINE" ] && printf '%s' "$DOCKER_LINE"
   echo "$HEALTH_LINE"
   maintenance_line
+  if command -v systemctl >/dev/null; then
+    if systemctl is-active --quiet earlyoom 2>/dev/null; then echo "Speicherschutz (earlyoom): aktiv"
+    else echo "Speicherschutz (earlyoom): NICHT aktiv — einrichten mit: sudo deploy/oom-schutz.sh"; fi
+  fi
   echo "Prozesse: $(ps -e --no-headers 2>/dev/null | wc -l)"
   local crashes
   crashes="$(ls -1 /var/crash/*.crash 2>/dev/null | wc -l)"

@@ -264,6 +264,18 @@ Swap gibt es keinen Spielraum: Der wöchentliche Build der App
 Build darum, wenn weniger als 1,6 GB (RAM + Swap) frei sind, und baut sonst
 mit niedrigster Priorität und 40 Minuten Zeitlimit.
 
+**Speicherschutz (`earlyoom`):** Einmalig `sudo deploy/oom-schutz.sh`. Der
+Dienst beobachtet den Arbeitsspeicher und beendet rechtzeitig den grössten
+Verbraucher — wenn weniger als 8 % RAM frei und mehr als die Hälfte des
+Swaps belegt sind —, bevor der Server einfriert. Bevorzugt trifft es `node`
+und `npm` (also den Build der App); die laufende App (`next-server`),
+Docker, Datenbank, Webserver, SSH und die Sicherheitsdienste sind geschützt.
+Docker startet beendete Container von selbst neu, und die
+Serverüberwachung meldet jeden Eingriff per Mail („Speicherschutz hat
+eingegriffen“). Das Skript braucht Netz für `apt` und wurde hier nur auf
+Syntax geprüft; nach dem Einrichten kontrollieren mit `systemctl status
+earlyoom`.
+
 Zweiter Vorfall (So 15.11.2026): Der wöchentliche Build der App lief ab 04:00
 auf einem 2-GB-Server ohne Swap mehr als zwei Stunden statt rund einer
 Minute. Der Speicher war voll, `systemd-journald` stürzte ab, die

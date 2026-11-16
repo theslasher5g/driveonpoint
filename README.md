@@ -249,6 +249,15 @@ Swap gibt es keinen Spielraum: Der wöchentliche Build der App
 Build darum, wenn weniger als 1,6 GB (RAM + Swap) frei sind, und baut sonst
 mit niedrigster Priorität und 40 Minuten Zeitlimit.
 
+Zweiter Vorfall (So 15.11.2026): Der wöchentliche Build der App lief ab 04:00
+auf einem 2-GB-Server ohne Swap mehr als zwei Stunden statt rund einer
+Minute. Der Speicher war voll, `systemd-journald` stürzte ab, die
+Systemlast stieg auf über 100, und die Website war kaum erreichbar, bis der
+Build um 06:13 fertig war und die Container neu starteten. Gegenmittel:
+Swap (`deploy/swap-einrichten.sh`) und die Speicherprüfung vor dem Build
+(siehe oben). Die Serverüberwachung meldet Last und Antwortzeit seither auch
+dann, wenn die Anwendung formal noch „läuft“.
+
 Ein früherer Speicherüberlauf im laufenden Betrieb kam von den
 Terminseiten (Startseite, `/buchen`): Die Zeitumrechnung legte pro Buchung und
 Tag ein neues `Intl.DateTimeFormat` an. Das belegt nativen Speicher, den

@@ -134,7 +134,7 @@ check_ram() {
   local total avail stotal sfree pct spct
   total="$(meminfo MemTotal)"; avail="$(meminfo MemAvailable)"
   stotal="$(meminfo SwapTotal)"; sfree="$(meminfo SwapFree)"
-  pct=$(( avail * 100 / total ))
+  pct=$(( avail * 100 / total )); RAM_PCT="$pct"
   RAM_LINE="Arbeitsspeicher: $(( (total - avail) / 1024 )) von $(( total / 1024 )) MB belegt, ${pct} % frei"
   if [ "$pct" -lt "$RAM_MIN_AVAILABLE_PCT" ]; then
     TITLE[ram]="Arbeitsspeicher fast voll"; PROBLEM[ram]="Arbeitsspeicher fast voll: nur noch ${pct} % frei ($(( avail / 1024 )) von $(( total / 1024 )) MB). Wird er ganz voll, beendet das System Prozesse oder der Server steht still."
@@ -167,7 +167,7 @@ cpu_sample() {   # Auslastung in Prozent über 5 Sekunden
 
 check_cpu() {
   local cpu cores load
-  cpu="$(cpu_sample)"; cores="$(nproc)"; load="$(cut -d' ' -f1-3 /proc/loadavg)"
+  cpu="$(cpu_sample)"; cores="$(nproc)"; load="$(cut -d' ' -f1-3 /proc/loadavg)"; CPU_PCT="$cpu"
   CPU_LINE="Prozessor: ${cpu} % ausgelastet ($cores Kerne, Last 1/5/15 Min: $load)"
   if [ "$cpu" -ge "$CPU_MAX_PCT" ]; then
     TITLE[cpu]="Prozessor überlastet"; PROBLEM[cpu]="Prozessor dauerhaft hoch ausgelastet (jetzt ${cpu} %, Last $load bei $cores Kernen)."
@@ -239,13 +239,13 @@ check_docker() {
 check_health() {
   local t
   if t="$(curl -fsS --max-time 10 -o /dev/null -w '%{time_total}' "$HEALTH_URL" 2>/dev/null)"; then
-    HEALTH_LINE="Anwendung: antwortet (${t} s)"
+    HEALTH_LINE="Anwendung: antwortet (${t} s)"; HEALTH_T="${t}s"
     if awk -v t="$t" -v m="$HEALTH_MAX_SECONDS" 'BEGIN {exit !(t > m)}'; then
       TITLE[healthslow]="Anwendung antwortet langsam"; PROBLEM[healthslow]="Die Anwendung antwortet sehr langsam (${t} Sekunden statt unter einer)."
       NEEDRUNS[healthslow]=2
     fi
   else
-    HEALTH_LINE="Anwendung: antwortet NICHT ($HEALTH_URL)"
+    HEALTH_LINE="Anwendung: antwortet NICHT ($HEALTH_URL)"; HEALTH_T="keine"
     TITLE[health]="Anwendung antwortet nicht"; PROBLEM[health]="Die Anwendung antwortet nicht auf $HEALTH_URL — die Website ist vermutlich nicht erreichbar."
     NEEDRUNS[health]="$HEALTH_RUNS"
   fi
@@ -295,6 +295,10 @@ summary() {
   [ -n "$DOCKER_LINE" ] && printf '%s' "$DOCKER_LINE"
   echo "$HEALTH_LINE"
   maintenance_line
+  echo "Prozesse: $(ps -e --no-headers 2>/dev/null | wc -l)"
+  local crashes
+  crashes="$(ls -1 /var/crash/*.crash 2>/dev/null | wc -l)"
+  [ "$crashes" -gt 0 ] && echo "Absturzberichte in /var/crash: $crashes (ls -la /var/crash)"
   echo
   echo "Die grössten Speicherverbraucher:"
   ps -eo rss,args --sort=-rss 2>/dev/null | head -n 7 | awk 'NR>1 {rss=$1; $1=""; printf "  %5d MB %s\n", rss/1024, substr($0, 1, 100)}'
@@ -321,6 +325,7 @@ label() {
 }
 
 # --- Ablauf -----------------------------------------------------------------
+RAM_PCT=""; CPU_PCT=""; HEALTH_T=""
 RAM_LINE=""; SWAP_LINE=""; CPU_LINE=""; DISK_LINES=""; DOCKER_LINE=""; HEALTH_LINE=""
 
 if [ "$MODE" != "status" ]; then
@@ -361,6 +366,11 @@ if [ "$MODE" = "test" ]; then
   fi
   echo "Senden fehlgeschlagen — Einzelheiten in $LOG" >&2; exit 1
 fi
+
+# Eine Zeile pro Lauf ins Protokoll: so lässt sich nach einer Störung
+# nachlesen, was in den Stunden davor passiert ist (Speicher, Last, Antwortzeit,
+# grösster Prozess) — auch wenn nichts gemeldet wurde.
+log "verlauf ram_frei=${RAM_PCT}% last=${load_now:-$(cut -d' ' -f1 /proc/loadavg)} cpu=${CPU_PCT}% prozesse=$(ps -e --no-headers 2>/dev/null | wc -l) antwort=${HEALTH_T} gross=$(ps -eo rss,comm --sort=-rss 2>/dev/null | awk 'NR==2 {printf "%s:%dMB", $2, $1/1024}')"
 
 NOW="$(date +%s)"
 REPEAT=$(( REPEAT_HOURS * 3600 ))

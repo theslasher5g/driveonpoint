@@ -137,9 +137,11 @@ send_mail() {
 }
 
 # --- Messwerte --------------------------------------------------------------
-declare -A PROBLEM       # Schlüssel -> Beschreibung (aktuell bestehende Probleme)
-declare -A NEEDRUNS      # Schlüssel -> Läufe in Folge, bis gewarnt wird
-declare -A TITLE        # Schlüssel -> Kurztitel für die Betreffzeile
+# Leer anlegen (=()): sonst wirft ${#PROBLEM[@]} unter "set -u" einen Fehler,
+# solange kein Problem vorliegt — also im Normalfall.
+declare -A PROBLEM=()    # Schlüssel -> Beschreibung (aktuell bestehende Probleme)
+declare -A NEEDRUNS=()   # Schlüssel -> Läufe in Folge, bis gewarnt wird
+declare -A TITLE=()      # Schlüssel -> Kurztitel für die Betreffzeile
 declare -a EVTITLE=()
 declare -a EVENTS=()        # einmalige Ereignisse (Neustart eines Containers)
 
@@ -437,7 +439,7 @@ if [ "$MODE" = "status" ]; then
   else
     echo; echo "Keine Probleme."
   fi
-  case "$STATE_DIR" in /tmp/*) rm -rf "$STATE_DIR" ;; esac
+  case "$STATE_DIR" in /tmp/driveonpoint-status.*) rm -rf "$STATE_DIR" ;; esac
   exit 0
 fi
 

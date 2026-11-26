@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { record } from "@/lib/audit";
 import { cancellationIsChargeable } from "@/lib/booking";
@@ -36,7 +36,18 @@ export async function cancelBookingAction(formData: FormData): Promise<void> {
       cancelledAt: now,
       updatedAt: now,
     })
-    .where(and(eq(bookings.cancelToken, token), gt(bookings.startsAt, new Date())))
+    // Nur ein noch stehender Termin: hat die Fahrschule ihn schon abgesagt
+    // (einzeln oder als ganzen Kurs), bleibt der Link zwar gültig, darf die
+    // Absage aber nicht überschreiben — sonst stünde sie danach als Absage
+    // der Kundschaft da, mit neuem Zeitpunkt, und die Buchhaltung führte sie
+    // unter 24 h als verrechenbaren Ausfall.
+    .where(
+      and(
+        eq(bookings.cancelToken, token),
+        ne(bookings.status, "abgesagt"),
+        gt(bookings.startsAt, new Date()),
+      ),
+    )
     .returning({
       reference: bookings.reference,
       startsAt: bookings.startsAt,

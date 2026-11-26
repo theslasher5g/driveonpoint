@@ -494,6 +494,8 @@ function pushSlot(
     staffId: string | null;
     startsAt: Date;
     endsAt: Date;
+    secondStartsAt: Date | null;
+    secondEndsAt: Date | null;
     lessonTypeId: string | null;
   }[],
   earliest: Date,
@@ -518,9 +520,20 @@ function pushSlot(
 
   // Ein Kurs desselben Angebots zu einer anderen Zeit ist kein belegter Platz,
   // sondern ein überschneidender Termin — etwa ein zweiter VKU am selben Abend.
-  const collides = sameOffering.some(
-    (b) => b.startsAt.getTime() !== startsAt.getTime() && b.startsAt < endsAt && b.endsAt > startsAt,
-  );
+  // Beide Kurstage auf beiden Seiten: der 2. Abend eines Montagskurses fällt
+  // sonst unbemerkt auf den 1. Abend eines Mittwochskurses. Angezeigt wurde
+  // der dann als frei, und die Buchung scheiterte mit "eben vergeben"
+  // (clashesInLock prüft beide Kurstage).
+  const ownParts: [Date, Date][] = [[startsAt, endsAt]];
+  if (second) {
+    ownParts.push([zurichToInstant(second.day, second.startTime), zurichToInstant(second.day, second.endTime)]);
+  }
+  const collides = sameOffering.some((b) => {
+    if (b.startsAt.getTime() === startsAt.getTime()) return false;
+    const theirs: [Date, Date][] = [[b.startsAt, b.endsAt]];
+    if (b.secondStartsAt && b.secondEndsAt) theirs.push([b.secondStartsAt, b.secondEndsAt]);
+    return theirs.some(([from, to]) => ownParts.some(([ownFrom, ownTo]) => from < ownTo && to > ownFrom));
+  });
   if (collides) return;
 
   const alreadyBooked = sameOffering.filter(

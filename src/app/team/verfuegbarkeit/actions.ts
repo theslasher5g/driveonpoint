@@ -268,12 +268,11 @@ export async function addExceptionAction(
 
   const parsed = z
     .object({
-      tag: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Datum."),
+      // Echtes Kalenderdatum: "2026-02-30" passt ins Muster, liess die
+      // Datenbank aber mit einem Fehler statt einer Meldung aussteigen.
+      tag: calendarDay("Ungültiges Datum."),
       // Für Ferien & Co.: optionales Enddatum, sonst gilt nur `tag` selbst.
-      tagBis: z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Enddatum.")
-        .optional(),
+      tagBis: calendarDay("Ungültiges Enddatum.").optional(),
       von: z.string(),
       bis: z.string(),
       art: z.enum(["frei", "abwesend"]),

@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { record } from "@/lib/audit";
@@ -43,10 +43,14 @@ export async function cancelByStaffAction(formData: FormData): Promise<void> {
   if (!entry || entry.status === "abgesagt") return;
 
   const now = new Date();
-  await db
+  // Nur wenn er noch steht: hat die Kundschaft im selben Moment selbst
+  // abgesagt, bleibt das ihre Absage, und es geht keine zweite Mail raus.
+  const changed = await db
     .update(bookings)
     .set({ status: "abgesagt", cancelledAt: now, cancelledBy: "fahrschule", updatedAt: now })
-    .where(eq(bookings.id, id));
+    .where(and(eq(bookings.id, id), ne(bookings.status, "abgesagt")))
+    .returning({ id: bookings.id });
+  if (changed.length === 0) return;
 
   // Ein Platz im Kurs ist frei — die Warteliste erfährt es.
   await notifyWaitlist(entry.lessonTypeId, entry.startsAt);

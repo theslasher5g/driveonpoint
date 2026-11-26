@@ -1,14 +1,14 @@
 import "server-only";
-import { and, eq, gt, inArray, lt, notInArray, or } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lte, notInArray, or } from "drizzle-orm";
 import { occupiesTime } from "./booking";
 import { sendRescheduleConfirmation, sendWaitlistMoved } from "./booking-mail";
 import { courseSession } from "./course-cancel";
-import { secondPartOf, type SecondPartSource } from "./availability-rules";
-import { sessionSources } from "./course-dates";
+import { SECOND_DAY_MAX_OFFSET, secondPartOf, type SecondPartSource } from "./availability-rules";
+import { courseWindows, sessionSources } from "./course-dates";
 import { db } from "./db";
 import { availabilityExceptions, bookings, lessonTypes, staff, waitlistEntries } from "./db/schema";
 import { env } from "./env";
-import { daysBetween, minutesSinceMidnight, zurichDay, zurichTime, zurichToInstant } from "./time";
+import { addDays, daysBetween, formatDayShort, minutesSinceMidnight, zurichDay, zurichTime, zurichToInstant } from "./time";
 
 /**
  * Einen ganzen Kurstermin auf ein anderes Datum legen — statt abzusagen und
@@ -121,56 +121,20 @@ export async function moveCourseSession({
   }
 
   if (staffIds.length > 0) {
-    // Andere Termine der Kursleitung, die sich mit der neuen Zeit überschneiden.
-    const clashes = await db
-      .select({ name: staff.name, startsAt: bookings.startsAt, lessonName: lessonTypes.name })
-      .from(bookings)
-      .innerJoin(staff, eq(staff.id, bookings.staffId))
-      .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
-      .where(
-        and(
-          inArray(bookings.staffId, staffIds),
-          occupiesTime(),
-          or(
-            and(lt(bookings.startsAt, newEndsAt), gt(bookings.endsAt, newStartsAt)),
-            // Der neue 2. Kurstag darf ebenso nicht belegt sein.
-            newSecondStartsAt && newSecondEndsAt
-              ? and(lt(bookings.startsAt, newSecondEndsAt), gt(bookings.endsAt, newSecondStartsAt))
-              : undefined,
-          ),
-          participants.length > 0
-            ? notInArray(bookings.id, participants.map((entry) => entry.id))
-            : undefined,
-        ),
-      )
-      .limit(1);
-    if (clashes[0]) {
-      return {
-        error: `${clashes[0].name} hat zu dieser Zeit schon einen Termin (${clashes[0].lessonName ?? "Termin"}, ${zurichTime(clashes[0].startsAt)} Uhr).`,
-      };
-    }
-
-    // Als abwesend eingetragen?
-    const absences = await db
-      .select({ name: staff.name, startTime: availabilityExceptions.startTime, endTime: availabilityExceptions.endTime })
-      .from(availabilityExceptions)
-      .innerJoin(staff, eq(staff.id, availabilityExceptions.staffId))
-      .where(
-        and(
-          inArray(availabilityExceptions.staffId, staffIds),
-          eq(availabilityExceptions.day, newDay),
-          eq(availabilityExceptions.available, false),
-          // Ausgefallene Kurstermine sind keine Abwesenheit.
-          eq(availabilityExceptions.cancelledSession, false),
-        ),
-      );
-    const newStart = minutesSinceMidnight(newTime);
-    const absent = absences.find(
-      (row) =>
-        minutesSinceMidnight(row.startTime.slice(0, 5)) < newEndMinutes &&
-        minutesSinceMidnight(row.endTime.slice(0, 5)) > newStart,
-    );
-    if (absent) return { error: `${absent.name} ist zu dieser Zeit als abwesend eingetragen.` };
+    const blocker = await movingBlocker({
+      lessonTypeId,
+      bufferMinutes: lessonType.bufferMinutes,
+      staffIds,
+      parts: [
+        { day: newDay, start: minutesSinceMidnight(newTime), end: newEndMinutes },
+        ...(newSecond
+          ? [{ day: newSecond.day, start: minutesSinceMidnight(newSecond.startTime), end: minutesSinceMidnight(newSecond.endTime) }]
+          : []),
+      ],
+      ownSession: { day: oldDay, time: oldTime },
+      ownBookingIds: participants.map((entry) => entry.id),
+    });
+    if (blocker) return { error: blocker };
   }
 
   const purgeAfter = new Date(
@@ -306,4 +270,116 @@ export async function moveCourseSession({
     waitlist: waiting.length,
     mailsFailed,
   };
+}
+
+/**
+ * Steht der Kursleitung zur neuen Zeit etwas im Weg? Dieselben Hürden wie
+ * beim Buchen (findSlots): eigene Termine samt Pause und 2. Kurstag,
+ * Abwesenheiten, geplante Termine anderer Kurse und andere Termine
+ * desselben Kurses, die sich halb überschneiden. Vorher prüfte der Umzug
+ * nur die reine Überschneidung mit Buchungen am 1. Tag — ein Kurs liess
+ * sich so in einen leeren Nothilfekurs, über einen anderen VKU-Abend oder
+ * mit dem 2. Kurstag in die Ferien legen.
+ */
+async function movingBlocker(input: {
+  lessonTypeId: string;
+  bufferMinutes: number;
+  staffIds: string[];
+  /** Neue Kurstage als Minuten im jeweiligen Tag. */
+  parts: { day: string; start: number; end: number }[];
+  /** Der Kurstermin, der gerade umzieht — er selbst ist kein Hindernis. */
+  ownSession: { day: string; time: string };
+  ownBookingIds: string[];
+}): Promise<string | null> {
+  const days = input.parts.map((part) => part.day).sort();
+  const names = new Map(
+    (
+      await db.select({ id: staff.id, name: staff.name }).from(staff).where(inArray(staff.id, input.staffIds))
+    ).map((row) => [row.id, row.name]),
+  );
+  const who = (id: string) => names.get(id) ?? "Die Kursleitung";
+  const overlaps = (day: string, start: number, end: number, pause: number) =>
+    input.parts.some((part) => part.day === day && start - pause < part.end && end + pause > part.start);
+
+  // Buchungen, auch mit 2. Kurstag an einem der neuen Tage.
+  const reachFrom = zurichToInstant(addDays(days[0], -SECOND_DAY_MAX_OFFSET), "00:00");
+  const reachTo = zurichToInstant(days[days.length - 1], "23:59");
+  const taken = await db
+    .select({
+      staffId: bookings.staffId,
+      lessonTypeId: bookings.lessonTypeId,
+      startsAt: bookings.startsAt,
+      endsAt: bookings.endsAt,
+      secondStartsAt: bookings.secondStartsAt,
+      secondEndsAt: bookings.secondEndsAt,
+      bufferMinutes: lessonTypes.bufferMinutes,
+      lessonName: lessonTypes.name,
+    })
+    .from(bookings)
+    .leftJoin(lessonTypes, eq(lessonTypes.id, bookings.lessonTypeId))
+    .where(
+      and(
+        inArray(bookings.staffId, input.staffIds),
+        occupiesTime(),
+        gte(bookings.startsAt, reachFrom),
+        lte(bookings.startsAt, reachTo),
+        input.ownBookingIds.length > 0 ? notInArray(bookings.id, input.ownBookingIds) : undefined,
+      ),
+    );
+  for (const row of taken) {
+    // Anmeldungen zu einem anderen Termin desselben Kurses teilen sich keine
+    // Pause (wie in findSlots); alles andere braucht die grössere der beiden.
+    const pause =
+      row.lessonTypeId === input.lessonTypeId ? 0 : Math.max(input.bufferMinutes, row.bufferMinutes ?? 0);
+    const rowParts: [Date, Date][] = [[row.startsAt, row.endsAt]];
+    if (row.secondStartsAt && row.secondEndsAt) rowParts.push([row.secondStartsAt, row.secondEndsAt]);
+    for (const [from, to] of rowParts) {
+      if (overlaps(zurichDay(from), minutesSinceMidnight(zurichTime(from)), minutesSinceMidnight(zurichTime(to)), pause)) {
+        return `${who(row.staffId!)} hat zu dieser Zeit schon einen Termin (${row.lessonName ?? "Termin"}, ${zurichDay(from) === input.parts[0].day ? "" : `${formatDayShort(zurichDay(from))}, `}${zurichTime(from)} Uhr).`;
+      }
+    }
+  }
+
+  // Abwesenheiten an einem der neuen Tage (ausgefallene Kurstermine zählen nicht).
+  const absences = await db
+    .select({
+      staffId: availabilityExceptions.staffId,
+      day: availabilityExceptions.day,
+      startTime: availabilityExceptions.startTime,
+      endTime: availabilityExceptions.endTime,
+    })
+    .from(availabilityExceptions)
+    .where(
+      and(
+        inArray(availabilityExceptions.staffId, input.staffIds),
+        inArray(availabilityExceptions.day, days),
+        eq(availabilityExceptions.available, false),
+        eq(availabilityExceptions.cancelledSession, false),
+        or(isNull(availabilityExceptions.lessonTypeId), eq(availabilityExceptions.lessonTypeId, input.lessonTypeId)),
+      ),
+    );
+  const absent = absences.find((row) =>
+    overlaps(row.day, minutesSinceMidnight(row.startTime.slice(0, 5)), minutesSinceMidnight(row.endTime.slice(0, 5)), 0),
+  );
+  if (absent) {
+    return `${who(absent.staffId)} ist ${absent.day === input.parts[0].day ? "zu dieser Zeit" : `am ${formatDayShort(absent.day)}`} als abwesend eingetragen.`;
+  }
+
+  // Geplante Kurstermine — andere Kurse samt Pause, derselbe Kurs ohne.
+  const windows = await courseWindows({
+    fromDay: addDays(days[0], -SECOND_DAY_MAX_OFFSET),
+    untilDay: days[days.length - 1],
+    staffIds: input.staffIds,
+  });
+  for (const window of windows) {
+    const same = window.lessonTypeId === input.lessonTypeId;
+    if (same && window.day === input.ownSession.day && window.startTime === input.ownSession.time) continue;
+    const pause = same ? 0 : Math.max(input.bufferMinutes, window.bufferMinutes);
+    for (const part of [{ day: window.day, startTime: window.startTime, endTime: window.endTime }, window.second]) {
+      if (part && overlaps(part.day, minutesSinceMidnight(part.startTime), minutesSinceMidnight(part.endTime), pause)) {
+        return `${who(window.staffId)} hat zu dieser Zeit schon einen ${same ? "anderen Termin dieses Kurses" : "Kurstermin"} (${formatDayShort(part.day)}, ${part.startTime} Uhr).`;
+      }
+    }
+  }
+  return null;
 }

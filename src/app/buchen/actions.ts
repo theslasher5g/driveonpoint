@@ -206,22 +206,30 @@ async function bookSingle(
   const priced = applyPromotions(lessonType, await activePromotions());
   const confirmation = pendingConfirmation();
 
-  const result = await createBooking({
-    lessonType,
-    staffId: slot.staffIds[0],
-    startsAt: slot.startsAt,
-    endsAt: slot.endsAt,
-    second: slot.second,
-    customerName: input.name,
-    customerEmail: input.email,
-    customerPhone: input.telefon,
-    customerNote: input.bemerkung,
-    priceRappen: priced.finalRappen,
-    promotionLabel: priced.promotion?.label ?? null,
-    retentionDays: env.retentionDays,
-    confirmation,
-    reviewConsent: formData.get("bewertung") === "ja",
-  });
+  // Stehen zur selben Zeit mehrere zur Wahl, nacheinander versuchen: nahm
+  // jemand die erste Person eben weg, ist die zweite womöglich noch frei.
+  let result: Awaited<ReturnType<typeof createBooking>> = {
+    error: "Dieser Termin ist nicht mehr frei. Bitte wähle einen anderen.",
+  };
+  for (const staffId of slot.staffIds) {
+    result = await createBooking({
+      lessonType,
+      staffId,
+      startsAt: slot.startsAt,
+      endsAt: slot.endsAt,
+      second: slot.second,
+      customerName: input.name,
+      customerEmail: input.email,
+      customerPhone: input.telefon,
+      customerNote: input.bemerkung,
+      priceRappen: priced.finalRappen,
+      promotionLabel: priced.promotion?.label ?? null,
+      retentionDays: env.retentionDays,
+      confirmation,
+      reviewConsent: formData.get("bewertung") === "ja",
+    });
+    if (!("error" in result)) break;
+  }
 
   if ("error" in result) {
     return { error: result.error };

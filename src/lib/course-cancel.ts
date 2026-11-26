@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { occupiesTime } from "./booking";
 import { sendCourseCancellation } from "./booking-mail";
 import { sessionSources } from "./course-dates";
@@ -74,7 +74,8 @@ export async function cancelCourseSession({
       ? await db
           .update(bookings)
           .set({ status: "abgesagt", cancelledAt: now, cancelledBy: "fahrschule", updatedAt: now })
-          .where(inArray(bookings.id, participants.map((entry) => entry.id)))
+          // Wer im selben Moment selbst abgesagt hat, behält seine Absage.
+          .where(and(inArray(bookings.id, participants.map((entry) => entry.id)), ne(bookings.status, "abgesagt")))
           .returning({
             reference: bookings.reference,
             status: bookings.status,

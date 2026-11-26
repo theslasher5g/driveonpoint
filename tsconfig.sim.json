@@ -1,0 +1,17 @@
+{
+  "$comment": "Nur für die Simulation unter test/sim/. Ersetzt Next.js-Laufzeit, Anmeldung und Captcha durch Attrappen, damit die echten Server Actions ausserhalb von Next.js laufen.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/lib/auth/guard": ["./test/sim/stubs/guard.ts"],
+      "@/lib/captcha": ["./test/sim/stubs/captcha.ts"],
+      "@/*": ["./src/*"],
+      "server-only": ["./test/server-only.ts"],
+      "next/headers": ["./test/sim/stubs/next-headers.ts"],
+      "next/navigation": ["./test/sim/stubs/next-navigation.ts"],
+      "next/cache": ["./test/sim/stubs/next-cache.ts"]
+    }
+  }
+}

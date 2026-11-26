@@ -73,6 +73,9 @@ export const site = {
     // Steht auch als Beschreibung in den Suchergebnissen, deshalb vorne
     // die Suchbegriffe und insgesamt unter 160 Zeichen.
     lead: "Fahrschule in Basel und Baselland. Du lernst bei Christina in deinem Tempo, sie holt dich ab, und zur Prüfung gehst du erst, wenn du bereit bist.",
+    /** Beschreibung für die Suchergebnisse der Startseite: 150–160 Zeichen, mit dem, was man hier tun kann. */
+    searchDescription:
+      "Fahrschule in Basel: Fahrstunden, VKU und Nothilfekurs bei Christina. Du bestimmst dein Tempo, die Schnupperstunde macht den Start leicht. Online buchen.",
   },
 
   philosophy: {

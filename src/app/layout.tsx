@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     default: `${site.name} — Fahrschule in ${site.contact.city}`,
     template: `%s — ${site.name}`,
   },
-  description: site.hero.lead,
+  description: site.hero.searchDescription,
   openGraph: {
     type: "website",
     locale: "de_CH",

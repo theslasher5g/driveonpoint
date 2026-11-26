@@ -146,6 +146,6 @@ export const config = {
     // Vorabladen läuft bewusst auch hindurch: die Kopfzeilen dafür kann
     // jeder selbst setzen, und die Seite wird trotzdem gerendert — sonst
     // liesse sich die Bremse oben damit umgehen.
-    "/((?!_next/static|_next/image|fonts/|images/|favicon.ico|robots.txt|sitemap.xml).*)",
+    "/((?!_next/static|_next/image|fonts/|images/|favicon.ico|icon.svg|icon.png|apple-icon.png|robots.txt|sitemap.xml).*)",
   ],
 };

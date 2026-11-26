@@ -39,7 +39,10 @@ export function SiteHeader() {
     // erste Abschnitt (Aufmacher oder Seitenkopf) überhaupt begann.
     <div className="fixed inset-x-0 top-3 md:top-4 z-50 px-3 md:px-6">
       <header className="glass mx-auto max-w-5xl rounded-full">
-        <div className="flex items-center gap-2 md:gap-3 h-14 md:h-16 pl-4 pr-2 md:pl-6 md:pr-3">
+        {/* data-nosnippet: Navigation und Fussbereich gehören nicht in die
+            Beschreibung der Suchergebnisse — dort standen sonst Menüpunkte
+            und Kontaktdaten statt eines Satzes zur Fahrschule. */}
+        <div data-nosnippet className="flex items-center gap-2 md:gap-3 h-14 md:h-16 pl-4 pr-2 md:pl-6 md:pr-3">
           <Link
             href="/"
             className="flex items-center gap-2.5 shrink-0"

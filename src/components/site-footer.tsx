@@ -32,7 +32,7 @@ export function SiteFooter() {
     // Seite trägt — vorher war der Fuss der einzige Bereich ohne sie und
     // wirkte dadurch wie angeklebt statt wie der letzte Eintrag im Heft.
     <footer className="bg-deep text-paper">
-      <div className="shell band">
+      <div data-nosnippet className="shell band">
         <div className="lane">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.9fr_0.9fr_1fr] lg:gap-8">
             <div>

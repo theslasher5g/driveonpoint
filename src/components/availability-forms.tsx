@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { occurrences, ordinalLabel, SECOND_DAY_MAX_OFFSET } from "@/lib/availability-rules";
@@ -511,12 +512,51 @@ function Feedback({ state }: { state: AvailabilityState }) {
   }
   if (state.ok) {
     return (
-      <p role="status" className="notice notice-success">
-        {state.ok}
-      </p>
+      <>
+        <p role="status" className="notice notice-success">
+          {state.ok}
+        </p>
+        {state.conflicts && state.conflicts.length > 0 && <AbsenceConflicts conflicts={state.conflicts} />}
+      </>
     );
   }
   return null;
+}
+
+/**
+ * Bereits gebuchte Termine in der eben eingetragenen Abwesenheit. Die
+ * Abwesenheit sperrt nur neue Buchungen; diese hier stehen weiter im
+ * Kalender und müssen dort abgesagt oder verschoben werden.
+ */
+function AbsenceConflicts({ conflicts }: { conflicts: NonNullable<AvailabilityState["conflicts"]> }) {
+  const count = conflicts.length;
+  return (
+    <div role="alert" className="notice notice-warn mt-3">
+      <p>
+        {count === 1 ? "In dieser Zeit ist schon ein Termin gebucht." : `In dieser Zeit sind schon ${count} Termine gebucht.`}{" "}
+        Die Abwesenheit sperrt nur neue Buchungen — bitte im Kalender absagen oder verschieben.
+      </p>
+      <ul className="mt-2 space-y-1 font-normal">
+        {conflicts.map((conflict) => (
+          <li key={conflict.bookingId}>
+            <Link
+              href={`/team/kalender?ansicht=woche&woche=${conflict.day}`}
+              className="underline underline-offset-2 nums"
+            >
+              {formatDayLong(conflict.day)}, {conflict.time} Uhr
+            </Link>
+            {" · "}
+            {conflict.lessonName}
+            {conflict.customerName
+              ? ` · ${conflict.customerName}`
+              : ` · ${conflict.participants} ${conflict.participants === 1 ? "Anmeldung" : "Anmeldungen"}`}
+            {conflict.secondDayOnly && " (2. Kurstag)"}
+            {conflict.pending && " (noch nicht bestätigt)"}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function Submit({ label, busy }: { label: string; busy: string }) {

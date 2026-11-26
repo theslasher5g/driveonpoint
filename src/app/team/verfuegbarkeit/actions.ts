@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { availabilityExceptions, availabilityRules, lessonTypes, staffLessonTypes } from "@/lib/db/schema";
 import { cancelCourseSession, courseSession } from "@/lib/course-cancel";
 import { keepBookedSessions } from "@/lib/course-dates";
+import { bookingsDuringAbsence, type AbsenceConflict } from "@/lib/absence-conflicts";
 import { SECOND_DAY_MAX_OFFSET } from "@/lib/availability-rules";
 import { addDays, daysBetween, minutesSinceMidnight, todayInZurich, zurichToInstant, zurichWeekday } from "@/lib/time";
 
@@ -109,7 +110,12 @@ async function assertOffering(staffId: string, lessonTypeId: string): Promise<bo
   return row !== undefined;
 }
 
-export type AvailabilityState = { error?: string; ok?: string };
+export type AvailabilityState = {
+  error?: string;
+  ok?: string;
+  /** Eingetragen, aber in der Abwesenheit liegen schon gebuchte Termine. */
+  conflicts?: AbsenceConflict[];
+};
 
 /**
  * Zeit für ein Angebot an einem Datum, auf Wunsch wiederholt: täglich,
@@ -352,10 +358,25 @@ export async function addExceptionAction(
   revalidatePath("/team/verfuegbarkeit");
   revalidatePath("/team/kalender");
   const tage = days.length > 1 ? ` (${days.length} Tage)` : "";
+
+  // Schon gebuchte Termine bleiben trotz Abwesenheit stehen — darauf
+  // hinweisen, damit sie abgesagt oder verschoben werden.
+  const conflicts =
+    parsed.data.art === "abwesend"
+      ? await bookingsDuringAbsence({
+          staffId,
+          days,
+          from: parsed.data.von,
+          to: parsed.data.bis,
+          lessonTypeId: parsed.data.lessonTypeId ?? null,
+        })
+      : [];
+
   return {
     ok:
       (parsed.data.art === "frei" ? "Zusätzliche Zeit eingetragen." : "Abwesenheit eingetragen.") +
       tage,
+    ...(conflicts.length > 0 ? { conflicts } : {}),
   };
 }
 

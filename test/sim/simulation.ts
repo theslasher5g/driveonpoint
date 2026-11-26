@@ -45,6 +45,7 @@ import * as verschieben from "@/app/verschieben/[token]/actions";
 import * as kalender from "@/app/team/kalender/actions";
 import * as erfassen from "@/app/team/kalender/erfassen/actions";
 import * as warteliste from "@/app/buchen/warteliste/actions";
+import * as verfuegbarkeit from "@/app/team/verfuegbarkeit/actions";
 import { RedirectSignal } from "./stubs/next-navigation";
 
 // Mailversand an den Empfänger unten. Gelesen wird die Umgebung erst beim
@@ -141,6 +142,8 @@ async function run<T>(action: () => Promise<T>): Promise<{ redirect?: string; re
     return { thrown: error instanceof Error ? error.message : String(error) };
   }
 }
+
+const fromMinutesSim = (total: number) => `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 
 let customerCounter = 0;
 function newCustomer() {
@@ -796,6 +799,56 @@ async function main() {
     const res5 = await tryMove(thu, "16:00");
     check("Kursumzug auf einen freien Donnerstag gelingt", !!res5.redirect, res5.result ?? res5.thrown);
     await checkInvariants("Kursumzug");
+  }
+
+  // 3o — Abwesenheit über schon gebuchte Termine: eingetragen, aber mit Warnung.
+  {
+    const absence = async (person: string, day: string, von: string, bis: string, extra: Record<string, string> = {}) =>
+      run(() => verfuegbarkeit.addExceptionAction({}, form({ person, tag: day, von, bis, art: "abwesend", ...extra })));
+    type State = Awaited<ReturnType<typeof verfuegbarkeit.addExceptionAction>>;
+
+    // Fahrstunde bei Beat, bestätigt.
+    const day = addDays(today, 15);
+    const slot = (await findSlots({ lessonType: fahrstunde, fromDay: day, days: 5, staffId: B.id }))[0];
+    const { customer } = await bookOnline("fahrstunde", slot.day, slot.time);
+    const [row] = await pendingFor(customer.email);
+    await confirm(row.confirmToken!);
+    const startMin = minutesSinceMidnight(slot.time);
+
+    const hit = (await absence(B.id, slot.day, "06:00", "20:00")).result as State;
+    check("Abwesenheit über Fahrstunde: trotzdem eingetragen", !!hit?.ok, hit);
+    check(
+      "Abwesenheit über Fahrstunde: Termin mit Name in der Warnung",
+      hit?.conflicts?.length === 1 && hit.conflicts[0].customerName === customer.name && hit.conflicts[0].time === slot.time,
+      hit?.conflicts,
+    );
+    const touching = (await absence(B.id, slot.day, slot.time === "07:30" ? "06:00" : "05:00", slot.time)).result as State;
+    check("Abwesenheit endet genau bei Terminbeginn: keine Warnung", !touching?.conflicts, touching?.conflicts);
+    const partial = (await absence(B.id, slot.day, fromMinutesSim(startMin + 30), fromMinutesSim(startMin + 60))).result as State;
+    check("Abwesenheit über das Ende der Fahrstunde: Warnung", partial?.conflicts?.length === 1, partial?.conflicts);
+    const range = (await absence(B.id, addDays(slot.day, -2), "00:00", "23:59", { tagBis: addDays(slot.day, 2) })).result as State;
+    check("Ferien über mehrere Tage: Termin gefunden", range?.conflicts?.some((c) => c.bookingId === row.id) === true, range?.conflicts);
+    await run(() => kalender.cancelByStaffAction(form({ id: row.id })));
+    const afterCancel = (await absence(B.id, slot.day, "06:00", "20:00")).result as State;
+    check("abgesagter Termin: keine Warnung mehr", !afterCancel?.conflicts, afterCancel?.conflicts);
+
+    // VKU mit zwei Anmeldungen, Abwesenheit nur am 2. Kurstag.
+    const vkuDay = addDays(firstMonday, 7 * 8);
+    const session = (await findSlots({ lessonType: vku, fromDay: vkuDay, days: 1 }))[0];
+    for (let i = 0; i < 2; i += 1) {
+      const booked = await bookOnline("vku", session.day, session.time);
+      const [p] = await pendingFor(booked.customer.email);
+      await confirm(p.confirmToken!);
+    }
+    const secondDay = session.second!.day;
+    const course = (await absence(C.id, secondDay, "15:00", "22:00")).result as State;
+    check(
+      "Abwesenheit am 2. Kurstag: Kurs einmal gelistet, 2 Anmeldungen, als 2. Kurstag markiert",
+      course?.conflicts?.length === 1 && course.conflicts[0].participants === 2 && course.conflicts[0].secondDayOnly,
+      course?.conflicts,
+    );
+    const onlyDriving = (await absence(C.id, secondDay, "15:00", "22:00", { lessonTypeId: fahrstunde.id })).result as State;
+    check("Abwesenheit nur für Fahrstunden: Kurs nicht in der Warnung", !!onlyDriving?.ok && !onlyDriving.conflicts, onlyDriving);
   }
 
   await checkInvariants("Sonderfälle");

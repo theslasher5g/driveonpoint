@@ -4,8 +4,8 @@ set -euo pipefail
 # Trägt die wiederkehrenden Aufgaben in die crontab von root ein: stündlich
 # Erinnerungen und verfallene Anfragen, täglich den Aufräumlauf, wöchentlich
 # die Docker-Image-Updates, alle 3 Minuten die Serverüberwachung
-# (Arbeitsspeicher, Prozessor, Festplatte), stündlich der Docker-Build-Cache
-# geleert. Läuft
+# (Arbeitsspeicher, Prozessor, Festplatte), täglich der Docker-Build-Cache
+# auf 2 GB begrenzt. Läuft
 # als root, damit der Cron-Aufruf ohne weitere Einrichtung auf den
 # Docker-Socket zugreifen kann.
 #
@@ -34,8 +34,8 @@ crontab -l 2>/dev/null | grep -vF "$MARKER" > "$TMP" || true
   # 04:30 statt 04:00: um vier startet bei Bedarf der Neustart nach Sicherheitsupdates.
   echo "30 4 * * 0 $DIR/deploy/docker-updates.sh $MARKER docker-updates"
   echo "*/3 * * * * $DIR/deploy/ressourcen.sh $MARKER ressourcen"
-  # Minute 47: abseits von stuendlich.sh (7) und dem Update-Build am Sonntag.
-  echo "47 * * * * $DIR/deploy/build-cache-leeren.sh $MARKER build-cache"
+  # 03:47: nach dem Aufräumlauf (03:17), vor dem Update-Build am Sonntag (04:30).
+  echo "47 3 * * * $DIR/deploy/build-cache-leeren.sh $MARKER build-cache"
 } | crontab -
 
 if [ -f "$DIR/deploy/logrotate.conf" ]; then

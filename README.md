@@ -160,7 +160,7 @@ keine sonstigen Aktualisierungen. Protokoll unter
 | stündlich, :07 | `deploy/stuendlich.sh` | Verschickt die Erinnerungen vor dem Termin, löscht Online-Buchungen, die nie bestätigt wurden, und Wartelisten vergangener Kurse; meldet Angebote, die nicht buchbar sind |
 | täglich 03:17 | `deploy/aufraeumen.sh` | Löscht Kundendaten nach Ablauf der Frist, entfernt abgelaufene Sitzungen und alte Zähler ([Aufbewahrung](#rechtliches)) |
 | wöchentlich, So 04:30 | `deploy/docker-updates.sh` | Holt Sicherheitskorrekturen der Docker-Basisabbilder (siehe unten) |
-| stündlich, Minute 47 | `deploy/build-cache-leeren.sh` | Leert den Docker-Build-Cache; läuft gerade ein Build, wird übersprungen. Der nächste Build startet dafür ohne Cache und dauert länger |
+| täglich 03:47 | `deploy/build-cache-leeren.sh` | Begrenzt den Docker-Build-Cache auf 2 GB (`KEEP_STORAGE`, die jüngsten Einträge bleiben); läuft gerade ein Build, wird übersprungen |
 | alle 3 Minuten | `deploy/ressourcen.sh` | Überwacht Arbeitsspeicher, Prozessor, Festplatte und Container und mailt bei Problemen ([Serverüberwachung](#serverüberwachung)) |
 
 Alle protokollieren nach `/var/log/driveonpoint-*.log`

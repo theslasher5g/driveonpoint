@@ -4,7 +4,8 @@ set -euo pipefail
 # Trägt die wiederkehrenden Aufgaben in die crontab von root ein: stündlich
 # Erinnerungen und verfallene Anfragen, täglich den Aufräumlauf, wöchentlich
 # die Docker-Image-Updates, alle 3 Minuten die Serverüberwachung
-# (Arbeitsspeicher, Prozessor, Festplatte). Läuft
+# (Arbeitsspeicher, Prozessor, Festplatte), stündlich der Docker-Build-Cache
+# geleert. Läuft
 # als root, damit der Cron-Aufruf ohne weitere Einrichtung auf den
 # Docker-Socket zugreifen kann.
 #
@@ -20,7 +21,7 @@ fi
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MARKER="# driveonpoint"
 
-chmod +x "$DIR/deploy/swap-einrichten.sh" "$DIR/deploy/oom-schutz.sh" "$DIR/deploy/cron-aufruf.sh" "$DIR/deploy/aufraeumen.sh" "$DIR/deploy/stuendlich.sh" "$DIR/deploy/docker-updates.sh" "$DIR/deploy/ressourcen.sh"
+chmod +x "$DIR/deploy/swap-einrichten.sh" "$DIR/deploy/oom-schutz.sh" "$DIR/deploy/cron-aufruf.sh" "$DIR/deploy/aufraeumen.sh" "$DIR/deploy/stuendlich.sh" "$DIR/deploy/docker-updates.sh" "$DIR/deploy/ressourcen.sh" "$DIR/deploy/build-cache-leeren.sh"
 
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
@@ -33,6 +34,8 @@ crontab -l 2>/dev/null | grep -vF "$MARKER" > "$TMP" || true
   # 04:30 statt 04:00: um vier startet bei Bedarf der Neustart nach Sicherheitsupdates.
   echo "30 4 * * 0 $DIR/deploy/docker-updates.sh $MARKER docker-updates"
   echo "*/3 * * * * $DIR/deploy/ressourcen.sh $MARKER ressourcen"
+  # Minute 47: abseits von stuendlich.sh (7) und dem Update-Build am Sonntag.
+  echo "47 * * * * $DIR/deploy/build-cache-leeren.sh $MARKER build-cache"
 } | crontab -
 
 if [ -f "$DIR/deploy/logrotate.conf" ]; then
@@ -52,4 +55,4 @@ if ! command -v earlyoom >/dev/null 2>&1; then
   echo "Tipp: Speicherschutz einrichten (beendet bei Speichermangel rechtzeitig den grössten Verbraucher): sudo $DIR/deploy/oom-schutz.sh"
 fi
 echo
-echo "Protokolle: /var/log/driveonpoint-stuendlich.log, /var/log/driveonpoint-aufraeumen.log, /var/log/driveonpoint-docker-updates.log, /var/log/driveonpoint-ressourcen.log"
+echo "Protokolle: /var/log/driveonpoint-stuendlich.log, /var/log/driveonpoint-aufraeumen.log, /var/log/driveonpoint-docker-updates.log, /var/log/driveonpoint-ressourcen.log, /var/log/driveonpoint-build-cache.log"

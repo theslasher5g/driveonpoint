@@ -19,12 +19,10 @@ const PAGES = [
   { path: "/agb", priority: 0.2 },
 ];
 
+// Kein lastModified: es wäre bei jeder Seite der Zeitpunkt des Builds, nicht
+// der letzten Änderung. Google ignoriert ein Datum, das sich als unzuverlässig
+// erwiesen hat, und ein fehlendes ist besser als ein falsches. changefreq
+// und priority wertet Google ohnehin nicht aus.
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date();
-  return PAGES.map((page) => ({
-    url: `${appUrl}${page.path}`,
-    lastModified,
-    changeFrequency: "monthly",
-    priority: page.priority,
-  }));
+  return PAGES.map((page) => ({ url: `${appUrl}${page.path}`, priority: page.priority }));
 }

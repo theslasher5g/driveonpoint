@@ -1,3 +1,11 @@
 {$SITE_ADDRESS} {
 	reverse_proxy app:3000
 }
+
+# www. leitet dauerhaft auf die Hauptadresse um, damit Suchmaschinen nur eine
+# Version der Seite kennen. WWW_ADDRESS kommt aus docker-compose.yml; ohne
+# gesetzten Wert ist es eine unerreichbare Adresse im Container (kein
+# Zertifikat, kein veröffentlichter Port) und der Block bleibt wirkungslos.
+{$WWW_ADDRESS} {
+	redir https://{$SITE_ADDRESS}{uri} permanent
+}

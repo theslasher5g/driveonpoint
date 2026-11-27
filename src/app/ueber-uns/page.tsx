@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: `Über uns — Fahrlehrerin in ${site.contact.city}`,
-  description: `Die Fahrschule ${site.name} in ${site.contact.city} — wer unterrichtet, wie wir arbeiten und wo wir fahren.`,
+  description: `Lerne Christina (Fahrlehrerin, Sozialpädagogin HF) und Jolanda (Nothelferinstruktorin) von ${site.name} in ${site.contact.city} kennen: ruhig erklärt, in deinem Tempo.`,
   alternates: { canonical: "/ueber-uns" },
 };
 

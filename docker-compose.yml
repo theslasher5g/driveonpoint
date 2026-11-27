@@ -105,6 +105,7 @@ services:
       - app
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      WWW_ADDRESS: ${WWW_ADDRESS:-http://127.0.0.1:8081}
     mem_limit: ${PROXY_MEM_LIMIT:-256m}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

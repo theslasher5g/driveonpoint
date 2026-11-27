@@ -54,6 +54,8 @@ export async function StructuredData() {
     areaServed: site.region.map((ort) => ({ "@type": "City", name: ort })),
     openingHoursSpecification: openingHours(),
     image: `https://${site.domain}${site.images.hero.src}`,
+    // Quadratisches Zeichen für Wissensfeld und Kartenansicht.
+    logo: `https://${site.domain}/icon.png`,
   };
 
   return (

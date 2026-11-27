@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Kontakt",
-  description: `${site.name} in ${site.contact.city} — Telefon, Mailadresse, Öffnungszeiten und Anfrageformular.`,
+  description: `Fragen zu Fahrstunden, VKU oder Nothilfekurs? Ruf an unter ${site.contact.phone} oder schreib uns. Einen Termin buchst du am schnellsten online.`,
   alternates: { canonical: "/kontakt" },
 };
 

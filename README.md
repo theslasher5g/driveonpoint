@@ -128,6 +128,13 @@ und `docker compose up -d --build` erneut ausführen. Ohne `SITE_ADDRESS`
 ersten Testen, siehe [Erster Blick, bevor eine Domain
 steht](#erster-blick-bevor-eine-domain-steht).
 
+**www:** Mit `WWW_ADDRESS=www.driveonpoint.ch` in der `.env` leitet Caddy
+`www.` dauerhaft (301) auf die Hauptadresse um — Suchmaschinen kennen so nur
+eine Version der Seite. Dafür muss der `CNAME` für `www` bestehen (siehe
+oben), sonst kann Caddy kein Zertifikat holen und meldet Fehler im
+Protokoll; die Hauptseite läuft trotzdem. Ohne den Eintrag in der `.env`
+bleibt die Umleitung aus.
+
 Das Sitzungs-Cookie bekommt ab jetzt automatisch das `Secure`-Attribut,
 ohne dass sonst etwas geändert werden muss.
 
